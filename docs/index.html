@@ -651,6 +651,7 @@
                         <select class="form-input" id="provider" onchange="updateProviderFields()">
                             <option value="anthropic">Anthropic</option>
                             <option value="openai">OpenAI</option>
+                            <option value="webllm">WebLLM (Local)</option>
                         </select>
                     </div>
                     
@@ -673,6 +674,35 @@
                         <div class="form-group">
                             <label class="form-label">Model</label>
                             <input type="text" class="form-input" id="openaiModel" placeholder="gpt-4o">
+                        </div>
+                    </div>
+                    
+                    <div id="webllmFields" style="display:none;">
+                        <div class="form-group">
+                            <label class="form-label">Local Model</label>
+                            <select class="form-input" id="webllmModel">
+                                <option value="Qwen2.5-3B-Instruct-q4f16_1-MLC">Qwen 2.5 3B (recommended)</option>
+                                <option value="Qwen2.5-1.5B-Instruct-q4f16_1-MLC">Qwen 2.5 1.5B (faster)</option>
+                                <option value="Llama-3.2-3B-Instruct-q4f16_1-MLC">Llama 3.2 3B</option>
+                                <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">Llama 3.2 1B (smallest)</option>
+                                <option value="Phi-3.5-mini-instruct-q4f16_1-MLC">Phi 3.5 Mini</option>
+                                <option value="SmolLM2-1.7B-Instruct-q4f16_1-MLC">SmolLM2 1.7B</option>
+                                <option value="Hermes-2-Pro-Llama-3-8B-q4f16_1-MLC">Hermes Llama3 8B (best for tools)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <div style="font-size:12px;color:var(--text-tertiary);line-height:1.6;">
+                                <strong>🚀 Runs 100% locally</strong> — No API key needed!<br>
+                                Uses WebGPU for fast inference.<br>
+                                First load downloads model (~1-4GB).<br>
+                                Requires Chrome 113+ or Edge 113+.
+                            </div>
+                        </div>
+                        <div id="webllmProgress" style="display:none;margin-bottom:16px;">
+                            <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;" id="webllmProgressText">Loading...</div>
+                            <div style="height:4px;background:var(--glass);border-radius:2px;overflow:hidden;">
+                                <div id="webllmProgressBar" style="height:100%;background:var(--text);width:0%;transition:width 0.3s;"></div>
+                            </div>
                         </div>
                     </div>
                     
@@ -744,6 +774,8 @@
         Message,
         z
     } from './strands.js';
+    
+    import { WebLLMBrowserModel } from './webllm.js';
 
     const VERSION = '1.0.0';
 
@@ -1498,6 +1530,9 @@ Version: ${VERSION}`;
         settings: () => window.openSettings()
     };
 
+    // Global WebLLM model instance (persisted to avoid reloading)
+    let webllmModelInstance = null;
+
     async function initializeAgent() {
         const provider = localStorage.getItem('provider') || 'anthropic';
         const systemPrompt = localStorage.getItem('system_prompt') || DEFAULT_SYSTEM_PROMPT;
@@ -1524,6 +1559,51 @@ Version: ${VERSION}`;
             }
             
             model = new OpenAIBrowserModel({ apiKey, modelId, maxTokens: 8096 });
+        } else if (provider === 'webllm') {
+            const modelId = localStorage.getItem('webllm_model') || 'Qwen2.5-3B-Instruct-q4f16_1-MLC';
+            
+            // Check WebGPU support
+            if (!navigator.gpu) {
+                setStatus('no WebGPU');
+                addMessage('error', 'WebGPU not supported. Try Chrome 113+ or Edge 113+.');
+                return false;
+            }
+            
+            // Show progress UI
+            const progressEl = document.getElementById('webllmProgress');
+            const progressText = document.getElementById('webllmProgressText');
+            const progressBar = document.getElementById('webllmProgressBar');
+            
+            // Reuse existing model if same modelId
+            if (webllmModelInstance && webllmModelInstance.getConfig().modelId === modelId && webllmModelInstance._loaded) {
+                model = webllmModelInstance;
+                setStatus('ready (local)');
+            } else {
+                progressEl.style.display = 'block';
+                setStatus('loading model...');
+                
+                try {
+                    model = new WebLLMBrowserModel({
+                        modelId,
+                        maxTokens: 4096,
+                        onProgress: (percent, text) => {
+                            progressBar.style.width = percent + '%';
+                            progressText.textContent = text || `Loading: ${percent}%`;
+                            setStatus(`loading ${percent}%`);
+                        }
+                    });
+                    
+                    await model.load();
+                    webllmModelInstance = model;
+                    progressEl.style.display = 'none';
+                    setStatus('ready (local)');
+                } catch (e) {
+                    progressEl.style.display = 'none';
+                    setStatus('load failed');
+                    addMessage('error', `Failed to load model: ${e.message}`);
+                    return false;
+                }
+            }
         } else {
             setStatus('unsupported');
             return false;
@@ -1809,6 +1889,7 @@ Version: ${VERSION}`;
         const provider = document.getElementById('provider').value;
         document.getElementById('anthropicFields').style.display = provider === 'anthropic' ? 'block' : 'none';
         document.getElementById('openaiFields').style.display = provider === 'openai' ? 'block' : 'none';
+        document.getElementById('webllmFields').style.display = provider === 'webllm' ? 'block' : 'none';
     };
 
     window.saveCredentials = async function() {
@@ -1821,8 +1902,11 @@ Version: ${VERSION}`;
         } else if (provider === 'openai') {
             localStorage.setItem('openai_api_key', document.getElementById('openaiApiKey').value);
             localStorage.setItem('openai_model', document.getElementById('openaiModel').value || 'gpt-4o');
+        } else if (provider === 'webllm') {
+            localStorage.setItem('webllm_model', document.getElementById('webllmModel').value);
         }
         
+        window._agentNeedsReinit = true;
         const success = await initializeAgent();
         if (success) {
             showToast('connected');
@@ -1857,6 +1941,7 @@ Version: ${VERSION}`;
         document.getElementById('anthropicModel').value = localStorage.getItem('anthropic_model') || 'claude-sonnet-4-20250514';
         document.getElementById('openaiApiKey').value = localStorage.getItem('openai_api_key') || '';
         document.getElementById('openaiModel').value = localStorage.getItem('openai_model') || 'gpt-4o';
+        document.getElementById('webllmModel').value = localStorage.getItem('webllm_model') || 'Qwen2.5-3B-Instruct-q4f16_1-MLC';
         document.getElementById('systemPrompt').value = localStorage.getItem('system_prompt') || DEFAULT_SYSTEM_PROMPT;
         
         window.updateProviderFields();
@@ -1868,7 +1953,7 @@ Version: ${VERSION}`;
         document.getElementById('inputField').focus();
         
         if (!success) {
-            addMessage('system', 'Add your API key in settings to get started.');
+            addMessage('system', 'Add your API key in settings to get started, or try WebLLM for local inference!');
         }
     }
 
