@@ -711,6 +711,7 @@
                     <button class="tab active" data-tab="credentials">API</button>
                     <button class="tab" data-tab="system">System</button>
                     <button class="tab" data-tab="tools">Tools</button>
+                    <button class="tab" data-tab="context">Context</button>
                 </div>
 
                 <div class="tab-content active" id="tab-credentials">
@@ -810,6 +811,16 @@
                         </div>
                     </div>
                     <div class="form-group">
+                        <label class="form-label">🧠 Context & Communication Tools</label>
+                        <div style="font-size:13px;color:var(--text-secondary);line-height:2;">
+                            <code>get_user_context</code> — Get user activity, location, etc.<br>
+                            <code>set_context</code> — Set custom context for injection<br>
+                            <code>enable_context_tracking</code> — Toggle activity/location/bluetooth<br>
+                            <code>scan_bluetooth</code> — Scan for nearby devices/agents 📡<br>
+                            <code>send_to_agent</code> — Message nearby AGI agents<br>
+                        </div>
+                    </div>
+                    <div class="form-group">
                         <label class="form-label">Custom Tools</label>
                         <div style="font-size:12px;color:var(--text-tertiary);line-height:1.8;" id="customToolsList">
                             Loading...
@@ -819,6 +830,64 @@
                         <label class="form-label">PWA Status</label>
                         <div style="font-size:12px;color:var(--text-tertiary);line-height:1.8;" id="pwaStatus">
                             Checking...
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="tab-context">
+                    <div class="form-group">
+                        <label class="form-label">🧠 Dynamic Context Injection</label>
+                        <div style="font-size:12px;color:var(--text-tertiary);margin-bottom:16px;">
+                            Enable context sources to automatically inject data into every agent turn.
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+                            <input type="checkbox" id="contextActivity" style="width:18px;height:18px;">
+                            <span style="color:var(--text);">👁️ Activity Tracking</span>
+                        </label>
+                        <div style="font-size:12px;color:var(--text-tertiary);margin-left:28px;">
+                            Mouse position, typing, scrolling, idle time, focus state
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+                            <input type="checkbox" id="contextGeolocation" style="width:18px;height:18px;">
+                            <span style="color:var(--text);">📍 Geolocation</span>
+                        </label>
+                        <div style="font-size:12px;color:var(--text-tertiary);margin-left:28px;">
+                            GPS coordinates, altitude, speed (requires permission)
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+                            <input type="checkbox" id="contextBluetooth" style="width:18px;height:18px;">
+                            <span style="color:var(--text);">📡 Bluetooth Devices</span>
+                        </label>
+                        <div style="font-size:12px;color:var(--text-tertiary);margin-left:28px;">
+                            Nearby devices and AGI agents (requires Chrome/Edge + HTTPS)
+                        </div>
+                    </div>
+                    
+                    <div class="form-group" style="margin-top:24px;">
+                        <label class="form-label">Current Context Preview</label>
+                        <div id="contextPreview" style="font-family:'SF Mono',monospace;font-size:11px;background:rgba(0,0,0,0.3);padding:12px;border-radius:8px;max-height:200px;overflow-y:auto;color:var(--text-tertiary);white-space:pre-wrap;">
+                            Click "Refresh" to see current context
+                        </div>
+                        <button class="btn" id="refreshContextBtn" style="margin-top:8px;">Refresh Preview</button>
+                    </div>
+                    
+                    <div class="form-group" style="margin-top:24px;">
+                        <label class="form-label">Custom Context</label>
+                        <div style="display:flex;gap:8px;">
+                            <input type="text" class="form-input" id="customContextKey" placeholder="key" style="flex:1;">
+                            <input type="text" class="form-input" id="customContextValue" placeholder="value" style="flex:2;">
+                            <button class="btn" id="addCustomContextBtn">Add</button>
+                        </div>
+                        <div id="customContextList" style="font-size:12px;color:var(--text-tertiary);margin-top:8px;">
                         </div>
                     </div>
                 </div>
@@ -881,6 +950,15 @@
         createImageBlock,
         resizeImageIfNeeded
     } from './vision.js';
+    
+    import { 
+        ContextInjector,
+        BluetoothScanner
+    } from './context-injector.js';
+    
+    // Initialize global context injector
+    const contextInjector = new ContextInjector();
+    contextInjector.exposeToWindow();
 
     const VERSION = '1.0.0';
 
@@ -1002,6 +1080,25 @@ agi.diy: https://agi.diy
 - update_self: Modify your own system prompt
 - notify: Send push notifications (even when app is in background!)
 
+## 🧠 Context Awareness
+You have access to dynamic context that's injected into every conversation turn:
+- get_user_context: Get activity state, mouse position, idle time, location, etc.
+- set_context: Add custom key-value context that persists
+- enable_context_tracking: Enable activity/geolocation/bluetooth tracking
+
+Context is automatically injected at the start of each message, giving you awareness of:
+- User activity (typing, scrolling, mouse movement, idle time)
+- Window focus state and screen size
+- Battery level and network type
+- Geolocation (if enabled and permitted)
+- Nearby Bluetooth devices (if enabled)
+
+## 📡 Agent Communication (Bluetooth)
+- scan_bluetooth: Discover nearby Bluetooth devices and AGI agents
+- send_to_agent: Send messages to discovered AGI agents
+
+This allows you to communicate with other AGI agents running nearby!
+
 ## 🔧 Self-Modification (Hot-Reload Tools)
 You can CREATE YOUR OWN TOOLS that persist across sessions:
 - create_tool: Define new tools with name, description, schema, and JavaScript code
@@ -1026,6 +1123,8 @@ After creating a tool, it becomes available on your next message!
 - Data persists across sessions with storage
 - Use notify to alert users about important events
 - Create custom tools when you need new capabilities!
+- Check user context to understand what they're doing
+- Look for nearby agents to collaborate with
 
 Version: ${VERSION}`;
 
@@ -1728,6 +1827,117 @@ Version: ${VERSION}`;
     });
 
     // ═══════════════════════════════════════════════════════════════════════════
+    // BLUETOOTH & CONTEXT TOOLS
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    const scanBluetoothTool = tool({
+        name: 'scan_bluetooth',
+        description: 'Scan for nearby Bluetooth devices. Can discover other AGI agents running nearby. Requires user permission.',
+        inputSchema: z.object({
+            timeout: z.number().optional().describe('Scan timeout in ms (default: 10000)')
+        }),
+        callback: async (input) => {
+            try {
+                const devices = await contextInjector.scanBluetooth();
+                const agiAgents = devices.filter(d => d.isAgiAgent);
+                
+                return {
+                    success: true,
+                    totalDevices: devices.length,
+                    agiAgents: agiAgents.length,
+                    devices: devices.map(d => ({
+                        id: d.id,
+                        name: d.name,
+                        isAgiAgent: d.isAgiAgent,
+                        agentInfo: d.agentInfo || null
+                    }))
+                };
+            } catch (e) {
+                return { error: e.message };
+            }
+        }
+    });
+
+    const sendToAgentTool = tool({
+        name: 'send_to_agent',
+        description: 'Send a message to a nearby AGI agent discovered via Bluetooth.',
+        inputSchema: z.object({
+            deviceId: z.string().describe('Device ID from scan_bluetooth'),
+            message: z.string().describe('Message to send to the agent')
+        }),
+        callback: async (input) => {
+            try {
+                await contextInjector.sendToNearbyAgent(input.deviceId, input.message);
+                return { success: true, sentTo: input.deviceId };
+            } catch (e) {
+                return { error: e.message };
+            }
+        }
+    });
+
+    const getUserContextTool = tool({
+        name: 'get_user_context',
+        description: 'Get current user context including activity state, position, and environment. Useful for understanding what the user is doing.',
+        inputSchema: z.object({
+            includeActivity: z.boolean().optional().describe('Include activity tracking data'),
+            includeLocation: z.boolean().optional().describe('Include geolocation data'),
+            includeBluetooth: z.boolean().optional().describe('Include bluetooth device info')
+        }),
+        callback: async (input) => {
+            const context = contextInjector.getContext();
+            const result = {
+                timestamp: context.timestamp,
+                url: context.url
+            };
+            
+            if (input.includeActivity !== false && context.activity) {
+                result.activity = context.activity;
+            }
+            if (input.includeLocation && context.geolocation?.position) {
+                result.location = context.geolocation;
+            }
+            if (input.includeBluetooth && context.bluetooth) {
+                result.bluetooth = context.bluetooth;
+            }
+            result.custom = context.custom;
+            
+            return result;
+        }
+    });
+
+    const setContextTool = tool({
+        name: 'set_context',
+        description: 'Set custom context data that will be injected into the system prompt on each turn.',
+        inputSchema: z.object({
+            key: z.string().describe('Context key'),
+            value: z.string().describe('Context value')
+        }),
+        callback: async (input) => {
+            contextInjector.setCustomContext(input.key, input.value);
+            return { success: true, key: input.key };
+        }
+    });
+
+    const enableContextTracking = tool({
+        name: 'enable_context_tracking',
+        description: 'Enable or disable context tracking features like activity monitoring, geolocation, or bluetooth.',
+        inputSchema: z.object({
+            feature: z.enum(['activity', 'geolocation', 'bluetooth']).describe('Feature to toggle'),
+            enabled: z.boolean().describe('Enable or disable')
+        }),
+        callback: async (input) => {
+            contextInjector.enable(input.feature, input.enabled);
+            return { 
+                success: true, 
+                feature: input.feature, 
+                enabled: input.enabled,
+                note: input.feature === 'geolocation' || input.feature === 'bluetooth' 
+                    ? 'May require user permission' : undefined
+            };
+        }
+    });
+
+    // ═══════════════════════════════════════════════════════════════════════════
     // SELF-MODIFICATION TOOLS - Agent can create its own tools!
     // ═══════════════════════════════════════════════════════════════════════════
 
@@ -1947,7 +2157,13 @@ Example - create a tool that gets weather:
         notifyTool,
         createToolTool,
         listToolsTool,
-        deleteToolTool
+        deleteToolTool,
+        // Context & Bluetooth tools
+        scanBluetoothTool,
+        sendToAgentTool,
+        getUserContextTool,
+        setContextTool,
+        enableContextTracking
     ];
 
     // Expose model classes globally for ambient mode cloning
@@ -2138,6 +2354,12 @@ Example - create a tool that gets weather:
                         
                         // Finalize the ambient message
                         finalizeAmbientMessage(text, iter);
+                    },
+                    // NEW: Handle manual trigger as user message
+                    onUserMessage: async (prompt, modeLabel) => {
+                        // This is called when user clicks ambient/auto button
+                        // We run it through the main agent as if user typed it
+                        await runAgent(`${modeLabel}: ${prompt}`);
                     }
                 });
             }
@@ -2188,6 +2410,12 @@ Example - create a tool that gets weather:
                 console.log('🌙 Injecting ambient result');
                 finalMessage = `${ambientResult}\n\n[New user query]:\n${userMessage}`;
             }
+        }
+        
+        // 🧠 Inject dynamic context from context injector
+        const contextStr = contextInjector.getContextString();
+        if (contextStr) {
+            finalMessage = `${contextStr}\n\n---\n\n${finalMessage}`;
         }
         
         setStatus('thinking...');
@@ -2846,6 +3074,7 @@ Example - create a tool that gets weather:
             <!-- Ambient Mode -->
             <button class="vision-btn" id="ambientBtn" title="Ambient mode (🌙)">🌙</button>
             <button class="vision-btn" id="autoBtn" title="Autonomous mode (🚀)">🚀</button>
+            <button class="vision-btn" id="bluetoothBtn" title="Scan Bluetooth (📡)">📡</button>
             <span class="ambient-status" id="ambientStatus"></span>
         `;
         
@@ -2947,38 +3176,89 @@ Example - create a tool that gets weather:
         const autoBtn = document.getElementById('autoBtn');
         const ambientStatus = document.getElementById('ambientStatus');
         
-        ambientBtn.addEventListener('click', () => {
+        ambientBtn.addEventListener('click', async () => {
             if (!visionAgent?.ambientMode) return;
             
             const ambient = visionAgent.ambientMode;
             
             if (ambient.running && !ambient.autonomous) {
+                // Stop ambient mode
                 ambient.stop();
                 ambientBtn.classList.remove('active');
                 ambientStatus.textContent = '';
             } else {
-                ambient.start(false);
-                ambientBtn.classList.add('active');
-                autoBtn.classList.remove('active');
-                ambientStatus.textContent = 'Idle watch...';
+                // Trigger ambient mode manually - sends as user message
+                const prompt = await ambient.triggerManually('ambient');
+                if (prompt) {
+                    ambientBtn.classList.add('active');
+                    autoBtn.classList.remove('active');
+                    ambientStatus.textContent = '🌙 thinking...';
+                    
+                    // Start background ambient watching for future idle triggers
+                    ambient.start(false);
+                }
             }
         });
         
-        autoBtn.addEventListener('click', () => {
+        autoBtn.addEventListener('click', async () => {
             if (!visionAgent?.ambientMode) return;
             
             const ambient = visionAgent.ambientMode;
             
             if (ambient.autonomous) {
+                // Stop autonomous mode
                 ambient.stop();
                 autoBtn.classList.remove('active');
                 ambientBtn.classList.remove('active');
                 ambientStatus.textContent = '';
             } else {
-                ambient.start(true);
-                autoBtn.classList.add('active');
-                ambientBtn.classList.remove('active');
-                ambientStatus.textContent = 'Auto running...';
+                // Trigger autonomous mode manually - sends as user message
+                const prompt = await ambient.triggerManually('autonomous');
+                if (prompt) {
+                    autoBtn.classList.add('active');
+                    ambientBtn.classList.remove('active');
+                    ambientStatus.textContent = '🚀 working...';
+                    
+                    // Start autonomous background mode
+                    ambient.start(true);
+                }
+            }
+        });
+        
+        // Bluetooth scan handler
+        const bluetoothBtn = document.getElementById('bluetoothBtn');
+        bluetoothBtn?.addEventListener('click', async () => {
+            bluetoothBtn.classList.add('active');
+            ambientStatus.textContent = '📡 scanning...';
+            
+            try {
+                const devices = await contextInjector.scanBluetooth();
+                const agiAgents = devices.filter(d => d.isAgiAgent);
+                
+                if (devices.length === 0) {
+                    ambientStatus.textContent = '📡 no devices';
+                    showToast('No Bluetooth devices found');
+                } else if (agiAgents.length > 0) {
+                    ambientStatus.textContent = `📡 ${agiAgents.length} agents`;
+                    showToast(`Found ${agiAgents.length} AGI agent(s) nearby!`);
+                } else {
+                    ambientStatus.textContent = `📡 ${devices.length} devices`;
+                    showToast(`Found ${devices.length} device(s)`);
+                }
+                
+                // Auto-send to agent to process the scan results
+                if (devices.length > 0) {
+                    const deviceList = devices.map(d => 
+                        `${d.name || 'Unknown'} (${d.id.slice(0, 8)}...) ${d.isAgiAgent ? '🤖 AGI Agent' : ''}`
+                    ).join('\n');
+                    
+                    await runAgent(`I just scanned for Bluetooth devices. Here's what I found:\n\n${deviceList}\n\nWhat can you tell me about these devices?`);
+                }
+            } catch (e) {
+                ambientStatus.textContent = '📡 error';
+                showToast(`Bluetooth: ${e.message}`);
+            } finally {
+                bluetoothBtn.classList.remove('active');
             }
         });
         
@@ -3123,6 +3403,83 @@ Example - create a tool that gets weather:
     
     // Send button
     document.getElementById('sendBtn')?.addEventListener('click', window.sendMessage);
+    
+    // Context tab event handlers
+    document.getElementById('contextActivity')?.addEventListener('change', (e) => {
+        contextInjector.enable('activity', e.target.checked);
+        localStorage.setItem('context_activity', e.target.checked);
+    });
+    
+    document.getElementById('contextGeolocation')?.addEventListener('change', (e) => {
+        contextInjector.enable('geolocation', e.target.checked);
+        localStorage.setItem('context_geolocation', e.target.checked);
+    });
+    
+    document.getElementById('contextBluetooth')?.addEventListener('change', (e) => {
+        contextInjector.enable('bluetooth', e.target.checked);
+        localStorage.setItem('context_bluetooth', e.target.checked);
+    });
+    
+    document.getElementById('refreshContextBtn')?.addEventListener('click', () => {
+        const preview = document.getElementById('contextPreview');
+        if (preview) {
+            preview.textContent = contextInjector.getContextString() || 'No context enabled';
+        }
+    });
+    
+    document.getElementById('addCustomContextBtn')?.addEventListener('click', () => {
+        const keyInput = document.getElementById('customContextKey');
+        const valueInput = document.getElementById('customContextValue');
+        const key = keyInput?.value?.trim();
+        const value = valueInput?.value?.trim();
+        
+        if (key && value) {
+            contextInjector.setCustomContext(key, value);
+            keyInput.value = '';
+            valueInput.value = '';
+            updateCustomContextList();
+            showToast(`Added context: ${key}`);
+        }
+    });
+    
+    function updateCustomContextList() {
+        const list = document.getElementById('customContextList');
+        if (!list) return;
+        
+        const context = contextInjector.getContext();
+        const custom = context.custom || {};
+        const keys = Object.keys(custom);
+        
+        if (keys.length === 0) {
+            list.innerHTML = '<em>No custom context set</em>';
+        } else {
+            list.innerHTML = keys.map(k => 
+                `<span style="background:rgba(255,255,255,0.05);padding:2px 8px;border-radius:4px;margin-right:4px;">${k}: ${custom[k]} <span onclick="window.agiContext.removeCustom('${k}');this.parentElement.remove();" style="cursor:pointer;color:rgba(255,100,100,0.6);">✕</span></span>`
+            ).join('');
+        }
+    }
+    
+    // Load saved context settings on init
+    function loadContextSettings() {
+        const activity = localStorage.getItem('context_activity') === 'true';
+        const geolocation = localStorage.getItem('context_geolocation') === 'true';
+        const bluetooth = localStorage.getItem('context_bluetooth') === 'true';
+        
+        const activityCheckbox = document.getElementById('contextActivity');
+        const geoCheckbox = document.getElementById('contextGeolocation');
+        const btCheckbox = document.getElementById('contextBluetooth');
+        
+        if (activityCheckbox) activityCheckbox.checked = activity;
+        if (geoCheckbox) geoCheckbox.checked = geolocation;
+        if (btCheckbox) btCheckbox.checked = bluetooth;
+        
+        if (activity) contextInjector.enable('activity', true);
+        if (geolocation) contextInjector.enable('geolocation', true);
+        if (bluetooth) contextInjector.enable('bluetooth', true);
+    }
+    
+    // Call on page load
+    loadContextSettings();
 
     init().catch(e => {
         console.error('Init error:', e);

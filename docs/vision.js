@@ -259,7 +259,8 @@ class AmbientMode {
         this.onComplete = null;
         this.onStream = null; // callback for streaming text updates
         this.onToolCall = null; // callback for tool calls
-        this.onTimer = null; // NEW: callback for countdown timer
+        this.onTimer = null; // callback for countdown timer
+        this.onUserMessage = null; // NEW: callback to send as user message style
         
         // Completion signals
         this.completionSignals = [
@@ -269,6 +270,51 @@ class AmbientMode {
             "I've completed my exploration",
             "Nothing more to explore"
         ];
+    }
+    
+    /**
+     * Trigger ambient/auto mode manually with a command
+     * This sends the command as if the user typed it
+     */
+    async triggerManually(mode = 'ambient') {
+        if (this._mainAgentBusy) {
+            console.log('🌙 Main agent busy, cannot trigger manually');
+            return null;
+        }
+        
+        const isAuto = mode === 'auto' || mode === 'autonomous';
+        
+        // Build the trigger prompt
+        let triggerPrompt;
+        if (this.lastQuery) {
+            if (isAuto) {
+                triggerPrompt = `[AUTONOMOUS MODE ACTIVATED] Continue working on: "${this.lastQuery.slice(0, 300)}"
+                
+Work autonomously until the task is complete. Take initiative, make decisions, and keep making progress.
+When you're truly done, include [AMBIENT_DONE] in your response.`;
+            } else {
+                triggerPrompt = `[AMBIENT MODE] Think deeper about our recent conversation. 
+Last topic: "${this.lastQuery.slice(0, 200)}"
+
+Explore related ideas, find improvements, or consider what we might have missed. Be proactive.`;
+            }
+        } else {
+            if (isAuto) {
+                triggerPrompt = `[AUTONOMOUS MODE ACTIVATED] You are now in autonomous mode.
+Look around the current context, identify something useful to work on, and start making progress.
+When done, include [AMBIENT_DONE] in your response.`;
+            } else {
+                triggerPrompt = `[AMBIENT MODE] Think about what would be useful to do right now.
+Consider the user's context and environment, and proactively explore or suggest improvements.`;
+            }
+        }
+        
+        // Notify that we're sending as user message
+        if (this.onUserMessage) {
+            this.onUserMessage(triggerPrompt, isAuto ? '🚀 auto' : '🌙 ambient');
+        }
+        
+        return triggerPrompt;
     }
     
     /**
