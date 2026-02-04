@@ -240,30 +240,65 @@ class GeolocationTracker {
             return false;
         }
         
+        // Check current permission state
+        let currentState = 'prompt';
         try {
             const result = await navigator.permissions.query({ name: 'geolocation' });
-            this.state.permission = result.state;
+            currentState = result.state;
+            this.state.permission = currentState;
             
             result.addEventListener('change', () => {
                 this.state.permission = result.state;
             });
             
-            return result.state === 'granted';
+            // If already granted, we're good
+            if (currentState === 'granted') {
+                return true;
+            }
+            
+            // If denied, don't bother asking
+            if (currentState === 'denied') {
+                this.state.error = 'Permission denied by user';
+                return false;
+            }
         } catch (e) {
-            // Fallback: try to get position directly
-            return new Promise((resolve) => {
-                navigator.geolocation.getCurrentPosition(
-                    () => {
-                        this.state.permission = 'granted';
-                        resolve(true);
-                    },
-                    () => {
-                        this.state.permission = 'denied';
-                        resolve(false);
-                    }
-                );
-            });
+            // permissions.query not supported, continue to actually request
+            console.log('📍 permissions.query not available, will request directly');
         }
+        
+        // Permission is 'prompt' or unknown - actually request it by getting position
+        // This is what triggers the browser's permission dialog!
+        return new Promise((resolve) => {
+            console.log('📍 Requesting geolocation permission...');
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    console.log('📍 Geolocation permission granted!');
+                    this.state.permission = 'granted';
+                    // Store the first position too
+                    this.state.position = {
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude,
+                        accuracy: Math.round(position.coords.accuracy),
+                        altitude: position.coords.altitude,
+                        heading: position.coords.heading,
+                        speed: position.coords.speed
+                    };
+                    this.state.lastUpdate = Date.now();
+                    resolve(true);
+                },
+                (error) => {
+                    console.log('📍 Geolocation permission denied:', error.message);
+                    this.state.permission = 'denied';
+                    this.state.error = error.message;
+                    resolve(false);
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 15000,
+                    maximumAge: 0
+                }
+            );
+        });
     }
     
     startWatching() {
@@ -337,7 +372,21 @@ class GeolocationTracker {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// BLUETOOTH SCANNER - For agent-to-agent discovery
+// BLUETOOTH SCANNER - Device discovery
+// 
+// IMPORTANT LIMITATION: Web Bluetooth API can only act as a "central" (client).
+// Browsers CANNOT advertise as BLE peripherals, so true browser-to-browser
+// Bluetooth communication is NOT possible with this API.
+// 
+// Use cases that DO work:
+// - Scanning for nearby Bluetooth devices
+// - Connecting to BLE peripherals (fitness trackers, sensors, etc.)
+// - Reading/writing to device characteristics
+// 
+// For browser-to-browser agent communication, consider:
+// - WebRTC (peer-to-peer, works great!)
+// - WebSocket server for discovery
+// - Shared cloud signaling
 // ═══════════════════════════════════════════════════════════════════════════
 
 class BluetoothScanner {
@@ -350,7 +399,7 @@ class BluetoothScanner {
             error: null
         };
         
-        // Agent discovery service UUID (custom)
+        // Custom service UUID for potential future native AGI apps
         // NOTE: UUID must use valid hex chars (0-9, a-f only). "a610" represents "AGI0"
         this.AGI_SERVICE_UUID = '0000a610-0000-1000-8000-00805f9b34fb';
         this.AGI_CHARACTERISTIC_UUID = '0000a611-0000-1000-8000-00805f9b34fb';
@@ -358,7 +407,7 @@ class BluetoothScanner {
     
     async scan(duration = 10000) {
         if (!this.state.available) {
-            this.state.error = 'Web Bluetooth not supported';
+            this.state.error = 'Web Bluetooth not supported. Requires HTTPS + Chrome/Edge.';
             return [];
         }
         
@@ -366,71 +415,112 @@ class BluetoothScanner {
         this.state.error = null;
         
         try {
-            // Request device with filters
+            console.log('📡 Opening Bluetooth device picker...');
+            
+            // Request device - this opens the browser's Bluetooth picker
+            // User must manually select a device from the list
             const device = await navigator.bluetooth.requestDevice({
                 acceptAllDevices: true,
-                optionalServices: [this.AGI_SERVICE_UUID, 'battery_service', 'device_information']
+                optionalServices: ['battery_service', 'device_information', 'generic_access']
             });
             
             if (device) {
-                this.state.devices.set(device.id, {
+                console.log('📡 Device selected:', device.name || device.id);
+                
+                const deviceInfo = {
                     id: device.id,
                     name: device.name || 'Unknown Device',
-                    connected: device.gatt?.connected || false,
+                    connected: false,
                     lastSeen: Date.now(),
                     isAgiAgent: false,
+                    services: [],
+                    batteryLevel: null,
                     device: device
-                });
+                };
                 
-                // Try to detect if it's an AGI agent
-                await this._checkForAgiAgent(device);
+                this.state.devices.set(device.id, deviceInfo);
+                
+                // Try to connect and get more info
+                await this._getDeviceInfo(device, deviceInfo);
             }
             
             this.state.lastScan = Date.now();
             return Array.from(this.state.devices.values());
             
         } catch (e) {
-            if (e.name !== 'NotFoundError') {
+            if (e.name === 'NotFoundError') {
+                // User cancelled the picker - not an error
+                console.log('📡 Bluetooth picker cancelled by user');
+            } else {
+                console.error('📡 Bluetooth error:', e.message);
                 this.state.error = e.message;
             }
-            return [];
+            return Array.from(this.state.devices.values());
         } finally {
             this.state.scanning = false;
         }
     }
     
-    async _checkForAgiAgent(device) {
+    async _getDeviceInfo(device, deviceInfo) {
         try {
+            console.log('📡 Connecting to device...');
             const server = await device.gatt?.connect();
-            if (!server) return;
+            if (!server) {
+                console.log('📡 Device does not support GATT');
+                return;
+            }
             
+            deviceInfo.connected = true;
+            console.log('📡 Connected! Getting services...');
+            
+            // Try to get battery level
             try {
-                const service = await server.getPrimaryService(this.AGI_SERVICE_UUID);
-                if (service) {
-                    const deviceInfo = this.state.devices.get(device.id);
-                    if (deviceInfo) {
-                        deviceInfo.isAgiAgent = true;
-                        
-                        // Try to read agent info
-                        const characteristic = await service.getCharacteristic(this.AGI_CHARACTERISTIC_UUID);
-                        const value = await characteristic.readValue();
-                        const decoder = new TextDecoder();
-                        deviceInfo.agentInfo = JSON.parse(decoder.decode(value));
-                    }
-                }
+                const batteryService = await server.getPrimaryService('battery_service');
+                const batteryChar = await batteryService.getCharacteristic('battery_level');
+                const value = await batteryChar.readValue();
+                deviceInfo.batteryLevel = value.getUint8(0);
+                console.log('📡 Battery level:', deviceInfo.batteryLevel + '%');
             } catch (e) {
-                // Not an AGI agent, that's fine
+                // Battery service not available
+            }
+            
+            // Try to get device name from generic_access
+            try {
+                const genericService = await server.getPrimaryService('generic_access');
+                const nameChar = await genericService.getCharacteristic('gap.device_name');
+                const value = await nameChar.readValue();
+                const decoder = new TextDecoder();
+                const name = decoder.decode(value);
+                if (name) deviceInfo.name = name;
+            } catch (e) {
+                // Generic access not available
+            }
+            
+            // Get list of available services
+            try {
+                const services = await server.getPrimaryServices();
+                deviceInfo.services = services.map(s => s.uuid);
+                console.log('📡 Available services:', deviceInfo.services);
+            } catch (e) {
+                // Can't enumerate services
             }
             
         } catch (e) {
-            console.log('Could not connect to device:', e.message);
+            console.log('📡 Could not connect:', e.message);
+            deviceInfo.connected = false;
         }
     }
     
     async sendToAgent(deviceId, message) {
         const deviceInfo = this.state.devices.get(deviceId);
-        if (!deviceInfo || !deviceInfo.isAgiAgent) {
-            throw new Error('Device is not an AGI agent');
+        if (!deviceInfo) {
+            throw new Error('Device not found. Scan first.');
+        }
+        
+        // NOTE: This would only work with a native app advertising the AGI service
+        // Browser-to-browser BT communication is NOT possible with Web Bluetooth
+        if (!deviceInfo.connected) {
+            throw new Error('Device not connected');
         }
         
         try {
@@ -438,6 +528,7 @@ class BluetoothScanner {
             const server = await device.gatt?.connect();
             if (!server) throw new Error('Could not connect');
             
+            // Check if it has our AGI service (would be a native app)
             const service = await server.getPrimaryService(this.AGI_SERVICE_UUID);
             const characteristic = await service.getCharacteristic(this.AGI_CHARACTERISTIC_UUID);
             
@@ -449,9 +540,10 @@ class BluetoothScanner {
                 timestamp: Date.now()
             })));
             
+            deviceInfo.isAgiAgent = true;
             return true;
         } catch (e) {
-            throw new Error(`Failed to send: ${e.message}`);
+            throw new Error(`Cannot send: ${e.message}. Note: Browser-to-browser BT is not supported.`);
         }
     }
     
@@ -476,30 +568,34 @@ class BluetoothScanner {
     
     getContextString() {
         const s = this.getState();
+        const devices = this.getDevices();
         const lines = [];
         
-        lines.push(`### Bluetooth`);
+        lines.push(`### Bluetooth Devices`);
         
         if (!s.available) {
             lines.push(`- **Status**: Not available (requires HTTPS + Chrome/Edge)`);
         } else if (s.scanning) {
             lines.push(`- **Status**: Scanning...`);
+        } else if (devices.length === 0) {
+            lines.push(`- **Status**: No devices paired yet. Click 📡 to scan.`);
         } else {
-            lines.push(`- **Devices Found**: ${s.deviceCount}`);
-            lines.push(`- **AGI Agents Nearby**: ${s.agiAgentCount}`);
-            
-            const agents = this.getAgiAgents();
-            if (agents.length > 0) {
-                lines.push(`- **Agents**:`);
-                agents.forEach(a => {
-                    lines.push(`  - ${a.name} (${a.id.slice(0, 8)}...)`);
-                });
-            }
+            lines.push(`- **Paired Devices**: ${devices.length}`);
+            devices.forEach(d => {
+                let info = `  - **${d.name}** (${d.id.slice(0, 8)}...)`;
+                if (d.connected) info += ' ✓ connected';
+                if (d.batteryLevel !== null) info += ` 🔋${d.batteryLevel}%`;
+                if (d.services?.length > 0) info += ` [${d.services.length} services]`;
+                lines.push(info);
+            });
         }
         
         if (s.error) {
             lines.push(`- **Error**: ${s.error}`);
         }
+        
+        // Add limitation note
+        lines.push(`- **Note**: Web Bluetooth can scan devices but cannot enable browser-to-browser communication.`);
         
         return lines.join('\n');
     }

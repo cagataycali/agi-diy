@@ -65,6 +65,85 @@
             -webkit-text-size-adjust: 100%; /* Prevent text size adjustment */
         }
 
+        /* Map background mode - transparent app overlay, NO BLUR */
+        html.map-mode,
+        body.map-mode {
+            background: transparent !important;
+            background-color: transparent !important;
+            --ui-opacity: 0.7;
+        }
+        body.map-mode .app {
+            background: transparent !important;
+            background-color: transparent !important;
+            position: relative;
+            z-index: 1;
+        }
+        body.map-mode .messages-container {
+            background: transparent !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+        }
+        body.map-mode .messages-inner {
+            background: transparent !important;
+        }
+        body.map-mode .header {
+            background: rgba(0, 0, 0, var(--ui-opacity, 0.7)) !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        body.map-mode .input-container {
+            background: transparent !important;
+        }
+        body.map-mode .input-field {
+            background: rgba(0, 0, 0, var(--ui-opacity, 0.7)) !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        body.map-mode .send-btn {
+            background: rgba(0, 0, 0, var(--ui-opacity, 0.7)) !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+        }
+        body.map-mode .message {
+            background: transparent !important;
+        }
+        body.map-mode .message.system {
+            background: rgba(0, 0, 0, var(--ui-opacity, 0.7)) !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+        }
+        body.map-mode .message.assistant .message-content {
+            background: rgba(0, 0, 0, calc(var(--ui-opacity, 0.7) - 0.2));
+            padding: 12px 16px;
+            border-radius: 12px;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+        }
+        body.map-mode .tool-block {
+            background: rgba(0, 0, 0, var(--ui-opacity, 0.7)) !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+        }
+        body.map-mode .dynamic-ui {
+            background: rgba(0, 0, 0, var(--ui-opacity, 0.7)) !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+        }
+        
+        /* Map background container */
+        #map-background {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            z-index: -1 !important;
+            pointer-events: none !important;
+            opacity: 1 !important;
+        }
+
         ::selection {
             background: rgba(255,255,255,0.15);
         }
@@ -712,6 +791,7 @@
                     <button class="tab" data-tab="system">System</button>
                     <button class="tab" data-tab="tools">Tools</button>
                     <button class="tab" data-tab="context">Context</button>
+                    <button class="tab" data-tab="map">Map</button>
                 </div>
 
                 <div class="tab-content active" id="tab-credentials">
@@ -821,6 +901,17 @@
                         </div>
                     </div>
                     <div class="form-group">
+                        <label class="form-label">🗺️ Map Tools</label>
+                        <div style="font-size:13px;color:var(--text-secondary);line-height:2;">
+                            <code>add_map_marker</code> — Add marker with emoji/label/color<br>
+                            <code>remove_map_marker</code> — Remove marker by ID<br>
+                            <code>clear_map_markers</code> — Clear all markers<br>
+                            <code>list_map_markers</code> — List all marker IDs<br>
+                            <code>pan_map</code> — Pan/zoom to location<br>
+                            <code>get_map_location</code> — Get current user location<br>
+                        </div>
+                    </div>
+                    <div class="form-group">
                         <label class="form-label">Custom Tools</label>
                         <div style="font-size:12px;color:var(--text-tertiary);line-height:1.8;" id="customToolsList">
                             Loading...
@@ -891,6 +982,69 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="tab-content" id="tab-map">
+                    <div class="form-group">
+                        <label class="form-label">🗺️ Map Background</label>
+                        <div style="font-size:12px;color:var(--text-tertiary);margin-bottom:16px;">
+                            Enable a full-screen Google Maps background with your live location. 
+                            Clean, transparent, minimal - the map is just ambiance while streaming.
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Google Maps API Key</label>
+                        <input type="password" class="form-input" id="googleMapsApiKey" placeholder="AIzaSy...">
+                        <div style="font-size:11px;color:var(--text-tertiary);margin-top:8px;">
+                            Get a free key at <a href="https://console.cloud.google.com/apis/credentials" target="_blank" style="color:var(--text-secondary);">Google Cloud Console</a>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Map ID (Optional - for Advanced Markers)</label>
+                        <input type="text" class="form-input" id="googleMapsMapId" placeholder="e.g., 8e0a97af9386fef">
+                        <div style="font-size:11px;color:var(--text-tertiary);margin-top:8px;">
+                            Create at <a href="https://console.cloud.google.com/google/maps-apis/studio/maps" target="_blank" style="color:var(--text-secondary);">Maps Studio</a> → enables custom markers with emoji/labels
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+                            <input type="checkbox" id="mapEnabled" style="width:18px;height:18px;">
+                            <span style="color:var(--text);">Enable Map Background</span>
+                        </label>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Map Style</label>
+                        <select class="form-input" id="mapStyle">
+                            <option value="dark">Dark</option>
+                            <option value="ultra-minimal">Minimal</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">UI Transparency</label>
+                        <input type="range" id="mapOpacitySetting" min="0" max="100" value="70" style="width:100%;">
+                        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-tertiary);">
+                            <span>Clear (map visible)</span>
+                            <span id="mapOpacityValue">70%</span>
+                            <span>Solid (map hidden)</span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Current Location</label>
+                        <div id="mapLocationDisplay" style="font-family:'SF Mono',monospace;font-size:12px;color:var(--text-secondary);background:rgba(0,0,0,0.3);padding:12px;border-radius:8px;">
+                            Waiting for location...
+                        </div>
+                    </div>
+                    
+                    <div class="btn-group">
+                        <button class="btn btn-primary" id="saveMapSettingsBtn">Save & Apply</button>
+                        <button class="btn" id="testMapBtn">Test Map</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -955,6 +1109,11 @@
         ContextInjector,
         BluetoothScanner
     } from './context-injector.js';
+    
+    import {
+        MapBackground,
+        createMapControls
+    } from './map.js';
     
     // Initialize global context injector
     const contextInjector = new ContextInjector();
@@ -1938,6 +2097,134 @@ Version: ${VERSION}`;
     });
 
     // ═══════════════════════════════════════════════════════════════════════════
+    // MAP MARKER TOOLS
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    const addMapMarkerTool = tool({
+        name: 'add_map_marker',
+        description: 'Add a marker to the map background. Use this to highlight locations, show points of interest, or visualize data geographically.',
+        inputSchema: z.object({
+            lat: z.number().describe('Latitude coordinate'),
+            lng: z.number().describe('Longitude coordinate'),
+            label: z.string().optional().describe('Text label for the marker'),
+            emoji: z.string().optional().describe('Emoji icon (default: 📍)'),
+            color: z.string().optional().describe('Background color (default: #ff6b6b)'),
+            id: z.string().optional().describe('Custom ID for the marker')
+        }),
+        callback: async (input) => {
+            if (!mapBackground || !mapBackground.ready) {
+                return { error: 'Map not enabled. Enable it in settings → Map' };
+            }
+            
+            const result = mapBackground.addMarker(input.lat, input.lng, {
+                label: input.label,
+                emoji: input.emoji || '📍',
+                color: input.color || '#ff6b6b',
+                id: input.id
+            });
+            
+            if (result) {
+                return { 
+                    success: true, 
+                    markerId: result.id,
+                    position: { lat: input.lat, lng: input.lng }
+                };
+            }
+            return { error: 'Failed to add marker' };
+        }
+    });
+
+    const removeMapMarkerTool = tool({
+        name: 'remove_map_marker',
+        description: 'Remove a marker from the map by its ID.',
+        inputSchema: z.object({
+            id: z.string().describe('Marker ID to remove')
+        }),
+        callback: async (input) => {
+            if (!mapBackground) {
+                return { error: 'Map not enabled' };
+            }
+            
+            const removed = mapBackground.removeMarker(input.id);
+            return { success: removed, markerId: input.id };
+        }
+    });
+
+    const clearMapMarkersTool = tool({
+        name: 'clear_map_markers',
+        description: 'Remove all custom markers from the map.',
+        inputSchema: z.object({}),
+        callback: async () => {
+            if (!mapBackground) {
+                return { error: 'Map not enabled' };
+            }
+            
+            mapBackground.clearMarkers();
+            return { success: true, message: 'All markers cleared' };
+        }
+    });
+
+    const listMapMarkersTool = tool({
+        name: 'list_map_markers',
+        description: 'List all marker IDs currently on the map.',
+        inputSchema: z.object({}),
+        callback: async () => {
+            if (!mapBackground) {
+                return { error: 'Map not enabled' };
+            }
+            
+            const markers = mapBackground.getMarkerIds();
+            return { markers, count: markers.length };
+        }
+    });
+
+    const panMapTool = tool({
+        name: 'pan_map',
+        description: 'Pan the map to a specific location.',
+        inputSchema: z.object({
+            lat: z.number().describe('Latitude'),
+            lng: z.number().describe('Longitude'),
+            zoom: z.number().optional().describe('Optional zoom level (1-20)')
+        }),
+        callback: async (input) => {
+            if (!mapBackground || !mapBackground.ready) {
+                return { error: 'Map not enabled' };
+            }
+            
+            mapBackground.panTo(input.lat, input.lng, input.zoom);
+            return { 
+                success: true, 
+                position: { lat: input.lat, lng: input.lng },
+                zoom: input.zoom 
+            };
+        }
+    });
+
+    const getMapLocationTool = tool({
+        name: 'get_map_location',
+        description: 'Get the current user location from the map.',
+        inputSchema: z.object({}),
+        callback: async () => {
+            if (!mapBackground) {
+                return { error: 'Map not enabled' };
+            }
+            
+            const pos = mapBackground.getPosition();
+            if (pos) {
+                return {
+                    lat: pos.lat,
+                    lng: pos.lng,
+                    accuracy: pos.accuracy,
+                    altitude: pos.altitude,
+                    speed: pos.speed,
+                    heading: pos.heading
+                };
+            }
+            return { error: 'Location not available yet' };
+        }
+    });
+
+    // ═══════════════════════════════════════════════════════════════════════════
     // SELF-MODIFICATION TOOLS - Agent can create its own tools!
     // ═══════════════════════════════════════════════════════════════════════════
 
@@ -2163,7 +2450,14 @@ Example - create a tool that gets weather:
         sendToAgentTool,
         getUserContextTool,
         setContextTool,
-        enableContextTracking
+        enableContextTracking,
+        // Map tools
+        addMapMarkerTool,
+        removeMapMarkerTool,
+        clearMapMarkersTool,
+        listMapMarkersTool,
+        panMapTool,
+        getMapLocationTool
     ];
 
     // Expose model classes globally for ambient mode cloning
@@ -3075,6 +3369,7 @@ Example - create a tool that gets weather:
             <button class="vision-btn" id="ambientBtn" title="Ambient mode (🌙)">🌙</button>
             <button class="vision-btn" id="autoBtn" title="Autonomous mode (🚀)">🚀</button>
             <button class="vision-btn" id="bluetoothBtn" title="Scan Bluetooth (📡)">📡</button>
+            <button class="vision-btn" id="mapToggleBtn" title="Toggle map background (🗺️)">🗺️</button>
             <span class="ambient-status" id="ambientStatus"></span>
         `;
         
@@ -3261,6 +3556,36 @@ Example - create a tool that gets weather:
                 bluetoothBtn.classList.remove('active');
             }
         });
+        
+        // Map toggle handler
+        const mapToggleBtn = document.getElementById('mapToggleBtn');
+        mapToggleBtn?.addEventListener('click', async () => {
+            const isEnabled = localStorage.getItem('map_enabled') === 'true';
+            const apiKey = localStorage.getItem('google_maps_api_key');
+            
+            if (!apiKey) {
+                showToast('Set API key in settings → Map');
+                window.openSettings();
+                // Switch to map tab
+                setTimeout(() => {
+                    document.querySelector('.tab[data-tab="map"]')?.click();
+                }, 100);
+                return;
+            }
+            
+            // Toggle map
+            localStorage.setItem('map_enabled', (!isEnabled).toString());
+            await initMapBackground();
+            
+            mapToggleBtn.classList.toggle('active', !isEnabled);
+            showToast(!isEnabled ? 'Map enabled' : 'Map disabled');
+        });
+        
+        // Update map button state on load
+        setTimeout(() => {
+            const isEnabled = localStorage.getItem('map_enabled') === 'true';
+            mapToggleBtn?.classList.toggle('active', isEnabled);
+        }, 100);
         
         console.log('🔮 Vision controls initialized');
     }
@@ -3480,11 +3805,151 @@ Example - create a tool that gets weather:
     
     // Call on page load
     loadContextSettings();
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // MAP BACKGROUND INITIALIZATION
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    let mapBackground = null;
+    
+    async function initMapBackground() {
+        const apiKey = localStorage.getItem('google_maps_api_key');
+        const mapId = localStorage.getItem('google_maps_map_id');
+        const mapEnabled = localStorage.getItem('map_enabled') === 'true';
+        const mapStyle = localStorage.getItem('map_style') || 'dark';
+        const uiOpacity = parseInt(localStorage.getItem('map_opacity') || '70') / 100;
+        
+        if (!mapEnabled || !apiKey) {
+            document.documentElement.classList.remove('map-mode');
+            document.body.classList.remove('map-mode');
+            if (mapBackground) {
+                mapBackground.destroy();
+                mapBackground = null;
+            }
+            return;
+        }
+        
+        // Destroy existing map if any
+        if (mapBackground) {
+            mapBackground.destroy();
+        }
+        
+        // Apply UI transparency
+        document.documentElement.style.setProperty('--ui-opacity', uiOpacity);
+        
+        // Create new map
+        mapBackground = new MapBackground({
+            apiKey: apiKey,
+            mapId: mapId,
+            styleMode: mapStyle,
+            onLocationUpdate: (pos) => {
+                // Update location display in settings
+                const display = document.getElementById('mapLocationDisplay');
+                if (display) {
+                    display.innerHTML = `
+                        <strong>Lat:</strong> ${pos.lat.toFixed(6)}<br>
+                        <strong>Lng:</strong> ${pos.lng.toFixed(6)}<br>
+                        <strong>Accuracy:</strong> ${pos.accuracy?.toFixed(0) || 'N/A'}m
+                        ${pos.speed ? `<br><strong>Speed:</strong> ${(pos.speed * 3.6).toFixed(1)} km/h` : ''}
+                    `;
+                }
+                
+                // Also update context injector with location
+                if (contextInjector) {
+                    contextInjector.setCustomContext('map_location', `${pos.lat.toFixed(4)},${pos.lng.toFixed(4)}`);
+                }
+            }
+        });
+        
+        const success = await mapBackground.init();
+        
+        if (success) {
+            document.documentElement.classList.add('map-mode');
+            document.body.classList.add('map-mode');
+            console.log(`🗺️ Map background enabled (${mapId ? 'Advanced' : 'Basic'} markers)`);
+        } else {
+            document.documentElement.classList.remove('map-mode');
+            document.body.classList.remove('map-mode');
+            console.warn('🗺️ Map background failed to initialize');
+        }
+    }
+    
+    function loadMapSettings() {
+        const apiKey = localStorage.getItem('google_maps_api_key') || '';
+        const mapId = localStorage.getItem('google_maps_map_id') || '';
+        const mapEnabled = localStorage.getItem('map_enabled') === 'true';
+        const mapStyle = localStorage.getItem('map_style') || 'dark';
+        const uiOpacity = localStorage.getItem('map_opacity') || '70';
+        
+        const apiKeyInput = document.getElementById('googleMapsApiKey');
+        const mapIdInput = document.getElementById('googleMapsMapId');
+        const enabledCheckbox = document.getElementById('mapEnabled');
+        const styleSelect = document.getElementById('mapStyle');
+        const opacitySlider = document.getElementById('mapOpacitySetting');
+        const opacityValue = document.getElementById('mapOpacityValue');
+        
+        if (apiKeyInput) apiKeyInput.value = apiKey;
+        if (mapIdInput) mapIdInput.value = mapId;
+        if (enabledCheckbox) enabledCheckbox.checked = mapEnabled;
+        if (styleSelect) styleSelect.value = mapStyle;
+        if (opacitySlider) opacitySlider.value = uiOpacity;
+        if (opacityValue) opacityValue.textContent = `${uiOpacity}%`;
+    }
+    
+    // Map settings event handlers
+    document.getElementById('mapOpacitySetting')?.addEventListener('input', (e) => {
+        const value = e.target.value;
+        document.getElementById('mapOpacityValue').textContent = `${value}%`;
+        
+        // Live update UI transparency via CSS variable
+        document.documentElement.style.setProperty('--ui-opacity', value / 100);
+    });
+    
+    document.getElementById('saveMapSettingsBtn')?.addEventListener('click', async () => {
+        const apiKey = document.getElementById('googleMapsApiKey')?.value || '';
+        const mapId = document.getElementById('googleMapsMapId')?.value || '';
+        const enabled = document.getElementById('mapEnabled')?.checked || false;
+        const style = document.getElementById('mapStyle')?.value || 'dark';
+        const opacity = document.getElementById('mapOpacitySetting')?.value || '60';
+        
+        localStorage.setItem('google_maps_api_key', apiKey);
+        localStorage.setItem('google_maps_map_id', mapId);
+        localStorage.setItem('map_enabled', enabled.toString());
+        localStorage.setItem('map_style', style);
+        localStorage.setItem('map_opacity', opacity);
+        
+        await initMapBackground();
+        showToast(enabled ? (mapId ? 'Map enabled (Advanced)' : 'Map enabled (Basic)') : 'Map disabled');
+    });
+    
+    document.getElementById('testMapBtn')?.addEventListener('click', async () => {
+        const apiKey = document.getElementById('googleMapsApiKey')?.value;
+        if (!apiKey) {
+            showToast('Enter API key first');
+            return;
+        }
+        
+        // Temporarily save and test
+        localStorage.setItem('google_maps_api_key', apiKey);
+        localStorage.setItem('google_maps_map_id', document.getElementById('googleMapsMapId')?.value || '');
+        localStorage.setItem('map_enabled', 'true');
+        localStorage.setItem('map_style', document.getElementById('mapStyle')?.value || 'dark');
+        localStorage.setItem('map_opacity', document.getElementById('mapOpacitySetting')?.value || '60');
+        
+        await initMapBackground();
+        showToast('Testing map...');
+    });
+    
+    // Load map settings on page load
+    loadMapSettings();
 
     init().catch(e => {
         console.error('Init error:', e);
         setStatus('error');
         addMessage('error', 'Failed to load: ' + e.message);
+    }).then(() => {
+        // Initialize map background after main init
+        initMapBackground();
     });
     </script>
 </body>
