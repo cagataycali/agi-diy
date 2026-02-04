@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>agi.diy</title>
     
     <!-- PWA Manifest -->
@@ -61,6 +61,8 @@
             -webkit-font-smoothing: antialiased;
             font-weight: 400;
             letter-spacing: -0.01em;
+            touch-action: pan-x pan-y; /* Prevent double-tap zoom */
+            -webkit-text-size-adjust: 100%; /* Prevent text size adjustment */
         }
 
         ::selection {
@@ -342,7 +344,7 @@
             border-radius: 16px;
             padding: 16px 20px;
             color: var(--text);
-            font-size: 15px;
+            font-size: 16px; /* 16px minimum prevents iOS zoom */
             font-family: inherit;
             resize: none;
             min-height: 56px;
@@ -350,6 +352,8 @@
             backdrop-filter: blur(40px);
             -webkit-backdrop-filter: blur(40px);
             transition: border-color 0.2s ease;
+            -webkit-appearance: none; /* Prevents iOS styling */
+            appearance: none;
         }
         .input-field:focus { 
             outline: none; 
@@ -466,9 +470,11 @@
             border-radius: 10px;
             padding: 14px 16px;
             color: var(--text);
-            font-size: 14px;
+            font-size: 16px; /* 16px minimum prevents iOS zoom */
             font-family: inherit;
             transition: border-color 0.2s ease;
+            -webkit-appearance: none;
+            appearance: none;
         }
         .form-input:focus { 
             outline: none; 
@@ -478,7 +484,7 @@
             min-height: 120px; 
             resize: vertical; 
             font-family: 'SF Mono', 'Fira Code', monospace;
-            font-size: 12px;
+            font-size: 16px; /* Keep 16px to prevent iOS zoom */
             line-height: 1.6;
         }
 
