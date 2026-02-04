@@ -17267,6 +17267,7 @@ function flattenTools(toolList) {
 export {
   Agent,
   FunctionTool,
+  ImageBlock,
   JsonBlock,
   Message,
   Model,

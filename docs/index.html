@@ -667,11 +667,16 @@
         </div>
 
         <div class="input-container">
+            <!-- Vision Controls Row -->
+            <div class="vision-controls" id="visionControls" style="display:flex;gap:8px;margin-bottom:8px;padding:0 8px;align-items:center;flex-wrap:wrap;">
+                <!-- Image upload, screen capture, ambient mode will be injected here -->
+            </div>
+            
             <div class="input-wrapper">
                 <textarea 
                     class="input-field" 
                     id="inputField" 
-                    placeholder="Ask anything..." 
+                    placeholder="Ask anything... (📷 add images, 🖥️ screen watch, 🌙 ambient)" 
                     rows="1"
                     disabled
                 ></textarea>
@@ -845,12 +850,21 @@
         tool,
         Model,
         TextBlock,
+        ImageBlock,
         ToolResultBlock,
         Message,
         z
     } from './strands.js';
     
     import { WebLLMBrowserModel } from './webllm.js';
+    
+    import { 
+        VisionAgent, 
+        ScreenCapture, 
+        AmbientMode,
+        createImageBlock,
+        resizeImageIfNeeded
+    } from './vision.js';
 
     const VERSION = '1.0.0';
 
@@ -1035,6 +1049,29 @@ Version: ${VERSION}`;
                     switch (block.type) {
                         case 'textBlock':
                             return { type: 'text', text: block.text };
+                        case 'imageBlock':
+                            // Handle image blocks for multimodal
+                            if (block.source?.type === 'imageSourceBytes') {
+                                // Convert Uint8Array to base64
+                                const base64 = btoa(String.fromCharCode(...block.source.bytes));
+                                return {
+                                    type: 'image',
+                                    source: {
+                                        type: 'base64',
+                                        media_type: `image/${block.format}`,
+                                        data: base64
+                                    }
+                                };
+                            } else if (block.source?.type === 'imageSourceUrl') {
+                                return {
+                                    type: 'image',
+                                    source: {
+                                        type: 'url',
+                                        url: block.source.url
+                                    }
+                                };
+                            }
+                            return { type: 'text', text: '[Image]' };
                         case 'toolUseBlock':
                             return { 
                                 type: 'tool_use', 
@@ -1248,6 +1285,23 @@ Version: ${VERSION}`;
                     if (otherContent.length > 0) {
                         const parts = otherContent.map(block => {
                             if (block.type === 'textBlock') return { type: 'text', text: block.text };
+                            if (block.type === 'imageBlock') {
+                                // Handle image blocks for OpenAI vision
+                                if (block.source?.type === 'imageSourceBytes') {
+                                    const base64 = btoa(String.fromCharCode(...block.source.bytes));
+                                    return {
+                                        type: 'image_url',
+                                        image_url: {
+                                            url: `data:image/${block.format};base64,${base64}`
+                                        }
+                                    };
+                                } else if (block.source?.type === 'imageSourceUrl') {
+                                    return {
+                                        type: 'image_url',
+                                        image_url: { url: block.source.url }
+                                    };
+                                }
+                            }
                             return { type: 'text', text: String(block) };
                         });
                         openaiMessages.push({ role: 'user', content: parts });
@@ -1885,6 +1939,9 @@ Example - create a tool that gets weather:
     // ═══════════════════════════════════════════════════════════════════════════
 
     let agent = null;
+    let visionAgent = null;
+    let pendingImages = [];
+    let screenCapture = null;
     let isStreaming = false;
     window._agentNeedsReinit = false;
 
@@ -2023,6 +2080,26 @@ Example - create a tool that gets weather:
                 printer: false
             });
             
+            // Wrap with VisionAgent for image/screen/ambient support
+            visionAgent = new VisionAgent(agent);
+            
+            // Initialize ambient mode if not already
+            if (!visionAgent.ambientMode) {
+                visionAgent.enableAmbientMode({
+                    idleThreshold: 30000,
+                    maxIterations: 3,
+                    cooldown: 60000,
+                    onThinking: (mode, iter) => {
+                        const status = document.querySelector('.ambient-status');
+                        if (status) status.textContent = `${mode} ${iter}...`;
+                    },
+                    onResult: (text, iter) => {
+                        const status = document.querySelector('.ambient-status');
+                        if (status) status.textContent = `Done (${iter})`;
+                    }
+                });
+            }
+            
             setStatus('ready');
             window._agentNeedsReinit = false;
             return true;
@@ -2037,7 +2114,7 @@ Example - create a tool that gets weather:
     // CHAT
     // ═══════════════════════════════════════════════════════════════════════════
 
-    async function runAgent(userMessage) {
+    async function runAgent(userMessage, images = []) {
         if (!agent || window._agentNeedsReinit) {
             const initialized = await initializeAgent();
             if (!initialized) {
@@ -2046,14 +2123,63 @@ Example - create a tool that gets weather:
             }
         }
 
-        addMessage('user', userMessage);
+        // Combine images from parameter and pending
+        const allImages = [...images, ...pendingImages];
+        pendingImages = []; // Clear pending
+        
+        // Show message with image count if any
+        const msgText = allImages.length > 0 
+            ? `${userMessage} [📷 ${allImages.length} image${allImages.length > 1 ? 's' : ''}]`
+            : userMessage;
+        addMessage('user', msgText);
+        
+        // Inject ambient result if available
+        let finalMessage = userMessage;
+        if (visionAgent?.ambientMode) {
+            const ambientResult = visionAgent.ambientMode.getAndClearResult();
+            if (ambientResult) {
+                console.log('🌙 Injecting ambient result');
+                finalMessage = `${ambientResult}\n\n[New user query]:\n${userMessage}`;
+            }
+        }
+        
         setStatus('thinking...');
         addThinking();
 
         try {
             let currentText = '';
             
-            for await (const event of agent.stream(userMessage)) {
+            // Build content blocks
+            let input;
+            if (allImages.length > 0) {
+                // Multi-modal input with images - create proper Message
+                const contentBlocks = [];
+                
+                // Add text first
+                if (finalMessage) {
+                    contentBlocks.push(new TextBlock(finalMessage));
+                }
+                
+                // Add images
+                for (const file of allImages) {
+                    try {
+                        const resized = await resizeImageIfNeeded(file);
+                        const imageBlock = await createImageBlock(resized);
+                        // Create ImageBlock instance
+                        contentBlocks.push(new ImageBlock(imageBlock.image));
+                    } catch (err) {
+                        console.error('Failed to process image:', err);
+                    }
+                }
+                
+                // Wrap in Message for the agent
+                input = [new Message({ role: 'user', content: contentBlocks })];
+                console.log(`📷 Sending ${allImages.length} images with message`);
+            } else {
+                input = finalMessage;
+            }
+            
+            for await (const event of agent.stream(input)) {
                 if (!event || !event.type) continue;
                 
                 switch (event.type) {
@@ -2083,6 +2209,11 @@ Example - create a tool that gets weather:
             removeThinking();
             if (currentText) {
                 finalizeStreaming(currentText);
+            }
+            
+            // Record interaction for ambient mode
+            if (visionAgent?.ambientMode) {
+                visionAgent.ambientMode.recordInteraction(userMessage, currentText);
             }
             
             setStatus('ready');
@@ -2420,6 +2551,244 @@ Example - create a tool that gets weather:
     window.requestNotificationPermission = requestNotificationPermission;
 
     // ═══════════════════════════════════════════════════════════════════════════
+    // VISION CONTROLS
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    function initVisionControls() {
+        const container = document.getElementById('visionControls');
+        if (!container) return;
+        
+        container.innerHTML = `
+            <style>
+                .vision-btn {
+                    width: 36px;
+                    height: 36px;
+                    border-radius: 50%;
+                    background: rgba(255,255,255,0.05);
+                    border: 1px solid rgba(255,255,255,0.1);
+                    color: rgba(255,255,255,0.6);
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: all 0.2s;
+                    font-size: 16px;
+                }
+                .vision-btn:hover {
+                    background: rgba(255,255,255,0.1);
+                    color: rgba(255,255,255,0.9);
+                }
+                .vision-btn.active {
+                    background: rgba(147,112,219,0.2);
+                    border-color: rgba(147,112,219,0.4);
+                    color: rgba(147,112,219,0.9);
+                }
+                .vision-btn.has-images {
+                    background: rgba(100,150,255,0.2);
+                    border-color: rgba(100,150,255,0.4);
+                    color: rgba(100,150,255,0.9);
+                }
+                .vision-btn.recording {
+                    background: rgba(255,100,100,0.2);
+                    border-color: rgba(255,100,100,0.4);
+                    color: rgba(255,100,100,0.9);
+                    animation: pulse 2s infinite;
+                }
+                .image-preview-strip {
+                    display: flex;
+                    gap: 4px;
+                    max-width: 150px;
+                    overflow-x: auto;
+                }
+                .image-preview-item {
+                    width: 28px;
+                    height: 28px;
+                    border-radius: 6px;
+                    object-fit: cover;
+                    border: 1px solid rgba(255,255,255,0.1);
+                }
+                .clear-images {
+                    font-size: 11px;
+                    color: rgba(255,100,100,0.6);
+                    cursor: pointer;
+                    padding: 2px 6px;
+                }
+                .clear-images:hover {
+                    color: rgba(255,100,100,1);
+                }
+                .ambient-status {
+                    font-size: 11px;
+                    color: rgba(255,255,255,0.4);
+                    margin-left: 4px;
+                }
+                .screen-interval {
+                    background: rgba(255,255,255,0.05);
+                    border: 1px solid rgba(255,255,255,0.1);
+                    color: rgba(255,255,255,0.6);
+                    border-radius: 6px;
+                    padding: 4px 6px;
+                    font-size: 11px;
+                    display: none;
+                }
+            </style>
+            
+            <!-- Image Upload -->
+            <input type="file" id="imageInput" accept="image/*" multiple style="display:none">
+            <button class="vision-btn" id="imageBtn" title="Add images (📷)">📷</button>
+            <div class="image-preview-strip" id="imagePreview"></div>
+            <span class="clear-images" id="clearImages" style="display:none">✕</span>
+            
+            <!-- Screen Capture -->
+            <button class="vision-btn" id="screenBtn" title="Screen watch (🖥️)">🖥️</button>
+            <select class="screen-interval" id="screenInterval">
+                <option value="5000">5s</option>
+                <option value="10000">10s</option>
+                <option value="30000">30s</option>
+            </select>
+            
+            <!-- Ambient Mode -->
+            <button class="vision-btn" id="ambientBtn" title="Ambient mode (🌙)">🌙</button>
+            <button class="vision-btn" id="autoBtn" title="Autonomous mode (🚀)">🚀</button>
+            <span class="ambient-status" id="ambientStatus"></span>
+        `;
+        
+        // Image upload handlers
+        const imageInput = document.getElementById('imageInput');
+        const imageBtn = document.getElementById('imageBtn');
+        const imagePreview = document.getElementById('imagePreview');
+        const clearImagesBtn = document.getElementById('clearImages');
+        
+        imageBtn.addEventListener('click', () => imageInput.click());
+        
+        imageInput.addEventListener('change', (e) => {
+            pendingImages = [...e.target.files];
+            updateImagePreview();
+        });
+        
+        clearImagesBtn.addEventListener('click', () => {
+            pendingImages = [];
+            imageInput.value = '';
+            updateImagePreview();
+        });
+        
+        function updateImagePreview() {
+            imagePreview.innerHTML = '';
+            clearImagesBtn.style.display = pendingImages.length > 0 ? 'inline' : 'none';
+            imageBtn.classList.toggle('has-images', pendingImages.length > 0);
+            
+            pendingImages.forEach(file => {
+                const img = document.createElement('img');
+                img.className = 'image-preview-item';
+                img.src = URL.createObjectURL(file);
+                imagePreview.appendChild(img);
+            });
+        }
+        
+        // Screen capture handlers
+        const screenBtn = document.getElementById('screenBtn');
+        const screenInterval = document.getElementById('screenInterval');
+        let isScreenWatching = false;
+        
+        screenBtn.addEventListener('click', async () => {
+            if (isScreenWatching) {
+                // Stop
+                if (screenCapture) {
+                    screenCapture.stop();
+                    screenCapture = null;
+                }
+                screenBtn.classList.remove('recording');
+                screenBtn.textContent = '🖥️';
+                screenInterval.style.display = 'none';
+                isScreenWatching = false;
+                showToast('Screen watch stopped');
+            } else {
+                // Start
+                screenCapture = new ScreenCapture();
+                const started = await screenCapture.start();
+                
+                if (started) {
+                    screenBtn.classList.add('recording');
+                    screenBtn.textContent = '⏹️';
+                    screenInterval.style.display = 'inline';
+                    isScreenWatching = true;
+                    
+                    const interval = parseInt(screenInterval.value);
+                    screenCapture.startInterval(interval, async (frame) => {
+                        console.log('📸 Screen captured');
+                        // Auto-send with context
+                        const prompt = 'Here is my current screen. What do you see? Any suggestions or observations?';
+                        // Convert frame to File-like object
+                        const blob = new Blob([frame.image.source.bytes], { type: 'image/jpeg' });
+                        const file = new File([blob], 'screen.jpg', { type: 'image/jpeg' });
+                        pendingImages.push(file);
+                        updateImagePreview();
+                        showToast('📸 Screen captured');
+                    });
+                    
+                    showToast('Screen watch started');
+                } else {
+                    showToast('Screen capture failed');
+                }
+            }
+        });
+        
+        screenInterval.addEventListener('change', () => {
+            if (isScreenWatching && screenCapture) {
+                screenCapture.stopInterval();
+                const interval = parseInt(screenInterval.value);
+                screenCapture.startInterval(interval, async (frame) => {
+                    const blob = new Blob([frame.image.source.bytes], { type: 'image/jpeg' });
+                    const file = new File([blob], 'screen.jpg', { type: 'image/jpeg' });
+                    pendingImages.push(file);
+                    updateImagePreview();
+                });
+            }
+        });
+        
+        // Ambient mode handlers
+        const ambientBtn = document.getElementById('ambientBtn');
+        const autoBtn = document.getElementById('autoBtn');
+        const ambientStatus = document.getElementById('ambientStatus');
+        
+        ambientBtn.addEventListener('click', () => {
+            if (!visionAgent?.ambientMode) return;
+            
+            const ambient = visionAgent.ambientMode;
+            
+            if (ambient.running && !ambient.autonomous) {
+                ambient.stop();
+                ambientBtn.classList.remove('active');
+                ambientStatus.textContent = '';
+            } else {
+                ambient.start(false);
+                ambientBtn.classList.add('active');
+                autoBtn.classList.remove('active');
+                ambientStatus.textContent = 'Idle watch...';
+            }
+        });
+        
+        autoBtn.addEventListener('click', () => {
+            if (!visionAgent?.ambientMode) return;
+            
+            const ambient = visionAgent.ambientMode;
+            
+            if (ambient.autonomous) {
+                ambient.stop();
+                autoBtn.classList.remove('active');
+                ambientBtn.classList.remove('active');
+                ambientStatus.textContent = '';
+            } else {
+                ambient.start(true);
+                autoBtn.classList.add('active');
+                ambientBtn.classList.remove('active');
+                ambientStatus.textContent = 'Auto running...';
+            }
+        });
+        
+        console.log('🔮 Vision controls initialized');
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
     // INIT
     // ═══════════════════════════════════════════════════════════════════════════
 
@@ -2440,6 +2809,9 @@ Example - create a tool that gets weather:
         window.updateProviderFields();
         
         const success = await initializeAgent();
+        
+        // Initialize Vision UI Controls
+        initVisionControls();
         
         document.getElementById('inputField').disabled = false;
         document.getElementById('sendBtn').disabled = false;
