@@ -21,6 +21,8 @@
  * ```
  */
 
+import { Model } from './strands.js';
+
 // Available WebLLM models with tool/function calling support
 export const WEBLLM_MODELS = {
     // Recommended for function calling
@@ -47,9 +49,11 @@ export const WEBLLM_MODELS = {
 
 /**
  * WebLLM Browser Model - runs LLMs locally via WebGPU
+ * Extends Strands Model class for full SDK compatibility
  */
-export class WebLLMBrowserModel {
+export class WebLLMBrowserModel extends Model {
     constructor(config = {}) {
+        super();
         this._config = {
             modelId: config.modelId || WEBLLM_MODELS.QWEN_2_5_3B,
             temperature: config.temperature || 0.7,
