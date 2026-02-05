@@ -852,6 +852,7 @@
                         <select class="form-input" id="provider">
                             <option value="anthropic">Anthropic</option>
                             <option value="openai">OpenAI</option>
+                            <option value="bedrock">Amazon Bedrock</option>
                             <option value="webllm">WebLLM (Local)</option>
                         </select>
                     </div>
@@ -895,6 +896,31 @@
                             <label class="form-label">Custom Headers (JSON)</label>
                             <textarea class="form-input" id="openaiHeaders" rows="3" placeholder='{"OpenAI-Organization": "org-xxx"}'></textarea>
                             <div style="font-size:11px;color:var(--text-tertiary);margin-top:4px;">Additional HTTP headers for API requests (optional)</div>
+                        </div>
+                    </div>
+                    
+                    <div id="bedrockFields" style="display:none;">
+                        <div class="form-group">
+                            <label class="form-label">API Key</label>
+                            <input type="password" class="form-input" id="bedrockApiKey" placeholder="bedrock-api-key...">
+                            <div style="font-size:11px;color:var(--text-tertiary);margin-top:4px;">Generate at <a href="https://console.aws.amazon.com/bedrock/home#/api-keys" target="_blank" style="color:var(--text-secondary);">Bedrock Console → API Keys</a></div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Region</label>
+                            <select class="form-input" id="bedrockRegion">
+                                <option value="us-east-1">us-east-1</option>
+                                <option value="us-west-2">us-west-2</option>
+                                <option value="eu-west-1">eu-west-1</option>
+                                <option value="ap-northeast-1">ap-northeast-1</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Model</label>
+                            <input type="text" class="form-input" id="bedrockModel" placeholder="global.anthropic.claude-opus-4-5-20251101-v1:0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Max Tokens</label>
+                            <input type="number" class="form-input" id="bedrockMaxTokens" placeholder="8096" min="1" max="200000">
                         </div>
                     </div>
                     
@@ -1249,6 +1275,7 @@
     // Expose model classes for ambient mode to clone
     window.AnthropicBrowserModel = null; // Will be set after class definition
     window.OpenAIBrowserModel = null;
+    window.BedrockBrowserModel = null;
     
     import { WebLLMBrowserModel } from './webllm.js';
     
@@ -1925,6 +1952,71 @@ Version: ${VERSION}`;
             } finally {
                 reader.releaseLock();
             }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // BEDROCK MODEL (Browser-compatible with API Key)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    class BedrockBrowserModel extends Model {
+        constructor(config = {}) {
+            super();
+            this._config = {
+                apiKey: config.apiKey || '',
+                region: config.region || 'us-east-1',
+                modelId: config.modelId || 'global.anthropic.claude-opus-4-5-20251101-v1:0',
+                maxTokens: config.maxTokens || 8096,
+            };
+        }
+        updateConfig(config) { this._config = { ...this._config, ...config }; }
+        getConfig() { return this._config; }
+
+        async *stream(messages, options) {
+            const { apiKey, region, modelId, maxTokens } = this._config;
+            if (!apiKey) throw new Error('Bedrock API key not configured.');
+
+            const formatBlock = block => {
+                if (block.type === 'textBlock') return { text: block.text };
+                if (block.type === 'toolUseBlock') return { toolUse: { toolUseId: block.toolUseId, name: block.name, input: block.input } };
+                if (block.type === 'toolResultBlock') return { toolResult: { toolUseId: block.toolUseId, content: block.content.map(c => ({ text: c.text || JSON.stringify(c.json) })) } };
+                return { text: String(block) };
+            };
+
+            const requestBody = {
+                messages: messages.map(m => ({ role: m.role, content: m.content.map(formatBlock) })),
+                inferenceConfig: { maxTokens }
+            };
+            if (options?.systemPrompt) {
+                requestBody.system = [{ text: typeof options.systemPrompt === 'string' ? options.systemPrompt : options.systemPrompt.map(b => b.text).join('\n') }];
+            }
+            if (options?.toolSpecs?.length) {
+                requestBody.toolConfig = { tools: options.toolSpecs.map(s => ({ toolSpec: { name: s.name, description: s.description, inputSchema: { json: s.inputSchema } } })) };
+            }
+
+            const response = await fetch(`https://bedrock-runtime.${region}.amazonaws.com/model/${encodeURIComponent(modelId)}/converse`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                body: JSON.stringify(requestBody)
+            });
+            if (!response.ok) throw new Error(`Bedrock API error: ${response.status} - ${await response.text()}`);
+
+            const data = await response.json();
+            console.debug('Bedrock response:', data);
+            yield { type: 'modelMessageStartEvent', role: 'assistant' };
+            for (const block of data.output?.message?.content || []) {
+                if (block.text) {
+                    yield { type: 'modelContentBlockStartEvent' };
+                    yield { type: 'modelContentBlockDeltaEvent', delta: { type: 'textDelta', text: block.text } };
+                    yield { type: 'modelContentBlockStopEvent' };
+                } else if (block.toolUse) {
+                    yield { type: 'modelContentBlockStartEvent', start: { type: 'toolUseStart', toolUseId: block.toolUse.toolUseId, name: block.toolUse.name } };
+                    yield { type: 'modelContentBlockDeltaEvent', delta: { type: 'toolUseInputDelta', input: JSON.stringify(block.toolUse.input) } };
+                    yield { type: 'modelContentBlockStopEvent' };
+                }
+            }
+            yield { type: 'modelMessageStopEvent', stopReason: { end_turn: 'endTurn', tool_use: 'toolUse', max_tokens: 'maxTokens' }[data.stopReason] || 'endTurn' };
+            if (data.usage) yield { type: 'modelMetadataEvent', usage: { inputTokens: data.usage.inputTokens, outputTokens: data.usage.outputTokens, totalTokens: data.usage.totalTokens || (data.usage.inputTokens + data.usage.outputTokens) } };
         }
     }
 
@@ -2941,6 +3033,7 @@ Example - create a tool that gets weather:
     // Expose model classes globally for ambient mode cloning
     window.AnthropicBrowserModel = AnthropicBrowserModel;
     window.OpenAIBrowserModel = OpenAIBrowserModel;
+    window.BedrockBrowserModel = BedrockBrowserModel;
 
     // ═══════════════════════════════════════════════════════════════════════════
     // STATE & AGENT
@@ -2998,6 +3091,7 @@ Example - create a tool that gets weather:
 
     async function initializeAgent() {
         const provider = localStorage.getItem('provider') || 'anthropic';
+        console.log('🔧 initializeAgent provider:', provider);
         const systemPrompt = localStorage.getItem('system_prompt') || DEFAULT_SYSTEM_PROMPT;
         
         let model;
@@ -3042,6 +3136,20 @@ Example - create a tool that gets weather:
             }
             
             model = new OpenAIBrowserModel({ apiKey, modelId, maxTokens, customHeaders });
+        } else if (provider === 'bedrock') {
+            const apiKey = localStorage.getItem('bedrock_api_key');
+            const region = localStorage.getItem('bedrock_region') || 'us-east-1';
+            const modelId = localStorage.getItem('bedrock_model') || 'global.anthropic.claude-opus-4-5-20251101-v1:0';
+            const maxTokensStr = localStorage.getItem('bedrock_max_tokens');
+            
+            if (!apiKey) {
+                setStatus('no key');
+                return false;
+            }
+            
+            const maxTokens = maxTokensStr ? parseInt(maxTokensStr) : 8096;
+            console.log('🔧 Bedrock config:', { region, modelId, maxTokens, hasKey: !!apiKey });
+            model = new BedrockBrowserModel({ apiKey, region, modelId, maxTokens });
         } else if (provider === 'webllm') {
             const modelId = localStorage.getItem('webllm_model') || 'Qwen2.5-3B-Instruct-q4f16_1-MLC';
             
@@ -3166,9 +3274,10 @@ Example - create a tool that gets weather:
             
             setStatus('ready');
             window._agentNeedsReinit = false;
+            console.log('✅ Agent initialized successfully');
             return true;
         } catch (e) {
-            console.error('Init failed:', e);
+            console.error('❌ Init failed:', e);
             setStatus('error');
             return false;
         }
@@ -3685,6 +3794,7 @@ Example - create a tool that gets weather:
         const provider = document.getElementById('provider').value;
         document.getElementById('anthropicFields').style.display = provider === 'anthropic' ? 'block' : 'none';
         document.getElementById('openaiFields').style.display = provider === 'openai' ? 'block' : 'none';
+        document.getElementById('bedrockFields').style.display = provider === 'bedrock' ? 'block' : 'none';
         document.getElementById('webllmFields').style.display = provider === 'webllm' ? 'block' : 'none';
     };
 
@@ -3702,6 +3812,11 @@ Example - create a tool that gets weather:
             localStorage.setItem('openai_model', document.getElementById('openaiModel').value || 'gpt-5-nano-2025-08-07');
             localStorage.setItem('openai_max_tokens', document.getElementById('openaiMaxTokens').value || '');
             localStorage.setItem('openai_headers', document.getElementById('openaiHeaders').value || '');
+        } else if (provider === 'bedrock') {
+            localStorage.setItem('bedrock_api_key', document.getElementById('bedrockApiKey').value);
+            localStorage.setItem('bedrock_region', document.getElementById('bedrockRegion').value || 'us-east-1');
+            localStorage.setItem('bedrock_model', document.getElementById('bedrockModel').value || 'global.anthropic.claude-opus-4-5-20251101-v1:0');
+            localStorage.setItem('bedrock_max_tokens', document.getElementById('bedrockMaxTokens').value || '');
         } else if (provider === 'webllm') {
             localStorage.setItem('webllm_model', document.getElementById('webllmModel').value);
         }
@@ -3724,9 +3839,42 @@ Example - create a tool that gets weather:
     };
 
     window.testConnection = async function() {
+        // Save current form values first
+        const provider = document.getElementById('provider').value;
+        localStorage.setItem('provider', provider);
+        if (provider === 'bedrock') {
+            localStorage.setItem('bedrock_api_key', document.getElementById('bedrockApiKey').value);
+            localStorage.setItem('bedrock_region', document.getElementById('bedrockRegion').value || 'us-east-1');
+            localStorage.setItem('bedrock_model', document.getElementById('bedrockModel').value || 'global.anthropic.claude-opus-4-5-20251101-v1:0');
+            localStorage.setItem('bedrock_max_tokens', document.getElementById('bedrockMaxTokens').value || '');
+        }
+        
         setStatus('testing...');
+        window._agentNeedsReinit = true;
         const success = await initializeAgent();
-        showToast(success ? 'connected' : 'failed');
+        if (!success) {
+            showToast('failed');
+            return;
+        }
+        
+        // Actually test the connection with a simple request
+        try {
+            const testMessages = [{ role: 'user', content: [{ type: 'textBlock', text: 'Hi' }] }];
+            for await (const event of agent.model.stream(testMessages, {})) {
+                // Just need one event to confirm it works
+                if (event.type === 'modelMessageStartEvent' || event.type === 'modelContentBlockStartEvent') {
+                    setStatus('ready');
+                    showToast('connected');
+                    return;
+                }
+            }
+            setStatus('ready');
+            showToast('connected');
+        } catch (e) {
+            console.error('Connection test failed:', e);
+            setStatus('failed');
+            showToast('failed: ' + e.message);
+        }
     };
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -4136,6 +4284,10 @@ Example - create a tool that gets weather:
         document.getElementById('openaiModel').value = localStorage.getItem('openai_model') || 'gpt-5-nano-2025-08-07';
         document.getElementById('openaiMaxTokens').value = localStorage.getItem('openai_max_tokens') || '';
         document.getElementById('openaiHeaders').value = localStorage.getItem('openai_headers') || '';
+        document.getElementById('bedrockApiKey').value = localStorage.getItem('bedrock_api_key') || '';
+        document.getElementById('bedrockRegion').value = localStorage.getItem('bedrock_region') || 'us-east-1';
+        document.getElementById('bedrockModel').value = localStorage.getItem('bedrock_model') || 'global.anthropic.claude-opus-4-5-20251101-v1:0';
+        document.getElementById('bedrockMaxTokens').value = localStorage.getItem('bedrock_max_tokens') || '';
         document.getElementById('webllmModel').value = localStorage.getItem('webllm_model') || 'Qwen2.5-3B-Instruct-q4f16_1-MLC';
         document.getElementById('systemPrompt').value = localStorage.getItem('system_prompt') || DEFAULT_SYSTEM_PROMPT;
         
