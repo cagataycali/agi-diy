@@ -6,7 +6,7 @@
 
 ---
 
-No servers. No cloud. No bullshit.
+No servers.
 
 This is a fully autonomous AI agent that runs **entirely in your browser**. Your API keys never leave your machine. Your conversations stay on your device. You own everything.
 
