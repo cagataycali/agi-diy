@@ -916,11 +916,19 @@
                         </div>
                         <div class="form-group">
                             <label class="form-label">Model</label>
-                            <input type="text" class="form-input" id="bedrockModel" placeholder="global.anthropic.claude-opus-4-5-20251101-v1:0">
+                            <input type="text" class="form-input" id="bedrockModel" placeholder="global.anthropic.claude-opus-4-6-v1">
                         </div>
                         <div class="form-group">
                             <label class="form-label">Max Tokens</label>
-                            <input type="number" class="form-input" id="bedrockMaxTokens" placeholder="8096" min="1" max="200000">
+                            <input type="number" class="form-input" id="bedrockMaxTokens" placeholder="60000" min="1" max="200000">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Additional Request Fields (JSON)</label>
+                            <textarea class="form-input" id="bedrockAdditionalFields" rows="4" placeholder='{"thinking": {"type": "enabled", "budget_tokens": 2048}}'></textarea>
+                            <div style="font-size:11px;color:var(--text-tertiary);margin-top:4px;">
+                                Extended thinking, betas, etc. Example:<br>
+                                <code style="font-size:10px;">{"anthropic_beta": ["interleaved-thinking-2025-05-14"], "thinking": {"type": "enabled", "budget_tokens": 2048}}</code>
+                            </div>
                         </div>
                     </div>
                     
@@ -1306,6 +1314,46 @@
     const VERSION = '1.0.0';
 
     // ═══════════════════════════════════════════════════════════════════════════
+    // DOCUMENT HELPERS
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    function uint8ArrayToBase64(bytes) {
+        let binary = '';
+        const chunkSize = 8192;
+        for (let i = 0; i < bytes.length; i += chunkSize) {
+            const chunk = bytes.subarray(i, i + chunkSize);
+            binary += String.fromCharCode.apply(null, chunk);
+        }
+        return btoa(binary);
+    }
+
+    async function readFileAsUint8Array(file) {
+        const buffer = await file.arrayBuffer();
+        return new Uint8Array(buffer);
+    }
+
+    function getDocumentFormat(filename) {
+        const ext = filename.split('.').pop().toLowerCase();
+        const formatMap = {
+            'pdf': 'pdf', 'csv': 'csv', 'doc': 'doc', 'docx': 'docx',
+            'xls': 'xls', 'xlsx': 'xlsx', 'html': 'html', 'txt': 'txt', 'md': 'md'
+        };
+        return formatMap[ext] || 'txt';
+    }
+
+    function getDocumentMimeType(format) {
+        const mimeMap = {
+            'pdf': 'application/pdf', 'csv': 'text/csv',
+            'doc': 'application/msword',
+            'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'xls': 'application/vnd.ms-excel',
+            'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'html': 'text/html', 'txt': 'text/plain', 'md': 'text/plain'
+        };
+        return mimeMap[format] || 'application/octet-stream';
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
     // CONSOLE DOCUMENTATION
     // ═══════════════════════════════════════════════════════════════════════════
 
@@ -1520,6 +1568,24 @@ Version: ${VERSION}`;
                                 };
                             }
                             return { type: 'text', text: '[Image]' };
+                        case 'documentBlock':
+                            // Handle document blocks for Anthropic
+                            if (block.source?.bytes) {
+                                const docBase64 = uint8ArrayToBase64(
+                                    block.source.bytes instanceof Uint8Array 
+                                        ? block.source.bytes 
+                                        : new Uint8Array(block.source.bytes)
+                                );
+                                return {
+                                    type: 'document',
+                                    source: {
+                                        type: 'base64',
+                                        media_type: getDocumentMimeType(block.format),
+                                        data: docBase64
+                                    }
+                                };
+                            }
+                            return { type: 'text', text: `[Document: ${block.name || 'unknown'}]` };
                         case 'toolUseBlock':
                             return { 
                                 type: 'tool_use', 
@@ -1755,6 +1821,22 @@ Version: ${VERSION}`;
                                     };
                                 }
                             }
+                            if (block.type === 'documentBlock') {
+                                // OpenAI doesn't support document blocks natively
+                                // For text formats, decode and include as text
+                                const textFormats = ['txt', 'md', 'csv', 'html'];
+                                if (block.source?.bytes && textFormats.includes(block.format)) {
+                                    const decoder = new TextDecoder();
+                                    const text = decoder.decode(block.source.bytes instanceof Uint8Array ? block.source.bytes : new Uint8Array(block.source.bytes));
+                                    return { type: 'text', text: `--- Document: ${block.name} ---\n${text}\n--- End Document ---` };
+                                }
+                                // For binary formats (pdf, docx, etc.), include as base64 with description
+                                if (block.source?.bytes) {
+                                    const b64 = uint8ArrayToBase64(block.source.bytes instanceof Uint8Array ? block.source.bytes : new Uint8Array(block.source.bytes));
+                                    return { type: 'text', text: `[Document: ${block.name} (${block.format}, ${(block.source.bytes.length/1024).toFixed(1)}KB) - binary content cannot be displayed in OpenAI. Consider using Anthropic or Bedrock for document analysis.]` };
+                                }
+                                return { type: 'text', text: `[Document: ${block.name || 'unknown'}]` };
+                            }
                             return { type: 'text', text: String(block) };
                         });
                         openaiMessages.push({ role: 'user', content: parts });
@@ -1956,7 +2038,7 @@ Version: ${VERSION}`;
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // BEDROCK MODEL (Browser-compatible with API Key)
+    // BEDROCK MODEL (Browser-compatible with API Key + STREAMING)
     // ═══════════════════════════════════════════════════════════════════════════
 
     class BedrockBrowserModel extends Model {
@@ -1965,27 +2047,70 @@ Version: ${VERSION}`;
             this._config = {
                 apiKey: config.apiKey || '',
                 region: config.region || 'us-east-1',
-                modelId: config.modelId || 'global.anthropic.claude-opus-4-5-20251101-v1:0',
+                modelId: config.modelId || 'global.anthropic.claude-opus-4-6-v1',
                 maxTokens: config.maxTokens || 8096,
+                additionalRequestFields: config.additionalRequestFields || null,
             };
         }
         updateConfig(config) { this._config = { ...this._config, ...config }; }
         getConfig() { return this._config; }
 
         async *stream(messages, options) {
-            const { apiKey, region, modelId, maxTokens } = this._config;
+            const { apiKey, region, modelId, maxTokens, additionalRequestFields } = this._config;
             if (!apiKey) throw new Error('Bedrock API key not configured.');
 
             const formatBlock = block => {
                 if (block.type === 'textBlock') return { text: block.text };
+                if (block.type === 'imageBlock') {
+                    // Handle image blocks for vision
+                    const source = block.source || block.image?.source;
+                    if (source?.type === 'imageSourceBytes' || source?.bytes) {
+                        return { image: { format: block.format || block.image?.format || 'png', source: { bytes: source.bytes } } };
+                    }
+                    return null; // Skip unsupported image sources
+                }
+                if (block.type === 'documentBlock') {
+                    // Handle document blocks for Bedrock converse API
+                    const bytes = block.source?.bytes;
+                    if (bytes) {
+                        const base64 = uint8ArrayToBase64(bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes));
+                        return { 
+                            document: { 
+                                format: block.format || 'txt', 
+                                name: block.name || 'document', 
+                                source: { bytes: base64 } 
+                            } 
+                        };
+                    }
+                    return null;
+                }
                 if (block.type === 'toolUseBlock') return { toolUse: { toolUseId: block.toolUseId, name: block.name, input: block.input } };
-                if (block.type === 'toolResultBlock') return { toolResult: { toolUseId: block.toolUseId, content: block.content.map(c => ({ text: c.text || JSON.stringify(c.json) })) } };
+                if (block.type === 'toolResultBlock') {
+                    const content = block.content.map(c => {
+                        if (c.type === 'textBlock') return { text: c.text };
+                        if (c.type === 'jsonBlock' || c.json) return { json: c.json };
+                        return { text: String(c.text || JSON.stringify(c)) };
+                    });
+                    return { toolResult: { toolUseId: block.toolUseId, content } };
+                }
+                // Pass through reasoning content for multi-turn thinking
+                if (block.type === 'reasoningContent' || block.reasoningContent) {
+                    const reasoning = block.reasoningContent || block;
+                    const result = {};
+                    if (reasoning.reasoningText) {
+                        result.reasoningText = { text: reasoning.reasoningText.text };
+                        if (reasoning.reasoningText.signature) result.reasoningText.signature = reasoning.reasoningText.signature;
+                    }
+                    if (reasoning.redactedContent) result.redactedContent = reasoning.redactedContent;
+                    return { reasoningContent: result };
+                }
                 return { text: String(block) };
             };
 
             const requestBody = {
-                messages: messages.map(m => ({ role: m.role, content: m.content.map(formatBlock) })),
-                inferenceConfig: { maxTokens }
+                messages: messages.map(m => ({ role: m.role, content: m.content.map(formatBlock).filter(Boolean) })),
+                inferenceConfig: { maxTokens },
+                ...(additionalRequestFields ? { additionalModelRequestFields: additionalRequestFields } : {})
             };
             if (options?.systemPrompt) {
                 requestBody.system = [{ text: typeof options.systemPrompt === 'string' ? options.systemPrompt : options.systemPrompt.map(b => b.text).join('\n') }];
@@ -1994,29 +2119,145 @@ Version: ${VERSION}`;
                 requestBody.toolConfig = { tools: options.toolSpecs.map(s => ({ toolSpec: { name: s.name, description: s.description, inputSchema: { json: s.inputSchema } } })) };
             }
 
-            const response = await fetch(`https://bedrock-runtime.${region}.amazonaws.com/model/${encodeURIComponent(modelId)}/converse`, {
+            // Use converse-stream endpoint for real streaming
+            const response = await fetch(`https://bedrock-runtime.${region}.amazonaws.com/model/${encodeURIComponent(modelId)}/converse-stream`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
                 body: JSON.stringify(requestBody)
             });
+            
             if (!response.ok) throw new Error(`Bedrock API error: ${response.status} - ${await response.text()}`);
 
-            const data = await response.json();
-            console.debug('Bedrock response:', data);
-            yield { type: 'modelMessageStartEvent', role: 'assistant' };
-            for (const block of data.output?.message?.content || []) {
-                if (block.text) {
-                    yield { type: 'modelContentBlockStartEvent' };
-                    yield { type: 'modelContentBlockDeltaEvent', delta: { type: 'textDelta', text: block.text } };
-                    yield { type: 'modelContentBlockStopEvent' };
-                } else if (block.toolUse) {
-                    yield { type: 'modelContentBlockStartEvent', start: { type: 'toolUseStart', toolUseId: block.toolUse.toolUseId, name: block.toolUse.name } };
-                    yield { type: 'modelContentBlockDeltaEvent', delta: { type: 'toolUseInputDelta', input: JSON.stringify(block.toolUse.input) } };
-                    yield { type: 'modelContentBlockStopEvent' };
+            // Parse AWS event-stream binary format
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = new Uint8Array(0);
+            let hasMessageStart = false;
+            let hasMessageStop = false;
+            let currentBlockIndex = -1;
+
+            try {
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    // Append to buffer
+                    const newBuffer = new Uint8Array(buffer.length + value.length);
+                    newBuffer.set(buffer);
+                    newBuffer.set(value, buffer.length);
+                    buffer = newBuffer;
+
+                    // Process complete frames
+                    while (buffer.length >= 12) {
+                        const totalLength = (buffer[0] << 24) | (buffer[1] << 16) | (buffer[2] << 8) | buffer[3];
+                        const headersLength = (buffer[4] << 24) | (buffer[5] << 16) | (buffer[6] << 8) | buffer[7];
+
+                        if (totalLength < 16 || totalLength > 1024 * 1024) {
+                            buffer = buffer.slice(1);
+                            continue;
+                        }
+                        if (buffer.length < totalLength) break;
+
+                        const payloadStart = 12 + headersLength;
+                        const payloadEnd = totalLength - 4;
+                        
+                        if (payloadEnd > payloadStart) {
+                            try {
+                                const event = JSON.parse(decoder.decode(buffer.slice(payloadStart, payloadEnd)));
+                                for (const sdkEvent of this._mapBedrockStreamEvent(event, currentBlockIndex)) {
+                                    if (sdkEvent.type === 'modelMessageStartEvent') hasMessageStart = true;
+                                    if (sdkEvent.type === 'modelMessageStopEvent') hasMessageStop = true;
+                                    if (sdkEvent.type === 'modelContentBlockStartEvent') currentBlockIndex++;
+                                    yield sdkEvent;
+                                }
+                            } catch (e) {}
+                        }
+                        buffer = buffer.slice(totalLength);
+                    }
                 }
+                
+                // Ensure complete message structure
+                if (!hasMessageStart) yield { type: 'modelMessageStartEvent', role: 'assistant' };
+                if (!hasMessageStop) yield { type: 'modelMessageStopEvent', stopReason: 'endTurn' };
+            } finally {
+                reader.releaseLock();
             }
-            yield { type: 'modelMessageStopEvent', stopReason: { end_turn: 'endTurn', tool_use: 'toolUse', max_tokens: 'maxTokens' }[data.stopReason] || 'endTurn' };
-            if (data.usage) yield { type: 'modelMetadataEvent', usage: { inputTokens: data.usage.inputTokens, outputTokens: data.usage.outputTokens, totalTokens: data.usage.totalTokens || (data.usage.inputTokens + data.usage.outputTokens) } };
+        }
+
+        // Map Bedrock streaming events to SDK events
+        // Bedrock with bearer tokens uses FLAT event format
+        *_mapBedrockStreamEvent(chunk, currentBlockIndex = -1) {
+            // messageStart: {role: 'assistant', p: '...'}
+            if (chunk.role && !chunk.delta && !chunk.stopReason && !chunk.start) {
+                yield { type: 'modelMessageStartEvent', role: chunk.role };
+                return;
+            }
+            
+            // contentBlockStart with toolUse: {contentBlockIndex: 0, start: {toolUse: {name, toolUseId}}}
+            if (chunk.start !== undefined) {
+                const startEvent = { type: 'modelContentBlockStartEvent' };
+                if (chunk.start.toolUse) {
+                    startEvent.start = {
+                        type: 'toolUseStart',
+                        name: chunk.start.toolUse.name,
+                        toolUseId: chunk.start.toolUse.toolUseId
+                    };
+                }
+                yield startEvent;
+                return;
+            }
+            
+            // contentBlockDelta: {contentBlockIndex: 0, delta: {text: '...'}, p: '...'}
+            if (chunk.delta !== undefined) {
+                const blockIdx = chunk.contentBlockIndex ?? 0;
+                
+                // Emit contentBlockStart if this is a new block (text block without explicit start)
+                if (blockIdx > currentBlockIndex && !chunk.start) {
+                    yield { type: 'modelContentBlockStartEvent' };
+                }
+                
+                const delta = chunk.delta;
+                // Text delta
+                if (delta?.text !== undefined) {
+                    yield { type: 'modelContentBlockDeltaEvent', delta: { type: 'textDelta', text: delta.text } };
+                }
+                // Tool use delta
+                else if (delta?.toolUse?.input) {
+                    yield { type: 'modelContentBlockDeltaEvent', delta: { type: 'toolUseInputDelta', input: delta.toolUse.input } };
+                }
+                // Reasoning/thinking content delta
+                else if (delta?.reasoningContent) {
+                    const reasoning = delta.reasoningContent;
+                    if (reasoning.text !== undefined) {
+                        yield { type: 'modelContentBlockDeltaEvent', delta: { type: 'reasoningContentDelta', text: reasoning.text } };
+                    }
+                    if (reasoning.signature !== undefined) {
+                        yield { type: 'modelContentBlockDeltaEvent', delta: { type: 'reasoningContentDelta', signature: reasoning.signature } };
+                    }
+                    if (reasoning.redactedContent !== undefined) {
+                        yield { type: 'modelContentBlockDeltaEvent', delta: { type: 'reasoningContentDelta', redactedContent: reasoning.redactedContent } };
+                    }
+                }
+                return;
+            }
+            
+            // contentBlockStop: {contentBlockIndex: 0, p: '...'}
+            if (chunk.contentBlockIndex !== undefined && !chunk.delta && !chunk.stopReason && !chunk.role && !chunk.start) {
+                yield { type: 'modelContentBlockStopEvent' };
+                return;
+            }
+            
+            // messageStop: {stopReason: 'end_turn', p: '...'}
+            if (chunk.stopReason !== undefined) {
+                const stopReasonMap = { 'end_turn': 'endTurn', 'tool_use': 'toolUse', 'max_tokens': 'maxTokens', 'stop_sequence': 'stopSequence' };
+                yield { type: 'modelMessageStopEvent', stopReason: stopReasonMap[chunk.stopReason] || 'endTurn' };
+                return;
+            }
+            
+            // metadata: {usage: {...}, metrics: {...}, p: '...'}
+            if (chunk.usage !== undefined) {
+                yield { type: 'modelMetadataEvent', usage: { inputTokens: chunk.usage.inputTokens || 0, outputTokens: chunk.usage.outputTokens || 0, totalTokens: (chunk.usage.inputTokens || 0) + (chunk.usage.outputTokens || 0) } };
+            }
         }
     }
 
@@ -3042,6 +3283,7 @@ Example - create a tool that gets weather:
     let agent = null;
     let visionAgent = null;
     let pendingImages = [];
+    let pendingDocs = [];
     let screenCapture = null;
     let isStreaming = false;
     window._agentNeedsReinit = false;
@@ -3091,7 +3333,6 @@ Example - create a tool that gets weather:
 
     async function initializeAgent() {
         const provider = localStorage.getItem('provider') || 'anthropic';
-        console.log('🔧 initializeAgent provider:', provider);
         const systemPrompt = localStorage.getItem('system_prompt') || DEFAULT_SYSTEM_PROMPT;
         
         let model;
@@ -3139,8 +3380,9 @@ Example - create a tool that gets weather:
         } else if (provider === 'bedrock') {
             const apiKey = localStorage.getItem('bedrock_api_key');
             const region = localStorage.getItem('bedrock_region') || 'us-east-1';
-            const modelId = localStorage.getItem('bedrock_model') || 'global.anthropic.claude-opus-4-5-20251101-v1:0';
+            const modelId = localStorage.getItem('bedrock_model') || 'global.anthropic.claude-opus-4-6-v1';
             const maxTokensStr = localStorage.getItem('bedrock_max_tokens');
+            const additionalFieldsStr = localStorage.getItem('bedrock_additional_fields');
             
             if (!apiKey) {
                 setStatus('no key');
@@ -3148,8 +3390,14 @@ Example - create a tool that gets weather:
             }
             
             const maxTokens = maxTokensStr ? parseInt(maxTokensStr) : 8096;
-            console.log('🔧 Bedrock config:', { region, modelId, maxTokens, hasKey: !!apiKey });
-            model = new BedrockBrowserModel({ apiKey, region, modelId, maxTokens });
+            let additionalRequestFields = null;
+            try {
+                if (additionalFieldsStr) additionalRequestFields = JSON.parse(additionalFieldsStr);
+            } catch (e) {
+                console.warn('Invalid additional fields JSON:', e);
+            }
+            
+            model = new BedrockBrowserModel({ apiKey, region, modelId, maxTokens, additionalRequestFields });
         } else if (provider === 'webllm') {
             const modelId = localStorage.getItem('webllm_model') || 'Qwen2.5-3B-Instruct-q4f16_1-MLC';
             
@@ -3301,15 +3549,20 @@ Example - create a tool that gets weather:
             visionAgent.ambientMode.setMainAgentBusy(true);
         }
 
-        // Combine images from parameter and pending
+        // Combine images and documents from parameter and pending
         const allImages = [...images, ...pendingImages];
+        const allDocs = [...pendingDocs];
         pendingImages = []; // Clear pending
+        pendingDocs = []; // Clear pending
         
-        // Show message with image count if any
-        const msgText = allImages.length > 0 
-            ? `${userMessage} [📷 ${allImages.length} image${allImages.length > 1 ? 's' : ''}]`
+        // Show message with file count if any (and thumbnails)
+        const fileParts = [];
+        if (allImages.length > 0) fileParts.push(`📷 ${allImages.length} image${allImages.length > 1 ? 's' : ''}`);
+        if (allDocs.length > 0) fileParts.push(`📄 ${allDocs.length} doc${allDocs.length > 1 ? 's' : ''}`);
+        const msgText = fileParts.length > 0 
+            ? `${userMessage} [${fileParts.join(', ')}]`
             : userMessage;
-        addMessage('user', msgText);
+        addMessage('user', msgText, allImages);
         
         // Inject ambient result if available
         let finalMessage = userMessage;
@@ -3335,8 +3588,8 @@ Example - create a tool that gets weather:
             
             // Build content blocks
             let input;
-            if (allImages.length > 0) {
-                // Multi-modal input with images - create proper Message
+            if (allImages.length > 0 || allDocs.length > 0) {
+                // Multi-modal input with images/documents - create proper Message
                 const contentBlocks = [];
                 
                 // Add text first
@@ -3356,9 +3609,32 @@ Example - create a tool that gets weather:
                     }
                 }
                 
+                // Add documents
+                for (const file of allDocs) {
+                    try {
+                        const bytes = await readFileAsUint8Array(file);
+                        const format = getDocumentFormat(file.name);
+                        const docName = file.name
+                            .replace(/\.[^/.]+$/, '')           // remove extension
+                            .replace(/[^a-zA-Z0-9\s\-\(\)\[\]]/g, ' ')  // only allowed chars
+                            .replace(/\s{2,}/g, ' ')            // collapse multiple spaces
+                            .trim()
+                            .substring(0, 200) || 'document';
+                        contentBlocks.push({
+                            type: 'documentBlock',
+                            format: format,
+                            name: docName,
+                            source: { type: 'bytes', bytes: bytes }
+                        });
+                        console.log(`📄 Added document: ${file.name} (${format}, ${(bytes.length/1024).toFixed(1)}KB)`);
+                    } catch (err) {
+                        console.error('Failed to process document:', err);
+                    }
+                }
+                
                 // Wrap in Message for the agent
                 input = [new Message({ role: 'user', content: contentBlocks })];
-                console.log(`📷 Sending ${allImages.length} images with message`);
+                console.log(`📎 Sending ${allImages.length} images + ${allDocs.length} documents with message`);
             } else {
                 input = finalMessage;
             }
@@ -3434,7 +3710,7 @@ Example - create a tool that gets weather:
         }
     }
 
-    function addMessage(role, content) {
+    function addMessage(role, content, images = []) {
         const inner = document.getElementById('messagesInner');
         const msg = document.createElement('div');
         msg.className = `message ${role}`;
@@ -3451,6 +3727,22 @@ Example - create a tool that gets weather:
         
         if (role === 'user') {
             contentEl.textContent = content;
+            
+            // Add image thumbnails for user messages
+            if (images && images.length > 0) {
+                const imgStrip = document.createElement('div');
+                imgStrip.style.cssText = 'display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;';
+                
+                images.forEach(file => {
+                    const img = document.createElement('img');
+                    img.src = URL.createObjectURL(file);
+                    img.style.cssText = 'width:60px;height:60px;border-radius:8px;object-fit:cover;border:1px solid rgba(255,255,255,0.1);';
+                    img.title = file.name;
+                    imgStrip.appendChild(img);
+                });
+                
+                contentEl.appendChild(imgStrip);
+            }
         } else {
             contentEl.innerHTML = `<div class="markdown-content">${marked.parse(content)}</div>`;
         }
@@ -3815,8 +4107,9 @@ Example - create a tool that gets weather:
         } else if (provider === 'bedrock') {
             localStorage.setItem('bedrock_api_key', document.getElementById('bedrockApiKey').value);
             localStorage.setItem('bedrock_region', document.getElementById('bedrockRegion').value || 'us-east-1');
-            localStorage.setItem('bedrock_model', document.getElementById('bedrockModel').value || 'global.anthropic.claude-opus-4-5-20251101-v1:0');
+            localStorage.setItem('bedrock_model', document.getElementById('bedrockModel').value || 'global.anthropic.claude-opus-4-6-v1');
             localStorage.setItem('bedrock_max_tokens', document.getElementById('bedrockMaxTokens').value || '');
+            localStorage.setItem('bedrock_additional_fields', document.getElementById('bedrockAdditionalFields').value || '');
         } else if (provider === 'webllm') {
             localStorage.setItem('webllm_model', document.getElementById('webllmModel').value);
         }
@@ -3845,8 +4138,9 @@ Example - create a tool that gets weather:
         if (provider === 'bedrock') {
             localStorage.setItem('bedrock_api_key', document.getElementById('bedrockApiKey').value);
             localStorage.setItem('bedrock_region', document.getElementById('bedrockRegion').value || 'us-east-1');
-            localStorage.setItem('bedrock_model', document.getElementById('bedrockModel').value || 'global.anthropic.claude-opus-4-5-20251101-v1:0');
+            localStorage.setItem('bedrock_model', document.getElementById('bedrockModel').value || 'global.anthropic.claude-opus-4-6-v1');
             localStorage.setItem('bedrock_max_tokens', document.getElementById('bedrockMaxTokens').value || '');
+            localStorage.setItem('bedrock_additional_fields', document.getElementById('bedrockAdditionalFields').value || '');
         }
         
         setStatus('testing...');
@@ -3982,32 +4276,51 @@ Example - create a tool that gets weather:
                     border-color: rgba(100,150,255,0.4);
                     color: rgba(100,150,255,0.9);
                 }
+                .vision-btn.has-docs {
+                    background: rgba(255,165,0,0.2);
+                    border-color: rgba(255,165,0,0.4);
+                    color: rgba(255,165,0,0.9);
+                }
                 .vision-btn.recording {
                     background: rgba(255,100,100,0.2);
                     border-color: rgba(255,100,100,0.4);
                     color: rgba(255,100,100,0.9);
                     animation: pulse 2s infinite;
                 }
-                .image-preview-strip {
+                .file-preview-strip {
                     display: flex;
                     gap: 4px;
-                    max-width: 150px;
+                    max-width: 200px;
                     overflow-x: auto;
+                    align-items: center;
                 }
                 .image-preview-item {
-                    width: 28px;
-                    height: 28px;
+                    width: 36px;
+                    height: 36px;
                     border-radius: 6px;
                     object-fit: cover;
-                    border: 1px solid rgba(255,255,255,0.1);
+                    border: 1px solid rgba(255,255,255,0.2);
+                    flex-shrink: 0;
                 }
-                .clear-images {
+                .doc-preview-item {
+                    padding: 2px 6px;
+                    background: rgba(255,165,0,0.1);
+                    border: 1px solid rgba(255,165,0,0.3);
+                    border-radius: 4px;
+                    font-size: 10px;
+                    color: rgba(255,165,0,0.9);
+                    white-space: nowrap;
+                    max-width: 60px;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                }
+                .clear-files {
                     font-size: 11px;
                     color: rgba(255,100,100,0.6);
                     cursor: pointer;
                     padding: 2px 6px;
                 }
-                .clear-images:hover {
+                .clear-files:hover {
                     color: rgba(255,100,100,1);
                 }
                 .ambient-status {
@@ -4029,8 +4342,14 @@ Example - create a tool that gets weather:
             <!-- Image Upload -->
             <input type="file" id="imageInput" accept="image/*" multiple style="display:none">
             <button class="vision-btn" id="imageBtn" title="Add images (📷)">📷</button>
-            <div class="image-preview-strip" id="imagePreview"></div>
-            <span class="clear-images" id="clearImages" style="display:none">✕</span>
+            
+            <!-- Document Upload -->
+            <input type="file" id="docInput" accept=".pdf,.csv,.doc,.docx,.xls,.xlsx,.html,.txt,.md" multiple style="display:none">
+            <button class="vision-btn" id="docBtn" title="Add documents (📄)">📄</button>
+            
+            <!-- File Previews -->
+            <div class="file-preview-strip" id="filePreview"></div>
+            <span class="clear-files" id="clearFiles" style="display:none">✕</span>
             
             <!-- Screen Capture -->
             <button class="vision-btn" id="screenBtn" title="Screen watch (🖥️)">🖥️</button>
@@ -4048,35 +4367,59 @@ Example - create a tool that gets weather:
             <span class="ambient-status" id="ambientStatus"></span>
         `;
         
-        // Image upload handlers
+        // Image & Document upload handlers
         const imageInput = document.getElementById('imageInput');
         const imageBtn = document.getElementById('imageBtn');
-        const imagePreview = document.getElementById('imagePreview');
-        const clearImagesBtn = document.getElementById('clearImages');
-        
+        const docInput = document.getElementById('docInput');
+        const docBtn = document.getElementById('docBtn');
+        const filePreview = document.getElementById('filePreview');
+        const clearFilesBtn = document.getElementById('clearFiles');
+
+        // Pending documents state (uses module-level pendingDocs)
+
         imageBtn.addEventListener('click', () => imageInput.click());
-        
+        docBtn.addEventListener('click', () => docInput.click());
+
         imageInput.addEventListener('change', (e) => {
-            pendingImages = [...e.target.files];
-            updateImagePreview();
-        });
-        
-        clearImagesBtn.addEventListener('click', () => {
-            pendingImages = [];
+            pendingImages = [...pendingImages, ...e.target.files];
             imageInput.value = '';
-            updateImagePreview();
+            updateFilePreview();
         });
-        
-        function updateImagePreview() {
-            imagePreview.innerHTML = '';
-            clearImagesBtn.style.display = pendingImages.length > 0 ? 'inline' : 'none';
+
+        docInput.addEventListener('change', (e) => {
+            pendingDocs = [...pendingDocs, ...e.target.files];
+            docInput.value = '';
+            updateFilePreview();
+        });
+
+        clearFilesBtn.addEventListener('click', () => {
+            pendingImages = [];
+            pendingDocs = [];
+            updateFilePreview();
+        });
+
+        function updateFilePreview() {
+            filePreview.innerHTML = '';
+            const hasFiles = pendingImages.length > 0 || pendingDocs.length > 0;
+            clearFilesBtn.style.display = hasFiles ? 'inline' : 'none';
             imageBtn.classList.toggle('has-images', pendingImages.length > 0);
-            
+            docBtn.classList.toggle('has-docs', pendingDocs.length > 0);
+
             pendingImages.forEach(file => {
                 const img = document.createElement('img');
                 img.className = 'image-preview-item';
                 img.src = URL.createObjectURL(file);
-                imagePreview.appendChild(img);
+                img.title = file.name;
+                filePreview.appendChild(img);
+            });
+
+            pendingDocs.forEach(file => {
+                const span = document.createElement('span');
+                span.className = 'doc-preview-item';
+                const ext = file.name.split('.').pop().toUpperCase();
+                span.textContent = ext;
+                span.title = file.name;
+                filePreview.appendChild(span);
             });
         }
         
@@ -4286,8 +4629,9 @@ Example - create a tool that gets weather:
         document.getElementById('openaiHeaders').value = localStorage.getItem('openai_headers') || '';
         document.getElementById('bedrockApiKey').value = localStorage.getItem('bedrock_api_key') || '';
         document.getElementById('bedrockRegion').value = localStorage.getItem('bedrock_region') || 'us-east-1';
-        document.getElementById('bedrockModel').value = localStorage.getItem('bedrock_model') || 'global.anthropic.claude-opus-4-5-20251101-v1:0';
+        document.getElementById('bedrockModel').value = localStorage.getItem('bedrock_model') || 'global.anthropic.claude-opus-4-6-v1';
         document.getElementById('bedrockMaxTokens').value = localStorage.getItem('bedrock_max_tokens') || '';
+        document.getElementById('bedrockAdditionalFields').value = localStorage.getItem('bedrock_additional_fields') || '';
         document.getElementById('webllmModel').value = localStorage.getItem('webllm_model') || 'Qwen2.5-3B-Instruct-q4f16_1-MLC';
         document.getElementById('systemPrompt').value = localStorage.getItem('system_prompt') || DEFAULT_SYSTEM_PROMPT;
         
@@ -4728,6 +5072,11 @@ Example - create a tool that gets weather:
         'openai_model',
         'openai_max_tokens',
         'openai_headers',
+        'bedrock_api_key',
+        'bedrock_region',
+        'bedrock_model',
+        'bedrock_max_tokens',
+        'bedrock_additional_fields',
         'webllm_model',
         'system_prompt',
         'agi_custom_tools',
@@ -4962,8 +5311,8 @@ Example - create a tool that gets weather:
     const originalAddMessage = addMessage;
     window._originalAddMessage = originalAddMessage;
     
-    // Override to add persistence
-    function addMessageWithPersist(role, content) {
+    // Override to add persistence (delegates to original, then saves)
+    function addMessageWithPersist(role, content, images = []) {
         const inner = document.getElementById('messagesInner');
         const msg = document.createElement('div');
         msg.className = `message ${role}`;
@@ -4980,6 +5329,22 @@ Example - create a tool that gets weather:
         
         if (role === 'user') {
             contentEl.textContent = content;
+            
+            // Add image thumbnails for user messages
+            if (images && images.length > 0) {
+                const imgStrip = document.createElement('div');
+                imgStrip.style.cssText = 'display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;';
+                
+                images.forEach(file => {
+                    const img = document.createElement('img');
+                    img.src = URL.createObjectURL(file);
+                    img.style.cssText = 'width:60px;height:60px;border-radius:8px;object-fit:cover;border:1px solid rgba(255,255,255,0.1);';
+                    img.title = file.name;
+                    imgStrip.appendChild(img);
+                });
+                
+                contentEl.appendChild(imgStrip);
+            }
         } else {
             contentEl.innerHTML = `<div class="markdown-content">${marked.parse(content)}</div>`;
         }

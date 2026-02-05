@@ -14,13 +14,32 @@
  */
 async function fileToBytes(file) {
     return new Promise((resolve, reject) => {
-        const reader = new FileReader();
+        const reader = new FileReader(); // Use native base64
         reader.onload = () => {
             const arrayBuffer = reader.result;
             resolve(new Uint8Array(arrayBuffer));
         };
         reader.onerror = reject;
         reader.readAsArrayBuffer(file);
+    });
+}
+
+/**
+ * Convert a File/Blob to base64 string using native browser API
+ * This is more reliable than manual conversion
+ */
+async function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader(); // Use native base64
+        reader.onload = () => {
+            // Result is data:image/xxx;base64,XXXX
+            // Extract just the base64 part
+            const dataUrl = reader.result;
+            const base64 = dataUrl.split(',')[1];
+            resolve(base64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
     });
 }
 
@@ -36,17 +55,29 @@ function getImageFormat(file) {
 }
 
 /**
+ * Convert Uint8Array to base64 string
+ */
+function uint8ArrayToBase64(bytes) {
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+}
+
+/**
  * Create ImageBlock from File
+ * Note: Bedrock API expects base64-encoded bytes, not raw ArrayBuffer/Uint8Array
  */
 async function createImageBlock(file) {
-    const bytes = await fileToBytes(file);
+    // Use native browser base64 encoding (more reliable)
+    const base64Bytes = await fileToBase64(file);
     const format = getImageFormat(file);
     
-    // Use the ImageBlock class from strands.js
     return {
         image: {
             format: format,
-            source: { bytes: bytes }
+            source: { bytes: base64Bytes }
         }
     };
 }
@@ -147,7 +178,7 @@ class ScreenCapture {
         const ctx = this.canvas.getContext('2d');
         ctx.drawImage(this.video, 0, 0);
         
-        // Convert to blob then to bytes
+        // Convert to blob then to base64 using native browser API (more reliable)
         return new Promise((resolve) => {
             this.canvas.toBlob((blob) => {
                 if (!blob) {
@@ -157,15 +188,18 @@ class ScreenCapture {
                 
                 const reader = new FileReader();
                 reader.onload = () => {
-                    const bytes = new Uint8Array(reader.result);
+                    // readAsDataURL gives us data:image/jpeg;base64,XXXX
+                    // Extract just the base64 part
+                    const dataUrl = reader.result;
+                    const base64 = dataUrl.split(',')[1];
                     resolve({
                         image: {
                             format: 'jpeg',
-                            source: { bytes: bytes }
+                            source: { bytes: base64 }
                         }
                     });
                 };
-                reader.readAsArrayBuffer(blob);
+                reader.readAsDataURL(blob);
             }, 'image/jpeg', 0.8);
         });
     }
