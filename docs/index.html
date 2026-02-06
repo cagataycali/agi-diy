@@ -221,6 +221,10 @@
             cursor: pointer;
             transition: all 0.2s ease;
             font-family: inherit;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
         }
         .header-btn:hover { 
             color: var(--text);
@@ -784,9 +788,10 @@
                 <span id="sdkStatus">loading...</span>
             </div>
             <div class="header-right">
-                <button class="header-btn" id="notifyBtn" title="Enable notifications">🔔</button>
+                <a href="agi.html" class="header-btn" title="Multi-Agent Mode">multi</a>
                 <button class="header-btn" id="clearBtn">clear</button>
                 <button class="header-btn" id="settingsBtn">settings</button>
+                <button class="header-btn" id="notifyBtn" title="Enable notifications">🔔</button>
             </div>
         </header>
 
@@ -5499,6 +5504,37 @@ Example - create a tool that gets weather:
         }
     });
 
+
+    // Check for ?q= query parameter (iPhone shortcut support)
+    function checkForQueryParam() {
+        const url = new URL(window.location.href);
+        const query = url.searchParams.get('q');
+        
+        if (query) {
+            // Clear URL params without reload
+            window.history.replaceState({}, '', window.location.pathname);
+            
+            // Wait for agent to initialize, then send query
+            const sendQuery = async () => {
+                // Wait until agent is ready
+                let attempts = 0;
+                while ((!agent || window._agentNeedsReinit) && attempts < 20) {
+                    await new Promise(r => setTimeout(r, 500));
+                    attempts++;
+                }
+                
+                if (agent) {
+                    console.log('📱 Running query from URL param:', query);
+                    await runAgent(query);
+                } else {
+                    addMessage('error', 'Agent not ready. Please add API key in settings.');
+                }
+            };
+            
+            setTimeout(sendQuery, 1000);
+        }
+    }
+
     // Check for import URL on page load
     function checkForImportUrl() {
         const url = new URL(window.location.href);
@@ -5668,6 +5704,8 @@ Example - create a tool that gets weather:
         loadSyncSettings();
         // Check for import URL
         checkForImportUrl();
+        // Check for ?q= query param (iPhone shortcut support)
+        checkForQueryParam();
     });
     </script>
 </body>

@@ -146,6 +146,52 @@
         }
         .agent-card:hover .agent-kill { opacity: 1; }
         .agent-kill:hover { color: rgba(255,100,100,1); }
+        .agent-edit {
+            opacity: 0;
+            cursor: pointer;
+            color: var(--text-tertiary);
+            transition: opacity 0.2s;
+            margin-right: 8px;
+        }
+        .agent-card:hover .agent-edit { opacity: 1; }
+        .agent-edit:hover { color: var(--text); }
+        
+        /* Tools Grid */
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            padding: 8px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+        }
+        .tool-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 11px;
+        }
+        .tool-item:hover { border-color: rgba(255,255,255,0.2); }
+        .tool-item.enabled { border-color: rgba(100,255,100,0.4); background: rgba(100,255,100,0.1); }
+        .tool-item input[type="checkbox"] {
+            accent-color: #0f0;
+        }
+        .tool-item-name { font-weight: 500; }
+        .tool-item-desc {
+            font-size: 9px;
+            color: var(--text-tertiary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
         
         /* Spawn Button */
         .spawn-btn {
@@ -234,6 +280,10 @@
             font-size: 12px;
             cursor: pointer;
             transition: all 0.2s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
         }
         .header-btn:hover { background: var(--glass-hover); color: var(--text); }
         
@@ -551,6 +601,9 @@
             padding: 16px;
             padding-top: calc(16px + env(safe-area-inset-top));
             border-bottom: 1px solid var(--divider);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         .ring-title {
             font-size: 11px;
@@ -568,6 +621,21 @@
             background: rgba(100,255,100,0.6);
             animation: pulse 2s infinite;
         }
+        .ring-clear-btn {
+            background: transparent;
+            border: 1px solid var(--glass-border);
+            border-radius: 4px;
+            color: var(--text-tertiary);
+            font-size: 10px;
+            padding: 4px 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .ring-clear-btn:hover {
+            background: var(--glass);
+            color: rgba(255,100,100,0.8);
+            border-color: rgba(255,100,100,0.3);
+        }
         .ring-content {
             flex: 1;
             overflow-y: auto;
@@ -579,18 +647,39 @@
             padding: 10px;
             margin-bottom: 8px;
             font-size: 11px;
+            position: relative;
+        }
+        .ring-entry:hover .ring-entry-delete {
+            opacity: 1;
         }
         .ring-entry-header {
             display: flex;
             justify-content: space-between;
+            align-items: center;
             margin-bottom: 4px;
         }
         .ring-entry-agent {
             font-weight: 500;
         }
+        .ring-entry-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
         .ring-entry-time {
             color: var(--text-tertiary);
             font-size: 10px;
+        }
+        .ring-entry-delete {
+            opacity: 0;
+            cursor: pointer;
+            color: rgba(255,100,100,0.6);
+            font-size: 12px;
+            transition: opacity 0.2s, color 0.2s;
+            padding: 2px 4px;
+        }
+        .ring-entry-delete:hover {
+            color: rgba(255,100,100,1);
         }
         .ring-entry-content {
             color: var(--text-secondary);
@@ -684,6 +773,7 @@
                     </div>
                 </div>
                 <div class="header-right">
+                    <a href="index.html" class="header-btn" title="Single Agent Mode">◈ single</a>
                     <button class="header-btn" onclick="broadcastMessage()">📢 Broadcast</button>
                     <button class="header-btn" onclick="clearChat()">🗑️ Clear</button>
                     <button class="header-btn" onclick="openSettingsModal()">⚙️ Settings</button>
@@ -698,6 +788,8 @@
                             Start chatting immediately — a default agent is created with your saved credentials.<br><br>
                             • <strong>use_agent</strong>: Create sub-agents for parallel tasks<br>
                             • <strong>scheduler</strong>: Schedule recurring tasks with cron<br>
+                            • <strong>create_tool</strong>: Build new tools at runtime<br>
+                            • <strong>update_self</strong>: Modify agent system prompts<br>
                             • <strong>Ring Attention</strong>: Agents share context automatically<br><br>
                             Click "+ New Agent" to spawn additional agents, or ⚙️ Settings to configure API keys.
                         </div>
@@ -728,6 +820,7 @@
                     <span class="ring-dot"></span>
                     Ring Context
                 </div>
+                <button class="ring-clear-btn" onclick="clearRingContext()" title="Clear all ring context">Clear</button>
             </div>
             <div class="ring-content" id="ringContent">
                 <div style="font-size:11px;color:var(--text-tertiary);text-align:center;padding:20px;">
@@ -751,7 +844,7 @@
     
     <!-- Spawn Modal -->
     <div class="modal" id="spawnModal">
-        <div class="modal-content">
+        <div class="modal-content" style="max-width:600px;">
             <div class="modal-header">
                 <span class="modal-title">Spawn New Agent</span>
                 <button class="modal-close" onclick="closeModal('spawnModal')">×</button>
@@ -763,16 +856,16 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">Model Provider</label>
-                    <select class="form-input" id="spawnProvider">
+                    <select class="form-input" id="spawnProvider" onchange="updateSpawnModelDefaults()">
+                        <option value="bedrock">Amazon Bedrock</option>
                         <option value="anthropic">Anthropic (Claude)</option>
                         <option value="openai">OpenAI (GPT)</option>
-                        <option value="bedrock">Amazon Bedrock</option>
                     </select>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Model ID (optional)</label>
                     <input type="text" class="form-input" id="spawnModelId" placeholder="Leave empty for default">
-                    <div class="form-hint">Anthropic: claude-sonnet-4-20250514 | OpenAI: gpt-4o | Bedrock: anthropic.claude-3-sonnet</div>
+                    <div class="form-hint" id="spawnModelHint">Default: global.anthropic.claude-opus-4-6-v1</div>
                 </div>
                 <div class="form-group">
                     <label class="form-label">System Prompt</label>
@@ -780,7 +873,16 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">Max Tokens</label>
-                    <input type="number" class="form-input" id="spawnMaxTokens" value="4096">
+                    <input type="number" class="form-input" id="spawnMaxTokens" value="60000">
+                </div>
+                <div class="form-group" id="spawnAdditionalFieldsGroup">
+                    <label class="form-label">Additional Request Fields (JSON)</label>
+                    <textarea class="form-input" id="spawnAdditionalFields" rows="3" placeholder='{"thinking": {"type": "enabled", "budget_tokens": 10000}}'></textarea>
+                    <div class="form-hint">Extended thinking, betas, etc. For Anthropic/Bedrock.</div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Tools</label>
+                    <div id="spawnToolsList" class="tools-grid"></div>
                 </div>
                 <div class="btn-group">
                     <button class="btn" onclick="closeModal('spawnModal')">Cancel</button>
@@ -802,6 +904,7 @@
                     <button class="tab active" onclick="showTab(event,'credentials')">API Keys</button>
                     <button class="tab" onclick="showTab(event,'network')">Network</button>
                     <button class="tab" onclick="showTab(event,'tools')">Tools</button>
+                    <button class="tab" onclick="showTab(event,'sync')">Sync</button>
                     <button class="tab" onclick="showTab(event,'export')">Export</button>
                 </div>
                 
@@ -871,6 +974,7 @@
                         <label class="form-label">Built-in Tools</label>
                         <div style="font-size:12px;color:var(--text-secondary);line-height:2;">
                             <strong>Core:</strong> <code>render_ui</code> <code>javascript_eval</code> <code>storage_get</code> <code>storage_set</code> <code>fetch_url</code> <code>notify</code><br>
+                            <strong>Self-Mod:</strong> <code>update_self</code> <code>create_tool</code> <code>list_tools</code> <code>delete_tool</code><br>
                             <strong>Agents:</strong> <code>use_agent</code> <code>scheduler</code><br>
                             <strong>Mesh:</strong> <code>invoke_agent</code> <code>broadcast_to_agents</code> <code>list_agents</code> <code>invoke_remote_agent</code><br>
                             <strong>PubSub:</strong> <code>subscribe_topic</code> <code>publish_topic</code>
@@ -879,7 +983,45 @@
                     <div class="form-group">
                         <label class="form-label">Custom Tools</label>
                         <div id="customToolsList" style="font-size:12px;color:var(--text-tertiary);">
-                            Agents can create tools with create_tool
+                            Agents can create tools with <code>create_tool</code>. Use <code>list_tools</code> to see all, <code>delete_tool</code> to remove.
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="tab-content" id="tab-sync">
+                    <div class="form-group">
+                        <label class="form-label">🔗 Sync via URL</label>
+                        <div style="font-size:12px;color:var(--text-tertiary);margin-bottom:16px;">
+                            Export your API keys as an encrypted URL for iPhone shortcuts or syncing to another device.
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">📤 Export Settings</label>
+                        <div style="display:flex;gap:8px;margin-bottom:12px;">
+                            <input type="password" class="form-input" id="syncExportPassword" placeholder="Encryption password" style="flex:1;">
+                            <button class="btn btn-primary" onclick="exportSyncUrl()">Export</button>
+                        </div>
+                        <div id="syncExportResult" style="display:none;">
+                            <textarea class="form-input" id="syncExportedUrl" rows="3" readonly style="font-size:11px;"></textarea>
+                            <button class="btn" onclick="navigator.clipboard.writeText(document.getElementById('syncExportedUrl').value);showToast('Copied!');" style="margin-top:8px;">📋 Copy URL</button>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group" style="margin-top:24px;padding-top:24px;border-top:1px solid var(--divider);">
+                        <label class="form-label">📥 Import Settings</label>
+                        <textarea class="form-input" id="syncImportUrl" rows="2" placeholder="Paste encrypted URL..." style="font-size:11px;margin-bottom:8px;"></textarea>
+                        <div style="display:flex;gap:8px;">
+                            <input type="password" class="form-input" id="syncImportPassword" placeholder="Decryption password" style="flex:1;">
+                            <button class="btn btn-primary" onclick="importSyncUrl()">Import</button>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group" style="margin-top:24px;">
+                        <label class="form-label">📱 iPhone Shortcut</label>
+                        <div style="font-size:12px;color:var(--text-tertiary);line-height:1.6;">
+                            Use <code>?q=your+message</code> URL param to trigger queries:<br>
+                            <code style="font-size:10px;">https://agi.diy/agi.html?q=what%20time%20is%20it</code>
                         </div>
                     </div>
                 </div>
@@ -898,6 +1040,53 @@
                         <label class="form-label">Clear All Data</label>
                         <button class="btn" style="color:rgba(255,100,100,0.8)" onclick="clearAllData()">🗑️ Clear Everything</button>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Edit Agent Modal -->
+    <div class="modal" id="editAgentModal">
+        <div class="modal-content" style="max-width:600px;">
+            <div class="modal-header">
+                <span class="modal-title">Edit Agent: <span id="editAgentTitle"></span></span>
+                <button class="modal-close" onclick="closeModal('editAgentModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editAgentId">
+                <div class="form-group">
+                    <label class="form-label">Model Provider</label>
+                    <select class="form-input" id="editProvider" onchange="updateEditModelDefaults()">
+                        <option value="bedrock">Amazon Bedrock</option>
+                        <option value="anthropic">Anthropic (Claude)</option>
+                        <option value="openai">OpenAI (GPT)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Model ID</label>
+                    <input type="text" class="form-input" id="editModelId" placeholder="Leave empty for default">
+                    <div class="form-hint" id="editModelHint">Default: global.anthropic.claude-opus-4-6-v1</div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">System Prompt</label>
+                    <textarea class="form-input" id="editPrompt" rows="4" placeholder="You are a helpful assistant..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Max Tokens</label>
+                    <input type="number" class="form-input" id="editMaxTokens" value="60000">
+                </div>
+                <div class="form-group" id="editAdditionalFieldsGroup">
+                    <label class="form-label">Additional Request Fields (JSON)</label>
+                    <textarea class="form-input" id="editAdditionalFields" rows="3" placeholder='{"thinking": {"type": "enabled", "budget_tokens": 10000}}'></textarea>
+                    <div class="form-hint">Extended thinking, betas, etc. For Anthropic/Bedrock.</div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Tools</label>
+                    <div id="editToolsList" class="tools-grid"></div>
+                </div>
+                <div class="btn-group">
+                    <button class="btn" onclick="closeModal('editAgentModal')">Cancel</button>
+                    <button class="btn btn-primary" onclick="saveAgentEdit()">Save Changes</button>
                 </div>
             </div>
         </div>
@@ -968,9 +1157,9 @@
         ringBuffer: [],             // Shared context
         schedules: new Map(),       // scheduleId -> { name, agentId, prompt, type, cron/delay, timer }
         credentials: {
-            anthropic: { apiKey: '', model: 'claude-sonnet-4-20250514' },
-            openai: { apiKey: '', model: 'gpt-4o' },
-            bedrock: { apiKey: '', region: 'us-east-1', model: 'anthropic.claude-3-sonnet-20240229-v1:0' }
+            anthropic: { apiKey: '', model: 'claude-opus-4-6' },
+            openai: { apiKey: '', model: 'gpt-5.2-2025-12-11' },
+            bedrock: { apiKey: '', region: 'us-east-1', model: 'global.anthropic.claude-opus-4-6-v1' }
         },
         agentColors: ['#00ff88', '#00aaff', '#ff88ff', '#ffaa00', '#ff6666', '#88ffff'],
         colorIndex: 0
@@ -986,29 +1175,65 @@
             this.config = config;
         }
         async *stream(messages, options) {
-            const { apiKey, modelId, maxTokens } = this.config;
+            const { apiKey, modelId, maxTokens, additionalRequestFields } = this.config;
             if (!apiKey) throw new Error('Anthropic API key not set');
             
-            const anthropicMessages = messages.map(msg => ({
-                role: msg.role,
-                content: msg.content.map(b => {
-                    if (b.type === 'textBlock') return { type: 'text', text: b.text };
+            const anthropicMessages = messages.map(msg => {
+                const content = msg.content.map(b => {
+                    if (b.type === 'textBlock') {
+                        // Skip empty text blocks
+                        if (!b.text || b.text.trim() === '') return null;
+                        return { type: 'text', text: b.text };
+                    }
                     if (b.type === 'toolUseBlock') return { type: 'tool_use', id: b.toolUseId, name: b.name, input: b.input };
                     if (b.type === 'toolResultBlock') {
-                        const content = b.content.map(c => c.type === 'textBlock' ? { type: 'text', text: c.text } : { type: 'text', text: JSON.stringify(c.json || c) });
-                        return { type: 'tool_result', tool_use_id: b.toolUseId, content };
+                        const resultContent = b.content.map(c => {
+                            if (c.type === 'textBlock') {
+                                if (!c.text || c.text.trim() === '') return null;
+                                return { type: 'text', text: c.text };
+                            }
+                            return { type: 'text', text: JSON.stringify(c.json || c) };
+                        }).filter(Boolean);
+                        if (resultContent.length === 0) resultContent.push({ type: 'text', text: '(empty result)' });
+                        return { type: 'tool_result', tool_use_id: b.toolUseId, content: resultContent };
                     }
-                    return { type: 'text', text: String(b) };
-                })
-            }));
+                    const str = String(b);
+                    if (!str || str.trim() === '') return null;
+                    return { type: 'text', text: str };
+                }).filter(Boolean);
+                // Ensure message has at least some content
+                if (content.length === 0) {
+                    content.push({ type: 'text', text: '(continue)' });
+                }
+                return { role: msg.role, content };
+            });
             
             const body = { model: modelId, max_tokens: maxTokens, messages: anthropicMessages, stream: true };
             if (options?.systemPrompt) body.system = typeof options.systemPrompt === 'string' ? options.systemPrompt : options.systemPrompt.filter(b => b.type === 'textBlock').map(b => b.text).join('\n');
             if (options?.toolSpecs?.length) body.tools = options.toolSpecs.map(s => ({ name: s.name, description: s.description, input_schema: s.inputSchema }));
             
+            // Add additional request fields (thinking, betas, etc.)
+            if (additionalRequestFields) {
+                Object.assign(body, additionalRequestFields);
+            }
+            
+            const headers = { 
+                'Content-Type': 'application/json', 
+                'x-api-key': apiKey, 
+                'anthropic-version': '2023-06-01', 
+                'anthropic-dangerous-direct-browser-access': 'true' 
+            };
+            
+            // Add beta header if specified
+            if (additionalRequestFields?.anthropic_beta) {
+                headers['anthropic-beta'] = Array.isArray(additionalRequestFields.anthropic_beta) 
+                    ? additionalRequestFields.anthropic_beta.join(',') 
+                    : additionalRequestFields.anthropic_beta;
+            }
+            
             const response = await fetch('https://api.anthropic.com/v1/messages', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+                headers,
                 body: JSON.stringify(body)
             });
             if (!response.ok) throw new Error(`Anthropic error: ${await response.text()}`);
@@ -1139,22 +1364,55 @@
             this.config = config;
         }
         async *stream(messages, options) {
-            const { apiKey, region, modelId, maxTokens } = this.config;
+            const { apiKey, region, modelId, maxTokens, additionalRequestFields } = this.config;
             if (!apiKey) throw new Error('Bedrock API key not set');
             
             const formatBlock = b => {
-                if (b.type === 'textBlock') return { text: b.text };
+                if (b.type === 'textBlock') {
+                    // Skip empty text blocks - Bedrock rejects blank text fields
+                    if (!b.text || b.text.trim() === '') return null;
+                    return { text: b.text };
+                }
                 if (b.type === 'toolUseBlock') return { toolUse: { toolUseId: b.toolUseId, name: b.name, input: b.input } };
-                if (b.type === 'toolResultBlock') return { toolResult: { toolUseId: b.toolUseId, content: b.content.map(c => c.type === 'textBlock' ? { text: c.text } : { json: c.json || c }) } };
-                return { text: String(b) };
+                if (b.type === 'toolResultBlock') {
+                    const content = b.content.map(c => {
+                        if (c.type === 'textBlock') {
+                            // Skip empty text in tool results too
+                            if (!c.text || c.text.trim() === '') return null;
+                            return { text: c.text };
+                        }
+                        return { json: c.json || c };
+                    }).filter(Boolean);
+                    // Ensure tool result has at least some content
+                    if (content.length === 0) content.push({ text: '(empty result)' });
+                    return { toolResult: { toolUseId: b.toolUseId, content } };
+                }
+                const str = String(b);
+                if (!str || str.trim() === '') return null;
+                return { text: str };
             };
             
+            // Format messages, filtering out null blocks and ensuring each message has content
+            const formattedMessages = messages.map(m => {
+                const content = m.content.map(formatBlock).filter(Boolean);
+                // If message has no content after filtering, add placeholder
+                if (content.length === 0) {
+                    content.push({ text: '(continue)' });
+                }
+                return { role: m.role, content };
+            });
+            
             const body = {
-                messages: messages.map(m => ({ role: m.role, content: m.content.map(formatBlock) })),
+                messages: formattedMessages,
                 inferenceConfig: { maxTokens }
             };
             if (options?.systemPrompt) body.system = [{ text: typeof options.systemPrompt === 'string' ? options.systemPrompt : options.systemPrompt.map(b => b.text).join('\n') }];
             if (options?.toolSpecs?.length) body.toolConfig = { tools: options.toolSpecs.map(s => ({ toolSpec: { name: s.name, description: s.description, inputSchema: { json: s.inputSchema } } })) };
+            
+            // Add additional request fields (thinking, etc.)
+            if (additionalRequestFields) {
+                body.additionalModelRequestFields = additionalRequestFields;
+            }
             
             const response = await fetch(`https://bedrock-runtime.${region}.amazonaws.com/model/${encodeURIComponent(modelId)}/converse-stream`, {
                 method: 'POST',
@@ -1209,25 +1467,42 @@
         if (provider === 'anthropic') {
             return new AnthropicModel({
                 apiKey: creds.apiKey,
-                modelId: customConfig.modelId || creds.model || 'claude-sonnet-4-20250514',
-                maxTokens: customConfig.maxTokens || 4096
+                modelId: customConfig.modelId || creds.model || 'claude-opus-4-6',
+                maxTokens: customConfig.maxTokens || DEFAULT_MAX_TOKENS,
+                additionalRequestFields: customConfig.additionalRequestFields || null
             });
         } else if (provider === 'openai') {
             return new OpenAIModel({
                 apiKey: creds.apiKey,
-                modelId: customConfig.modelId || creds.model || 'gpt-4o',
-                maxTokens: customConfig.maxTokens || 4096
+                modelId: customConfig.modelId || creds.model || 'gpt-5.2-2025-12-11',
+                maxTokens: customConfig.maxTokens || DEFAULT_MAX_TOKENS
             });
         } else if (provider === 'bedrock') {
             return new BedrockModel({
                 apiKey: creds.apiKey,
                 region: creds.region || 'us-east-1',
-                modelId: customConfig.modelId || creds.model || 'anthropic.claude-3-sonnet-20240229-v1:0',
-                maxTokens: customConfig.maxTokens || 4096
+                modelId: customConfig.modelId || creds.model || 'global.anthropic.claude-opus-4-6-v1',
+                maxTokens: customConfig.maxTokens || DEFAULT_MAX_TOKENS,
+                additionalRequestFields: customConfig.additionalRequestFields || DEFAULT_BEDROCK_ADDITIONAL_FIELDS
             });
         }
         throw new Error(`Unknown provider: ${provider}`);
     }
+    
+    // Default models per provider
+    const DEFAULT_MODELS = {
+        bedrock: 'global.anthropic.claude-opus-4-6-v1',
+        anthropic: 'claude-opus-4-6',
+        openai: 'gpt-5.2-2025-12-11'
+    };
+    
+    // Default additional request fields for bedrock (extended thinking)
+    const DEFAULT_BEDROCK_ADDITIONAL_FIELDS = {
+        "anthropic_beta": ["interleaved-thinking-2025-05-14", "context-1m-2025-08-07"],
+        "thinking": {"type": "enabled", "budget_tokens": 2048}
+    };
+    
+    const DEFAULT_MAX_TOKENS = 60000;
     
     // ═══════════════════════════════════════════════════════════════════════════
     // TOOLS
@@ -1316,8 +1591,15 @@
                     return { error: `Agent ${input.agentId} already exists` };
                 }
                 
-                // Create sub-agent
-                const model = createModel(input.provider, { maxTokens: input.maxTokens || 4096 });
+                // Create sub-agent with default bedrock settings if using bedrock
+                const modelConfig = { 
+                    maxTokens: input.maxTokens || DEFAULT_MAX_TOKENS 
+                };
+                if (input.provider === 'bedrock') {
+                    modelConfig.additionalRequestFields = DEFAULT_BEDROCK_ADDITIONAL_FIELDS;
+                }
+                const model = createModel(input.provider, modelConfig);
+                
                 const subAgent = new Agent({
                     model,
                     tools: [renderUiTool, javascriptEvalTool, storageGetTool, storageSetTool, fetchUrlTool, notifyTool],
@@ -1331,7 +1613,12 @@
                 state.agents.set(input.agentId, {
                     agent: subAgent,
                     model,
-                    config: { provider: input.provider, systemPrompt: input.systemPrompt, maxTokens: input.maxTokens || 4096 },
+                    config: { 
+                        provider: input.provider, 
+                        systemPrompt: input.systemPrompt, 
+                        maxTokens: input.maxTokens || DEFAULT_MAX_TOKENS,
+                        additionalRequestFields: input.provider === 'bedrock' ? DEFAULT_BEDROCK_ADDITIONAL_FIELDS : null
+                    },
                     messages: [],
                     status: 'ready',
                     color
@@ -2153,9 +2440,277 @@
         }
     });
     
+    // ═══════════════════════════════════════════════════════════════════════════
+    // SELF-MODIFICATION TOOLS - Agent can create its own tools!
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    // Storage key for custom tools
+    const CUSTOM_TOOLS_KEY = 'agi_multi_custom_tools';
+
+    // Load custom tools from localStorage
+    function loadCustomTools() {
+        try {
+            const stored = localStorage.getItem(CUSTOM_TOOLS_KEY);
+            if (!stored) return {};
+            return JSON.parse(stored);
+        } catch (e) {
+            console.warn('Failed to load custom tools:', e);
+            return {};
+        }
+    }
+
+    // Save custom tools to localStorage
+    function saveCustomTools(tools) {
+        localStorage.setItem(CUSTOM_TOOLS_KEY, JSON.stringify(tools));
+    }
+
+    // Create a tool from stored definition
+    function createToolFromDefinition(name, def) {
+        try {
+            // Build the Zod schema from the stored schema definition
+            const schemaObj = {};
+            for (const [key, prop] of Object.entries(def.inputSchema.properties || {})) {
+                let zodType;
+                switch (prop.type) {
+                    case 'number': zodType = z.number(); break;
+                    case 'boolean': zodType = z.boolean(); break;
+                    case 'array': zodType = z.array(z.any()); break;
+                    case 'object': zodType = z.object({}).passthrough(); break;
+                    default: zodType = z.string();
+                }
+                if (prop.description) zodType = zodType.describe(prop.description);
+                if (!(def.inputSchema.required || []).includes(key)) zodType = zodType.optional();
+                schemaObj[key] = zodType;
+            }
+
+            // Create the callback function from stored code
+            const callbackFn = new Function('input', `
+                return (async () => {
+                    ${def.code}
+                })();
+            `);
+
+            return tool({
+                name: name,
+                description: def.description,
+                inputSchema: z.object(schemaObj),
+                callback: callbackFn
+            });
+        } catch (e) {
+            console.error(`Failed to create tool ${name}:`, e);
+            return null;
+        }
+    }
+
+    // Build all custom tools as actual tool objects
+    function buildCustomTools() {
+        const customToolDefs = loadCustomTools();
+        const tools = [];
+        for (const [name, def] of Object.entries(customToolDefs)) {
+            const t = createToolFromDefinition(name, def);
+            if (t) tools.push(t);
+        }
+        return tools;
+    }
+
+    // update_self - Update agent configuration
+    const updateSelfTool = tool({
+        name: 'update_self',
+        description: 'Update agent configuration (system prompt, etc.)',
+        inputSchema: z.object({
+            section: z.enum(['system_prompt', 'config']).describe('Section'),
+            content: z.string().describe('Content'),
+            action: z.enum(['replace', 'append', 'prepend']).optional().describe('Action')
+        }),
+        callback: async (input, { agent }) => {
+            const action = input.action || 'replace';
+            
+            // Find which agent is calling this
+            let callerAgentId = state.activeAgentId;
+            for (const [id, data] of state.agents) {
+                if (data.agent === agent) {
+                    callerAgentId = id;
+                    break;
+                }
+            }
+            
+            const agentData = state.agents.get(callerAgentId);
+            if (!agentData) {
+                return { error: 'Agent not found' };
+            }
+            
+            if (input.section === 'system_prompt') {
+                const current = agentData.config.systemPrompt || '';
+                let newPrompt;
+                if (action === 'append') {
+                    newPrompt = current + '\n' + input.content;
+                } else if (action === 'prepend') {
+                    newPrompt = input.content + '\n' + current;
+                } else {
+                    newPrompt = input.content;
+                }
+                agentData.config.systemPrompt = newPrompt;
+                saveState();
+                return { success: true, message: `System prompt updated for agent ${callerAgentId}.` };
+            }
+            
+            return { error: `Unknown section: ${input.section}` };
+        }
+    });
+
+    // create_tool - Create new tools at runtime
+    const createToolTool = tool({
+        name: 'create_tool',
+        description: `Create a new tool that will be available to all agents. The tool persists across sessions.
+        
+IMPORTANT: The 'code' parameter should be the BODY of an async function that receives 'input' as parameter.
+Return a result object. You have access to: fetch, localStorage, document, console, etc.
+
+Example - create a tool that gets weather:
+{
+    "name": "get_weather",
+    "description": "Get weather for a city",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "city": { "type": "string", "description": "City name" }
+        },
+        "required": ["city"]
+    },
+    "code": "const response = await fetch('https://wttr.in/' + input.city + '?format=j1');\\nconst data = await response.json();\\nreturn { temperature: data.current_condition[0].temp_C, description: data.current_condition[0].weatherDesc[0].value };"
+}`,
+        inputSchema: z.object({
+            name: z.string().describe('Tool name (snake_case)'),
+            description: z.string().describe('What the tool does'),
+            inputSchema: z.object({
+                type: z.literal('object'),
+                properties: z.record(z.string(), z.object({
+                    type: z.string(),
+                    description: z.string().optional()
+                })),
+                required: z.array(z.string()).optional()
+            }).describe('JSON Schema for tool inputs'),
+            code: z.string().describe('JavaScript code - body of async function with input parameter. Must return a result.')
+        }),
+        callback: async (input) => {
+            try {
+                // Validate the tool name
+                if (!/^[a-z][a-z0-9_]*$/.test(input.name)) {
+                    return { error: 'Tool name must be snake_case (lowercase, underscores, start with letter)' };
+                }
+
+                // Check for reserved names
+                const reserved = ['create_tool', 'list_tools', 'delete_tool', 'update_self', 'render_ui', 'javascript_eval', 
+                                  'storage_get', 'storage_set', 'fetch_url', 'notify', 'use_agent', 'scheduler',
+                                  'invoke_agent', 'broadcast_to_agents', 'list_agents', 'invoke_remote_agent',
+                                  'subscribe_topic', 'publish_topic'];
+                if (reserved.includes(input.name)) {
+                    return { error: `Cannot override built-in tool: ${input.name}` };
+                }
+
+                // Test that the code compiles
+                try {
+                    new Function('input', input.code);
+                } catch (e) {
+                    return { error: `Invalid JavaScript code: ${e.message}` };
+                }
+
+                // Store the tool definition
+                const customTools = loadCustomTools();
+                const toolDef = {
+                    description: input.description,
+                    inputSchema: input.inputSchema,
+                    code: input.code,
+                    createdAt: new Date().toISOString()
+                };
+                customTools[input.name] = toolDef;
+                saveCustomTools(customTools);
+
+                // Immediately add tool to all existing agents (hot-reload!)
+                const newTool = createToolFromDefinition(input.name, toolDef);
+                if (newTool) {
+                    for (const [id, agentData] of state.agents) {
+                        if (agentData.agent && agentData.agent.tools) {
+                            agentData.agent.tools.push(newTool);
+                        }
+                    }
+                }
+
+                return { 
+                    success: true, 
+                    message: `Tool '${input.name}' created and ready to use immediately!`,
+                    tool: input.name
+                };
+            } catch (e) {
+                return { error: e.message };
+            }
+        }
+    });
+
+    // list_tools - List all available tools
+    const listToolsTool = tool({
+        name: 'list_tools',
+        description: 'List all available tools, including custom tools created by agents',
+        inputSchema: z.object({
+            includeBuiltIn: z.boolean().optional().describe('Include built-in tools (default: true)')
+        }),
+        callback: async (input = {}) => {
+            const includeBuiltIn = input?.includeBuiltIn !== false;
+            const result = { custom: [], builtIn: [] };
+
+            // Custom tools
+            const customTools = loadCustomTools();
+            for (const [name, def] of Object.entries(customTools)) {
+                result.custom.push({
+                    name,
+                    description: def.description,
+                    createdAt: def.createdAt
+                });
+            }
+
+            // Built-in tools
+            if (includeBuiltIn) {
+                result.builtIn = [
+                    'render_ui', 'javascript_eval', 'storage_get', 'storage_set',
+                    'fetch_url', 'notify', 'update_self', 'create_tool', 'list_tools', 'delete_tool',
+                    'use_agent', 'scheduler', 'invoke_agent', 'broadcast_to_agents', 
+                    'list_agents', 'invoke_remote_agent', 'subscribe_topic', 'publish_topic'
+                ];
+            }
+
+            return result;
+        }
+    });
+
+    // delete_tool - Delete custom tools
+    const deleteToolTool = tool({
+        name: 'delete_tool',
+        description: 'Delete a custom tool created by an agent',
+        inputSchema: z.object({
+            name: z.string().describe('Name of the tool to delete')
+        }),
+        callback: async (input) => {
+            const customTools = loadCustomTools();
+            
+            if (!customTools[input.name]) {
+                return { error: `Tool '${input.name}' not found in custom tools` };
+            }
+
+            delete customTools[input.name];
+            saveCustomTools(customTools);
+
+            return { 
+                success: true, 
+                message: `Tool '${input.name}' deleted. Restart agents to remove from tool list.`
+            };
+        }
+    });
+    
     const TOOLS = [
         // Core
         renderUiTool, javascriptEvalTool, storageGetTool, storageSetTool, fetchUrlTool, notifyTool,
+        // Self-modification
+        updateSelfTool, createToolTool, listToolsTool, deleteToolTool,
         // Agent management
         useAgentTool, schedulerTool,
         // Mesh communication (local + remote)
@@ -2171,16 +2726,43 @@
         const provider = document.getElementById('spawnProvider').value;
         const modelId = document.getElementById('spawnModelId').value.trim();
         const systemPrompt = document.getElementById('spawnPrompt').value.trim() || 'You are a helpful AI assistant.';
-        const maxTokens = parseInt(document.getElementById('spawnMaxTokens').value) || 4096;
+        const maxTokens = parseInt(document.getElementById('spawnMaxTokens').value) || DEFAULT_MAX_TOKENS;
+        const additionalFieldsStr = document.getElementById('spawnAdditionalFields').value.trim();
         
         if (!id) { showToast('Enter agent ID'); return; }
         if (state.agents.has(id)) { showToast('Agent ID exists'); return; }
         
+        // Parse additional request fields
+        let additionalRequestFields = null;
+        if (additionalFieldsStr) {
+            try {
+                additionalRequestFields = JSON.parse(additionalFieldsStr);
+            } catch (e) {
+                showToast('Invalid JSON in additional fields');
+                return;
+            }
+        }
+        
+        // Get enabled tools
+        const toolCheckboxes = document.querySelectorAll('#spawnToolsList input[name="spawn-tool"]:checked');
+        const enabledTools = Array.from(toolCheckboxes).map(cb => cb.value);
+        const allToolsEnabled = enabledTools.length === TOOLS.length;
+        
         try {
-            const model = createModel(provider, { modelId: modelId || undefined, maxTokens });
+            const model = createModel(provider, { 
+                modelId: modelId || undefined, 
+                maxTokens,
+                additionalRequestFields
+            });
+            
+            // Get the tools based on selection + custom tools
+            const selectedTools = allToolsEnabled ? TOOLS : TOOLS.filter(t => enabledTools.includes(t.name));
+            const customTools = buildCustomTools();
+            const allTools = [...selectedTools, ...customTools];
+            
             const agent = new Agent({
                 model,
-                tools: TOOLS,
+                tools: allTools,
                 systemPrompt: buildSystemPrompt(id, systemPrompt),
                 printer: false
             });
@@ -2191,16 +2773,20 @@
             state.agents.set(id, {
                 agent,
                 model,
-                config: { provider, modelId, systemPrompt, maxTokens },
+                config: { 
+                    provider, 
+                    modelId: modelId || undefined, 
+                    systemPrompt, 
+                    maxTokens,
+                    additionalRequestFields,
+                    enabledTools: allToolsEnabled ? null : enabledTools
+                },
                 messages: [],
                 status: 'ready',
                 color
             });
             
             closeModal('spawnModal');
-            document.getElementById('spawnId').value = '';
-            document.getElementById('spawnModelId').value = '';
-            document.getElementById('spawnPrompt').value = '';
             
             updateAgentUI();
             selectAgent(id);
@@ -2218,6 +2804,14 @@
 You are agent "${agentId}" in a multi-agent system. You have access to:
 - use_agent: Create sub-agents for parallel tasks
 - scheduler: Schedule tasks (once or recurring cron)
+- invoke_agent: Call another agent and wait for response
+- broadcast_to_agents: Send message to all agents
+
+## Self-Modification
+- update_self: Modify your own system prompt
+- create_tool: Create new tools at runtime (persists across sessions)
+- list_tools: See all available tools including custom ones
+- delete_tool: Remove custom tools
 
 Ring Attention: Other agents' recent messages are shared with you for context.
 
@@ -2271,7 +2865,10 @@ ${getRingContext()}`;
                     </div>
                     <div class="agent-meta">
                         <span>${data.config.provider}</span>
-                        <span class="agent-kill" onclick="killAgent('${id}', event)">✕</span>
+                        <span>
+                            <span class="agent-edit" onclick="openEditAgentModal('${id}', event)" title="Edit agent">✎</span>
+                            <span class="agent-kill" onclick="killAgent('${id}', event)" title="Kill agent">✕</span>
+                        </span>
                     </div>
                 </div>
             `);
@@ -2338,18 +2935,28 @@ ${getRingContext()}`;
             return;
         }
         
-        // Determine which provider to use (priority: anthropic > openai > bedrock)
-        let provider = 'anthropic';
-        if (hasAnthropic) provider = 'anthropic';
+        // Determine which provider to use (priority: bedrock > anthropic > openai)
+        let provider = 'bedrock';
+        if (hasBedrock) provider = 'bedrock';
+        else if (hasAnthropic) provider = 'anthropic';
         else if (hasOpenAI) provider = 'openai';
-        else if (hasBedrock) provider = 'bedrock';
         
         try {
-            const model = createModel(provider);
+            // Use bedrock defaults with extended thinking
+            const modelConfig = {
+                maxTokens: DEFAULT_MAX_TOKENS,
+                additionalRequestFields: provider === 'bedrock' ? DEFAULT_BEDROCK_ADDITIONAL_FIELDS : null
+            };
+            const model = createModel(provider, modelConfig);
+            
+            // Include custom tools
+            const customTools = buildCustomTools();
+            const allTools = [...TOOLS, ...customTools];
+            
             const agent = new Agent({
                 model,
-                tools: TOOLS,
-                systemPrompt: buildSystemPrompt('assistant', 'You are AGI, a helpful AI assistant. You can spawn sub-agents, schedule tasks, and coordinate with other agents.'),
+                tools: allTools,
+                systemPrompt: buildSystemPrompt('assistant', 'You are AGI, a helpful AI assistant. You can spawn sub-agents, schedule tasks, create custom tools, and coordinate with other agents.'),
                 printer: false
             });
             
@@ -2361,8 +2968,9 @@ ${getRingContext()}`;
                 model,
                 config: { 
                     provider, 
-                    systemPrompt: 'You are AGI, a helpful AI assistant. You can spawn sub-agents, schedule tasks, and coordinate with other agents.', 
-                    maxTokens: 4096 
+                    systemPrompt: 'You are AGI, a helpful AI assistant. You can spawn sub-agents, schedule tasks, create custom tools, and coordinate with other agents.', 
+                    maxTokens: DEFAULT_MAX_TOKENS,
+                    additionalRequestFields: provider === 'bedrock' ? DEFAULT_BEDROCK_ADDITIONAL_FIELDS : null
                 },
                 messages: [],
                 status: 'ready',
@@ -2385,41 +2993,65 @@ ${getRingContext()}`;
     // MESSAGING
     // ═══════════════════════════════════════════════════════════════════════════
     
-    let streamingEl = null;
-    
-    // Message queue per agent to handle concurrent requests
-    const messageQueues = new Map();
+    let streamingEls = new Map(); // agentId -> streaming element
+    let broadcastMode = false; // true when sending to all agents
     
     async function runAgentMessage(agentId, message) {
         const agentData = state.agents.get(agentId);
         if (!agentData) return;
         
-        // Initialize queue for this agent if needed
-        if (!messageQueues.has(agentId)) {
-            messageQueues.set(agentId, { processing: false, queue: [] });
-        }
-        const queueData = messageQueues.get(agentId);
-        
-        // If already processing, queue the message
-        if (queueData.processing) {
-            queueData.queue.push(message);
-            showToast(`Message queued (${queueData.queue.length} pending)`);
-            console.log(`Agent ${agentId} busy, queued message. Queue size: ${queueData.queue.length}`);
-            return;
-        }
-        
-        queueData.processing = true;
-        agentData.status = 'processing';
-        updateAgentUI();
-        
-        // Add to ring buffer
+        // Add to ring buffer FIRST so it's included in system prompt
         state.ringBuffer.push({ agentId, role: 'user', content: message, timestamp: Date.now() });
         if (state.ringBuffer.length > 100) state.ringBuffer.shift();
         updateRingUI();
         
-        // Add user message
+        // Create a FRESH agent instance for each message (allows parallelism)
+        // The stored agentData.agent is just a reference/template
+        let activeAgent;
+        try {
+            const model = createModel(agentData.config.provider, { 
+                modelId: agentData.config.modelId,
+                maxTokens: agentData.config.maxTokens || DEFAULT_MAX_TOKENS,
+                additionalRequestFields: agentData.config.additionalRequestFields || null
+            });
+            
+            // Get the tools based on agent's enabled tools config
+            const enabledTools = agentData.config.enabledTools;
+            const selectedTools = (!enabledTools || enabledTools === null) ? TOOLS : TOOLS.filter(t => enabledTools.includes(t.name));
+            
+            activeAgent = new Agent({
+                model,
+                tools: selectedTools,
+                systemPrompt: buildSystemPrompt(agentId, agentData.config.systemPrompt),
+                printer: false
+            });
+            
+            // Inject conversation history from this agent's messages
+            if (agentData.messages.length > 0) {
+                // Load recent conversation history (last 20 messages)
+                const recentHistory = agentData.messages.slice(-20);
+                for (const msg of recentHistory) {
+                    activeAgent.messages.push({
+                        role: msg.role,
+                        content: [{ type: 'textBlock', text: msg.content }]
+                    });
+                }
+                console.log(`Injected ${recentHistory.length} messages of history for ${agentId}`);
+            }
+        } catch (e) {
+            console.error(`Failed to create agent instance for ${agentId}:`, e);
+            addMessageToUI('error', `Failed to create agent: ${e.message}`, agentId, agentData.color);
+            return;
+        }
+        
+        agentData.status = 'processing';
+        updateAgentUI();
+        
+        // Add user message to stored history
         agentData.messages.push({ role: 'user', content: message, timestamp: Date.now() });
-        if (agentId === state.activeAgentId) {
+        const shouldShow = broadcastMode || agentId === state.activeAgentId;
+        
+        if (shouldShow) {
             addMessageToUI('user', message, agentId, agentData.color);
             addThinking();
         }
@@ -2427,22 +3059,23 @@ ${getRingContext()}`;
         try {
             let currentText = '';
             
-            for await (const event of agentData.agent.stream(message)) {
+            for await (const event of activeAgent.stream(message)) {
                 if (!event?.type) continue;
                 
                 if (event.type === 'modelContentBlockDeltaEvent' && event.delta?.type === 'textDelta') {
                     currentText += event.delta.text;
-                    if (agentId === state.activeAgentId) updateStreaming(currentText, agentId, agentData.color);
+                    if (shouldShow) updateStreaming(currentText, agentId, agentData.color);
                 }
-                else if (event.type === 'beforeToolCallEvent' && agentId === state.activeAgentId) {
+                else if (event.type === 'beforeToolCallEvent' && shouldShow) {
                     addToolCall(event.toolUse?.name, event.toolUse?.input, 'running');
                 }
-                else if (event.type === 'afterToolCallEvent' && agentId === state.activeAgentId) {
+                else if (event.type === 'afterToolCallEvent' && shouldShow) {
                     updateToolStatus(event.toolUse?.name, event.result?.status || 'success');
                 }
             }
             
-            if (agentId === state.activeAgentId) {
+            
+            if (shouldShow) {
                 removeThinking();
                 if (currentText) finalizeStreaming(currentText, agentId, agentData.color);
             }
@@ -2458,7 +3091,8 @@ ${getRingContext()}`;
         } catch (e) {
             console.error(`Agent ${agentId} error:`, e);
             agentData.status = 'error';
-            if (agentId === state.activeAgentId) {
+            
+            if (shouldShow) {
                 removeThinking();
                 addMessageToUI('error', e.message, agentId, agentData.color);
             }
@@ -2466,18 +3100,6 @@ ${getRingContext()}`;
         
         updateAgentUI();
         saveState();
-        
-        // Process next queued message if any
-        const queueData = messageQueues.get(agentId);
-        if (queueData) {
-            queueData.processing = false;
-            if (queueData.queue.length > 0) {
-                const nextMessage = queueData.queue.shift();
-                console.log(`Processing queued message for ${agentId}. Remaining: ${queueData.queue.length}`);
-                // Use setTimeout to prevent stack overflow on long queues
-                setTimeout(() => runAgentMessage(agentId, nextMessage), 100);
-            }
-        }
     }
     
     window.sendMessage = async function() {
@@ -2511,6 +3133,7 @@ ${getRingContext()}`;
         
         input.value = '';
         
+        broadcastMode = (target === 'all');
         if (target === 'all') {
             for (const agentId of state.agents.keys()) {
                 runAgentMessage(agentId, text);
@@ -2521,6 +3144,7 @@ ${getRingContext()}`;
     };
     
     window.broadcastMessage = function() {
+        broadcastMode = true;
         const text = prompt('Broadcast message to all agents:');
         if (text?.trim()) {
             for (const agentId of state.agents.keys()) {
@@ -2604,6 +3228,7 @@ ${getRingContext()}`;
         const inner = document.getElementById('messagesInner');
         removeThinking();
         
+        let streamingEl = streamingEls.get(agentId);
         if (!streamingEl) {
             streamingEl = document.createElement('div');
             streamingEl.className = 'message assistant';
@@ -2617,6 +3242,7 @@ ${getRingContext()}`;
                 <div class="message-content"><div class="markdown-content"></div></div>
             `;
             inner.appendChild(streamingEl);
+            streamingEls.set(agentId, streamingEl);
         }
         
         streamingEl.querySelector('.markdown-content').innerHTML = marked.parse(text);
@@ -2624,9 +3250,10 @@ ${getRingContext()}`;
     }
     
     function finalizeStreaming(text, agentId, color) {
+        const streamingEl = streamingEls.get(agentId);
         if (streamingEl) {
             streamingEl.querySelector('.markdown-content').innerHTML = marked.parse(text);
-            streamingEl = null;
+            streamingEls.delete(agentId);
         }
     }
     
@@ -2680,7 +3307,9 @@ ${getRingContext()}`;
             return;
         }
         
-        container.innerHTML = recent.map(e => {
+        container.innerHTML = recent.map((e, displayIndex) => {
+            // Calculate actual index in ringBuffer (reversed display)
+            const actualIndex = state.ringBuffer.length - 1 - displayIndex;
             const agentData = state.agents.get(e.agentId);
             const color = agentData?.color || '#888';
             const time = new Date(e.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -2688,13 +3317,37 @@ ${getRingContext()}`;
                 <div class="ring-entry">
                     <div class="ring-entry-header">
                         <span class="ring-entry-agent" style="color:${color}">${e.agentId}</span>
-                        <span class="ring-entry-time">${time}</span>
+                        <div class="ring-entry-meta">
+                            <span class="ring-entry-time">${time}</span>
+                            <span class="ring-entry-delete" onclick="deleteRingEntry(${actualIndex})" title="Delete this entry">✕</span>
+                        </div>
                     </div>
                     <div class="ring-entry-content">${escapeHtml(e.content.slice(0, 150))}${e.content.length > 150 ? '...' : ''}</div>
                 </div>
             `;
         }).join('');
     }
+    
+    window.clearRingContext = function() {
+        if (state.ringBuffer.length === 0) {
+            showToast('Ring context is already empty');
+            return;
+        }
+        if (!confirm('Clear all ring context? This cannot be undone.')) return;
+        state.ringBuffer = [];
+        updateRingUI();
+        saveState();
+        showToast('Ring context cleared');
+    };
+    
+    window.deleteRingEntry = function(index) {
+        if (index >= 0 && index < state.ringBuffer.length) {
+            state.ringBuffer.splice(index, 1);
+            updateRingUI();
+            saveState();
+            showToast('Entry deleted');
+        }
+    };
     
     function scrollToBottom() {
         const container = document.getElementById('messagesContainer');
@@ -2718,7 +3371,242 @@ ${getRingContext()}`;
     // MODALS
     // ═══════════════════════════════════════════════════════════════════════════
     
-    window.openSpawnModal = () => document.getElementById('spawnModal').classList.add('active');
+    window.openSpawnModal = () => {
+        // Reset form with bedrock defaults
+        document.getElementById('spawnId').value = '';
+        document.getElementById('spawnProvider').value = 'bedrock';
+        document.getElementById('spawnModelId').value = '';
+        document.getElementById('spawnPrompt').value = '';
+        document.getElementById('spawnMaxTokens').value = String(DEFAULT_MAX_TOKENS);
+        document.getElementById('spawnAdditionalFields').value = JSON.stringify(DEFAULT_BEDROCK_ADDITIONAL_FIELDS, null, 2);
+        
+        // Update model hint
+        updateSpawnModelDefaults();
+        
+        // Render tools list (all enabled by default)
+        renderSpawnToolsList();
+        
+        document.getElementById('spawnModal').classList.add('active');
+    };
+    
+    window.updateSpawnModelDefaults = function() {
+        const provider = document.getElementById('spawnProvider').value;
+        const hintEl = document.getElementById('spawnModelHint');
+        hintEl.textContent = `Default: ${DEFAULT_MODELS[provider] || 'unknown'}`;
+        
+        // Show/hide additional fields based on provider
+        const additionalFieldsGroup = document.getElementById('spawnAdditionalFieldsGroup');
+        const additionalFieldsInput = document.getElementById('spawnAdditionalFields');
+        
+        if (provider === 'bedrock') {
+            additionalFieldsGroup.style.display = 'block';
+            // Pre-populate with default bedrock fields if empty
+            if (!additionalFieldsInput.value.trim()) {
+                additionalFieldsInput.value = JSON.stringify(DEFAULT_BEDROCK_ADDITIONAL_FIELDS, null, 2);
+            }
+        } else if (provider === 'anthropic') {
+            additionalFieldsGroup.style.display = 'block';
+        } else {
+            additionalFieldsGroup.style.display = 'none';
+        }
+    };
+    
+    function renderSpawnToolsList() {
+        const container = document.getElementById('spawnToolsList');
+        const allTools = [
+            { name: 'render_ui', desc: 'Render HTML/CSS/JS' },
+            { name: 'javascript_eval', desc: 'Execute JavaScript' },
+            { name: 'storage_get', desc: 'Get localStorage' },
+            { name: 'storage_set', desc: 'Set localStorage' },
+            { name: 'fetch_url', desc: 'HTTP requests' },
+            { name: 'notify', desc: 'Browser notifications' },
+            { name: 'update_self', desc: 'Modify system prompt' },
+            { name: 'create_tool', desc: 'Create new tools' },
+            { name: 'list_tools', desc: 'List all tools' },
+            { name: 'delete_tool', desc: 'Delete custom tools' },
+            { name: 'use_agent', desc: 'Create sub-agents' },
+            { name: 'scheduler', desc: 'Schedule tasks' },
+            { name: 'invoke_agent', desc: 'Call another agent' },
+            { name: 'broadcast_to_agents', desc: 'Broadcast to all' },
+            { name: 'list_agents', desc: 'List all agents' },
+            { name: 'invoke_remote_agent', desc: 'Call remote agent' },
+            { name: 'subscribe_topic', desc: 'Subscribe to topic' },
+            { name: 'publish_topic', desc: 'Publish to topic' }
+        ];
+        
+        container.innerHTML = allTools.map(t => `
+            <label class="tool-item enabled" onclick="toggleToolItem(this)">
+                <input type="checkbox" name="spawn-tool" value="${t.name}" checked>
+                <div>
+                    <div class="tool-item-name">${t.name}</div>
+                    <div class="tool-item-desc">${t.desc}</div>
+                </div>
+            </label>
+        `).join('');
+    }
+    
+    window.openEditAgentModal = function(agentId, event) {
+        event.stopPropagation();
+        const agentData = state.agents.get(agentId);
+        if (!agentData) return;
+        
+        document.getElementById('editAgentId').value = agentId;
+        document.getElementById('editAgentTitle').textContent = agentId;
+        document.getElementById('editProvider').value = agentData.config.provider;
+        document.getElementById('editModelId').value = agentData.config.modelId || '';
+        document.getElementById('editPrompt').value = agentData.config.systemPrompt || '';
+        document.getElementById('editMaxTokens').value = agentData.config.maxTokens || 16000;
+        document.getElementById('editAdditionalFields').value = agentData.config.additionalRequestFields 
+            ? JSON.stringify(agentData.config.additionalRequestFields, null, 2) 
+            : '';
+        
+        // Update model hint
+        updateEditModelDefaults();
+        
+        // Show/hide additional fields based on provider
+        const provider = agentData.config.provider;
+        document.getElementById('editAdditionalFieldsGroup').style.display = 
+            (provider === 'anthropic' || provider === 'bedrock') ? 'block' : 'none';
+        
+        // Render tools list
+        renderEditToolsList(agentData.config.enabledTools || null);
+        
+        document.getElementById('editAgentModal').classList.add('active');
+    };
+    
+    window.updateEditModelDefaults = function() {
+        const provider = document.getElementById('editProvider').value;
+        const hintEl = document.getElementById('editModelHint');
+        hintEl.textContent = `Default: ${DEFAULT_MODELS[provider] || 'unknown'}`;
+        
+        // Show/hide additional fields based on provider
+        document.getElementById('editAdditionalFieldsGroup').style.display = 
+            (provider === 'anthropic' || provider === 'bedrock') ? 'block' : 'none';
+    };
+    
+    function renderEditToolsList(enabledTools) {
+        const container = document.getElementById('editToolsList');
+        // All available tools with descriptions
+        const allTools = [
+            { name: 'render_ui', desc: 'Render HTML/CSS/JS' },
+            { name: 'javascript_eval', desc: 'Execute JavaScript' },
+            { name: 'storage_get', desc: 'Get localStorage' },
+            { name: 'storage_set', desc: 'Set localStorage' },
+            { name: 'fetch_url', desc: 'HTTP requests' },
+            { name: 'notify', desc: 'Browser notifications' },
+            { name: 'update_self', desc: 'Modify system prompt' },
+            { name: 'create_tool', desc: 'Create new tools' },
+            { name: 'list_tools', desc: 'List all tools' },
+            { name: 'delete_tool', desc: 'Delete custom tools' },
+            { name: 'use_agent', desc: 'Create sub-agents' },
+            { name: 'scheduler', desc: 'Schedule tasks' },
+            { name: 'invoke_agent', desc: 'Call another agent' },
+            { name: 'broadcast_to_agents', desc: 'Broadcast to all' },
+            { name: 'list_agents', desc: 'List all agents' },
+            { name: 'invoke_remote_agent', desc: 'Call remote agent' },
+            { name: 'subscribe_topic', desc: 'Subscribe to topic' },
+            { name: 'publish_topic', desc: 'Publish to topic' }
+        ];
+        
+        // If enabledTools is null, all tools are enabled
+        const isAllEnabled = enabledTools === null;
+        
+        container.innerHTML = allTools.map(t => {
+            const enabled = isAllEnabled || (enabledTools && enabledTools.includes(t.name));
+            return `
+                <label class="tool-item ${enabled ? 'enabled' : ''}" onclick="toggleToolItem(this)">
+                    <input type="checkbox" name="tool" value="${t.name}" ${enabled ? 'checked' : ''}>
+                    <div>
+                        <div class="tool-item-name">${t.name}</div>
+                        <div class="tool-item-desc">${t.desc}</div>
+                    </div>
+                </label>
+            `;
+        }).join('');
+    }
+    
+    window.toggleToolItem = function(el) {
+        el.classList.toggle('enabled');
+    };
+    
+    window.saveAgentEdit = async function() {
+        const agentId = document.getElementById('editAgentId').value;
+        const agentData = state.agents.get(agentId);
+        if (!agentData) return;
+        
+        const provider = document.getElementById('editProvider').value;
+        const modelId = document.getElementById('editModelId').value.trim();
+        const systemPrompt = document.getElementById('editPrompt').value.trim() || 'You are a helpful AI assistant.';
+        const maxTokens = parseInt(document.getElementById('editMaxTokens').value) || DEFAULT_MAX_TOKENS;
+        const additionalFieldsStr = document.getElementById('editAdditionalFields').value.trim();
+        
+        // Parse additional request fields
+        let additionalRequestFields = null;
+        if (additionalFieldsStr) {
+            try {
+                additionalRequestFields = JSON.parse(additionalFieldsStr);
+            } catch (e) {
+                showToast('Invalid JSON in additional fields');
+                return;
+            }
+        }
+        
+        // Get enabled tools
+        const toolCheckboxes = document.querySelectorAll('#editToolsList input[name="tool"]:checked');
+        const enabledTools = Array.from(toolCheckboxes).map(cb => cb.value);
+        
+        // Check if all tools are enabled
+        const allToolsEnabled = enabledTools.length === TOOLS.length;
+        
+        try {
+            // Create new model with updated config
+            const model = createModel(provider, { 
+                modelId: modelId || undefined, 
+                maxTokens,
+                additionalRequestFields
+            });
+            
+            // Get the tools based on selection + custom tools
+            const selectedTools = allToolsEnabled ? TOOLS : TOOLS.filter(t => enabledTools.includes(t.name));
+            const customTools = buildCustomTools();
+            const allTools = [...selectedTools, ...customTools];
+            
+            // Create new agent instance
+            const agent = new Agent({
+                model,
+                tools: allTools,
+                systemPrompt: buildSystemPrompt(agentId, systemPrompt),
+                printer: false
+            });
+            
+            // Update agent data
+            agentData.agent = agent;
+            agentData.model = model;
+            agentData.config = {
+                provider,
+                modelId: modelId || undefined,
+                systemPrompt,
+                maxTokens,
+                additionalRequestFields,
+                enabledTools: allToolsEnabled ? null : enabledTools
+            };
+            
+            closeModal('editAgentModal');
+            updateAgentUI();
+            saveState();
+            showToast(`Agent ${agentId} updated`);
+            
+            // Update header if this is the active agent
+            
+            if (agentId === state.activeAgentId) {
+                document.getElementById('currentAgentName').textContent = agentId;
+                document.getElementById('currentAgentModel').textContent = `${provider} • ${modelId || DEFAULT_MODELS[provider]}`;
+            }
+        } catch (e) {
+            showToast('Error: ' + e.message);
+        }
+    };
+    
     window.openSettingsModal = () => {
         document.getElementById('anthropicKey').value = state.credentials.anthropic.apiKey;
         document.getElementById('openaiKey').value = state.credentials.openai.apiKey;
@@ -2747,6 +3635,118 @@ ${getRingContext()}`;
     };
     
     window.toggleMobileSidebar = () => document.getElementById('mobileSidebar').classList.toggle('active');
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ENCRYPTED SYNC - Export/Import API keys via encrypted URL
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    async function deriveKey(password, salt) {
+        const enc = new TextEncoder();
+        const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']);
+        return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' }, keyMaterial, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+    }
+    
+    async function encryptData(data, password) {
+        const plaintext = JSON.stringify(data);
+        const enc = new TextEncoder();
+        const salt = crypto.getRandomValues(new Uint8Array(16));
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const key = await deriveKey(password, salt);
+        const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(plaintext));
+        const combined = new Uint8Array(salt.length + iv.length + ciphertext.byteLength);
+        combined.set(salt, 0);
+        combined.set(iv, salt.length);
+        combined.set(new Uint8Array(ciphertext), salt.length + iv.length);
+        return btoa(String.fromCharCode(...combined));
+    }
+    
+    async function decryptData(encryptedBase64, password) {
+        const combined = Uint8Array.from(atob(encryptedBase64), c => c.charCodeAt(0));
+        const salt = combined.slice(0, 16);
+        const iv = combined.slice(16, 28);
+        const ciphertext = combined.slice(28);
+        const key = await deriveKey(password, salt);
+        const plaintext = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
+        return JSON.parse(new TextDecoder().decode(plaintext));
+    }
+    
+    window.exportSyncUrl = async function() {
+        const password = document.getElementById('syncExportPassword')?.value;
+        if (!password || password.length < 4) {
+            showToast('Password must be 4+ chars');
+            return;
+        }
+        
+        try {
+            const data = {
+                anthropic: state.credentials.anthropic,
+                openai: state.credentials.openai,
+                bedrock: state.credentials.bedrock
+            };
+            const encrypted = await encryptData(data, password);
+            const url = `${window.location.origin}${window.location.pathname}?import=${encrypted}`;
+            
+            document.getElementById('syncExportedUrl').value = url;
+            document.getElementById('syncExportResult').style.display = 'block';
+            showToast('Settings encrypted!');
+        } catch (e) {
+            showToast('Export failed: ' + e.message);
+        }
+    };
+    
+    window.importSyncUrl = async function() {
+        const urlOrData = document.getElementById('syncImportUrl')?.value?.trim();
+        const password = document.getElementById('syncImportPassword')?.value;
+        
+        if (!urlOrData || !password) {
+            showToast('Enter URL and password');
+            return;
+        }
+        
+        try {
+            let encryptedData = urlOrData;
+            if (urlOrData.includes('?import=')) {
+                encryptedData = new URL(urlOrData).searchParams.get('import');
+            }
+            
+            const data = await decryptData(encryptedData, password);
+            
+            // Apply credentials
+            if (data.anthropic) state.credentials.anthropic = { ...state.credentials.anthropic, ...data.anthropic };
+            if (data.openai) state.credentials.openai = { ...state.credentials.openai, ...data.openai };
+            if (data.bedrock) state.credentials.bedrock = { ...state.credentials.bedrock, ...data.bedrock };
+            
+            // Update UI
+            document.getElementById('anthropicKey').value = state.credentials.anthropic.apiKey || '';
+            document.getElementById('openaiKey').value = state.credentials.openai.apiKey || '';
+            document.getElementById('bedrockKey').value = state.credentials.bedrock.apiKey || '';
+            document.getElementById('bedrockRegion').value = state.credentials.bedrock.region || 'us-east-1';
+            
+            saveState();
+            showToast('Settings imported!');
+            
+            // Clear fields
+            document.getElementById('syncImportUrl').value = '';
+            document.getElementById('syncImportPassword').value = '';
+        } catch (e) {
+            showToast('Import failed - wrong password?');
+        }
+    };
+    
+    // Check for ?import= URL param on load
+    function checkForImportParam() {
+        const url = new URL(window.location.href);
+        const importData = url.searchParams.get('import');
+        if (importData) {
+            window.history.replaceState({}, '', window.location.pathname);
+            openSettingsModal();
+            setTimeout(() => {
+                document.querySelector('.tab[onclick*="sync"]')?.click();
+                document.getElementById('syncImportUrl').value = window.location.origin + window.location.pathname + '?import=' + importData;
+                showToast('Import URL detected - enter password');
+            }, 100);
+        }
+    }
     
     // ═══════════════════════════════════════════════════════════════════════════
     // CREDENTIALS & PERSISTENCE
@@ -2917,6 +3917,56 @@ ${getRingContext()}`;
     };
     
     // ═══════════════════════════════════════════════════════════════════════════
+    // CUSTOM TOOLS UI
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    function updateCustomToolsUI() {
+        const container = document.getElementById('customToolsList');
+        if (!container) return;
+        
+        const customTools = loadCustomTools();
+        const toolNames = Object.keys(customTools);
+        
+        if (toolNames.length === 0) {
+            container.innerHTML = `
+                <div style="color:var(--text-tertiary);">
+                    No custom tools yet. Agents can create tools with <code>create_tool</code>.
+                </div>
+            `;
+        } else {
+            container.innerHTML = `
+                <div style="margin-bottom:8px;color:var(--text-secondary);">
+                    ${toolNames.length} custom tool(s) saved:
+                </div>
+                ${toolNames.map(name => {
+                    const tool = customTools[name];
+                    return `
+                        <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 8px;background:rgba(255,255,255,0.03);border-radius:6px;margin-bottom:4px;">
+                            <div>
+                                <code style="color:var(--text)">${name}</code>
+                                <span style="color:var(--text-tertiary);font-size:11px;margin-left:8px;">${tool.description?.slice(0,40) || ''}...</span>
+                            </div>
+                            <button onclick="deleteCustomTool('${name}')" style="background:transparent;border:none;color:rgba(255,100,100,0.6);cursor:pointer;font-size:12px;" title="Delete tool">✕</button>
+                        </div>
+                    `;
+                }).join('')}
+                <div style="margin-top:12px;font-size:11px;color:var(--text-tertiary);">
+                    ⚠️ Custom tools are available to newly spawned agents. Refresh page to apply to all.
+                </div>
+            `;
+        }
+    }
+    
+    window.deleteCustomTool = function(name) {
+        if (!confirm(`Delete custom tool "${name}"?`)) return;
+        const customTools = loadCustomTools();
+        delete customTools[name];
+        saveCustomTools(customTools);
+        updateCustomToolsUI();
+        showToast(`Tool "${name}" deleted`);
+    };
+    
+    // ═══════════════════════════════════════════════════════════════════════════
     // INIT
     // ═══════════════════════════════════════════════════════════════════════════
     
@@ -2925,6 +3975,48 @@ ${getRingContext()}`;
     updateRingUI();
     updateScheduleUI();
     renderMessages();
+    
+    // Check for ?q= query parameter (iPhone shortcut support)
+    function checkForQueryParam() {
+        const url = new URL(window.location.href);
+        const query = url.searchParams.get('q');
+        
+        if (query) {
+            // Clear URL params without reload
+            window.history.replaceState({}, '', window.location.pathname);
+            
+            // Wait for agents to initialize, then send query
+            setTimeout(async () => {
+                if (state.agents.size === 0) {
+                    // Try to create default agent first
+                    await autoCreateDefaultAgent();
+                }
+                
+                if (state.agents.size > 0) {
+                    console.log('📱 Running query from URL param:', query);
+                    const targetAgent = state.activeAgentId || state.agents.keys().next().value;
+                    if (targetAgent) {
+                        runAgentMessage(targetAgent, query);
+                    }
+                } else {
+                    showToast('Add API key in Settings first');
+                }
+            }, 1500);
+        }
+    }
+    checkForQueryParam();
+    
+    // Check for ?import= param (encrypted settings sync)
+    checkForImportParam();
+    
+    // Update custom tools UI when tools tab is shown
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', (e) => {
+            if (e.target.textContent.trim() === 'Tools') {
+                updateCustomToolsUI();
+            }
+        });
+    });
     
     // Run auto-create after a short delay to ensure UI is ready
     setTimeout(autoCreateDefaultAgent, 100);
