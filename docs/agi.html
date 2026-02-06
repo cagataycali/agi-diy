@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#0a0a0a">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦆</text></svg>">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>◈</text></svg>">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -1919,18 +1919,14 @@
             
             // Handle broadcast command
             if (type === 'broadcast' || type === 'direct') {
-                // Skip if from ourselves (same instance)
-                if (from === this.instanceId) return;
-                
-                // For local messages, check active agent
-                if (source === 'local') {
-                    if (type === 'direct' && to !== state.activeAgentId) return;
-                    if (from === state.activeAgentId) return;
-                }
+                // Skip if from ourselves (same instance) - only for remote messages
+                if (source === 'remote' && from === this.instanceId) return;
                 
                 // Process with local agents
                 for (const [agentId, agentData] of state.agents) {
+                    // For direct messages, only process the target agent
                     if (type === 'direct' && agentId !== to) continue;
+                    // Never let an agent process its own message
                     if (from === agentId) continue;
                     
                     this.processIncomingCommand(agentId, from, turnId, data.command, source);
