@@ -250,7 +250,7 @@ Agent thinks while you're away.
 Paste in Settings → API → Additional Request Fields:
 ```json
 {
-  "thinking": { "type": "enabled", "budget_tokens": 10000 }
+  "thinking": { "type": "adaptive" }
 }
 ```
 

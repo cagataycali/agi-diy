@@ -1051,7 +1051,7 @@
                 </div>
                 <div class="form-group" id="spawnAdditionalFieldsGroup">
                     <label class="form-label">Additional Request Fields (JSON)</label>
-                    <textarea class="form-input" id="spawnAdditionalFields" rows="3" placeholder='{"thinking": {"type": "enabled", "budget_tokens": 10000}}'></textarea>
+                    <textarea class="form-input" id="spawnAdditionalFields" rows="3" placeholder='{"thinking": {"type": "adaptive"}}'></textarea>
                     <div class="form-hint">Extended thinking, betas, etc. For Anthropic/Bedrock.</div>
                 </div>
                 <div class="form-group">
@@ -1252,7 +1252,7 @@
                 </div>
                 <div class="form-group" id="editAdditionalFieldsGroup">
                     <label class="form-label">Additional Request Fields (JSON)</label>
-                    <textarea class="form-input" id="editAdditionalFields" rows="3" placeholder='{"thinking": {"type": "enabled", "budget_tokens": 10000}}'></textarea>
+                    <textarea class="form-input" id="editAdditionalFields" rows="3" placeholder='{"thinking": {"type": "adaptive"}}'></textarea>
                     <div class="form-hint">Extended thinking, betas, etc. For Anthropic/Bedrock.</div>
                 </div>
                 <div class="form-group">
@@ -1747,8 +1747,7 @@
     
     // Default additional request fields for bedrock (extended thinking)
     const DEFAULT_BEDROCK_ADDITIONAL_FIELDS = {
-        "anthropic_beta": ["interleaved-thinking-2025-05-14", "context-1m-2025-08-07"],
-        "thinking": {"type": "enabled", "budget_tokens": 2048}
+        "thinking": {"type": "adaptive"}
     };
     
     const DEFAULT_MAX_TOKENS = 60000;
