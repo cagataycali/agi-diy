@@ -2582,13 +2582,23 @@
     // list_agents - See available agents (local + remote)
     const listAgentsTool = tool({
         name: 'list_agents',
-        description: 'List all available agents (local and remote). Shows agent ID, location (local/remote), instance, and status.',
+        description: 'List all available agents with their roles and status. ALWAYS call this first before delegating tasks to know which agents exist and what they do.',
         inputSchema: z.object({
             includeRemote: z.boolean().optional().describe('Include remote agents from relay (default: true)')
         }),
         callback: async (input) => {
             const includeRemote = input?.includeRemote !== false;
             const agents = agentMesh.listAgents(includeRemote);
+            // Enrich local agents with role info from system prompt
+            for (const a of agents) {
+                if (a.location === 'local') {
+                    const data = state.agents.get(a.id);
+                    if (data?.config?.systemPrompt) {
+                        a.role = data.config.systemPrompt.substring(0, 150);
+                    }
+                    a.enabledTools = data?.config?.enabledTools || 'all';
+                }
+            }
             const localCount = agents.filter(a => a.location === 'local').length;
             const remoteCount = agents.filter(a => a.location === 'remote').length;
             return { 
@@ -2598,7 +2608,8 @@
                     remote: remoteCount,
                     total: agents.length,
                     relayConnected: agentMesh.wsConnected
-                }
+                },
+                hint: 'Use delegate_to_agent with targetAgent to send tasks to these agents'
             };
         }
     });
@@ -3149,12 +3160,12 @@ Example - create a tool that gets weather:
 
     const delegateToAgentTool = tool({
         name: 'delegate_to_agent',
-        description: 'Delegate a task to an agent. If targetAgent is provided, sends the task to that existing named agent. Otherwise creates a temporary child agent. Use for subtasks like planning, research, coding, analysis.',
+        description: 'REQUIRED: Delegate a task to another agent. You MUST use this tool to send work to other agents. Call list_agents first to see available agents, then provide targetAgent to route to them. Without targetAgent, creates a temporary child agent.',
         inputSchema: z.object({
             task: z.string().describe('The task/prompt for the agent'),
-            targetAgent: z.string().optional().describe('Name of an existing agent to delegate to (e.g. "kaa-planner", "kaa-coding")'),
-            systemPrompt: z.string().optional().describe('Optional system prompt override (only for child agents)'),
-            provider: z.string().optional().describe('Model provider override (anthropic/openai/bedrock)')
+            targetAgent: z.string().optional().describe('Name of an existing agent to route to. Call list_agents to discover available agents.'),
+            systemPrompt: z.string().optional().describe('System prompt override (only for temporary child agents)'),
+            provider: z.string().optional().describe('Model provider override')
         }),
         callback: async (input) => {
             const parentId = state.activeAgentId || 'main';
