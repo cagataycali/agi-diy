@@ -3436,7 +3436,34 @@ Example - create a tool that gets weather:
     // AGENT MANAGEMENT
     // ═══════════════════════════════════════════════════════════════════════════
     
-    window.spawnAgent = async function() {
+    window.spawnAgent = async function(idOrEvent, config) {
+        // Programmatic call: spawnAgent('name', { systemPrompt, provider, ... })
+        if (typeof idOrEvent === 'string' && config) {
+            const id = idOrEvent;
+            if (state.agents.has(id)) { console.warn('Agent ID exists:', id); return; }
+            const provider = config.provider || 'bedrock';
+            const modelId = config.modelId || undefined;
+            const systemPrompt = config.systemPrompt || 'You are a helpful AI assistant.';
+            const maxTokens = config.maxTokens || DEFAULT_MAX_TOKENS;
+            const additionalRequestFields = config.additionalRequestFields || null;
+            const enabledTools = config.enabledTools || null;
+            const toolChoice = config.toolChoice || null;
+            
+            const model = createModel(provider, { modelId, maxTokens, additionalRequestFields });
+            const selectedTools = (!enabledTools) ? TOOLS : TOOLS.filter(t => enabledTools.includes(t.name));
+            const customTools = buildCustomTools();
+            const agent = new Agent({ model, tools: [...selectedTools, ...customTools], systemPrompt: buildSystemPrompt(id, systemPrompt), printer: false });
+            const color = state.agentColors[state.colorIndex % state.agentColors.length];
+            state.colorIndex++;
+            state.agents.set(id, { agent, model, config: { provider, modelId, systemPrompt, maxTokens, additionalRequestFields, enabledTools, toolChoice }, messages: [], status: 'ready', color });
+            updateAgentUI();
+            selectAgent(id);
+            showToast(`Agent ${id} spawned`);
+            saveState();
+            return;
+        }
+        
+        // UI call: reads from DOM
         const id = document.getElementById('spawnId').value.trim();
         const provider = document.getElementById('spawnProvider').value;
         const modelId = document.getElementById('spawnModelId').value.trim();
@@ -3744,6 +3771,15 @@ ${getRingContext()}`;
                 conversationManager: new SummarizingManager(),
                 hooks: [new InterruptHook()]
             });
+            
+            // Inject toolChoice if configured (forces tool use)
+            if (agentData.config.toolChoice) {
+                const origFormat = model._formatRequest.bind(model);
+                model._formatRequest = (msgs, opts) => {
+                    opts = { ...opts, toolChoice: agentData.config.toolChoice };
+                    return origFormat(msgs, opts);
+                };
+            }
             
             // Inject conversation history from this agent's messages
             if (agentData.messages.length > 0) {
