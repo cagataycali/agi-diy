@@ -1056,6 +1056,15 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">Tools</label>
+                    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;">
+                        <button class="btn" onclick="selectToolGroup('all')" style="font-size:11px;padding:2px 8px;">All</button>
+                        <button class="btn" onclick="selectToolGroup('core')" style="font-size:11px;padding:2px 8px;">Core</button>
+                        <button class="btn" onclick="selectToolGroup('sandbox')" style="font-size:11px;padding:2px 8px;">Sandbox</button>
+                        <button class="btn" onclick="selectToolGroup('pipeline')" style="font-size:11px;padding:2px 8px;">Pipeline</button>
+                        <button class="btn" onclick="selectToolGroup('agents')" style="font-size:11px;padding:2px 8px;">Agents</button>
+                        <button class="btn" onclick="selectToolGroup('github')" style="font-size:11px;padding:2px 8px;">GitHub</button>
+                        <button class="btn" onclick="selectToolGroup('none')" style="font-size:11px;padding:2px 8px;">None</button>
+                    </div>
                     <div id="spawnToolsList" class="tools-grid"></div>
                 </div>
                 <div class="btn-group">
@@ -1104,6 +1113,11 @@
                             <option value="eu-west-1">eu-west-1</option>
                             <option value="ap-southeast-2">ap-southeast-2</option>
                         </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">GitHub Token (PAT or Device Flow)</label>
+                        <input type="password" class="form-input" id="githubToken" placeholder="ghp_... or click Authenticate">
+                        <button class="btn" onclick="githubDeviceFlow()" style="margin-top:4px;font-size:11px;">🔑 Authenticate via Device Flow</button>
                     </div>
                     <button class="btn btn-primary" onclick="saveCredentials()">Save Credentials</button>
                 </div>
@@ -1334,7 +1348,8 @@
         credentials: {
             anthropic: { apiKey: '', model: 'claude-opus-4-6' },
             openai: { apiKey: '', model: 'gpt-5.2-2025-12-11' },
-            bedrock: { apiKey: '', region: 'us-east-1', model: 'global.anthropic.claude-opus-4-6-v1' }
+            bedrock: { apiKey: '', region: 'us-east-1', model: 'global.anthropic.claude-opus-4-6-v1' },
+            github: { token: '' }
         },
         agentColors: ['#00ff88', '#00aaff', '#ff88ff', '#ffaa00', '#ff6666', '#88ffff'],
         colorIndex: 0
@@ -3237,6 +3252,136 @@ Example - create a tool that gets weather:
     // Make interrupt queue accessible for UI
     window.queueInterrupt = queueInterrupt;
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PHASE 6: GITHUB INTEGRATION
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    function ghToken() { return state.credentials.github?.token || ''; }
+    async function ghApi(path, opts = {}) {
+        const token = ghToken();
+        if (!token) throw new Error('GitHub not authenticated. Add a token in Settings or use Device Flow.');
+        const url = path.startsWith('http') ? path : `https://api.github.com${path}`;
+        const res = await fetch(url, { ...opts, headers: { Authorization: `token ${token}`, Accept: 'application/vnd.github.v3+json', 'Content-Type': 'application/json', ...opts.headers } });
+        if (!res.ok) throw new Error(`GitHub API ${res.status}: ${await res.text()}`);
+        return res.status === 204 ? {} : res.json();
+    }
+
+    // Device flow OAuth (requires a GitHub OAuth App client_id)
+    window.githubDeviceFlow = async function() {
+        const clientId = prompt('Enter your GitHub OAuth App Client ID (create at github.com/settings/developers):');
+        if (!clientId) return;
+        try {
+            const codeRes = await fetch('https://github.com/login/device/code', {
+                method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+                body: JSON.stringify({ client_id: clientId, scope: 'repo' })
+            }).then(r => r.json());
+            showToast(`Go to ${codeRes.verification_uri} and enter: ${codeRes.user_code}`, 30000);
+            addMessageToUI('system', `🔑 GitHub Device Flow: Go to **${codeRes.verification_uri}** and enter code: **${codeRes.user_code}**`);
+            // Poll for token
+            const interval = (codeRes.interval || 5) * 1000;
+            const poll = setInterval(async () => {
+                try {
+                    const tokenRes = await fetch('https://github.com/login/oauth/access_token', {
+                        method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ client_id: clientId, device_code: codeRes.device_code, grant_type: 'urn:ietf:params:oauth:grant-type:device_code' })
+                    }).then(r => r.json());
+                    if (tokenRes.access_token) {
+                        clearInterval(poll);
+                        state.credentials.github = { token: tokenRes.access_token };
+                        document.getElementById('githubToken').value = tokenRes.access_token;
+                        saveState();
+                        showToast('GitHub authenticated!');
+                        addMessageToUI('system', '✅ GitHub authenticated successfully');
+                    }
+                } catch {}
+            }, interval);
+            setTimeout(() => clearInterval(poll), (codeRes.expires_in || 900) * 1000);
+        } catch (e) { showToast('Device flow failed: ' + e.message); }
+    };
+
+    const githubSearchTool = tool({
+        name: 'github_search',
+        description: 'Search GitHub code, repos, issues, or PRs. Returns top results.',
+        inputSchema: z.object({ query: z.string(), type: z.enum(['code', 'repositories', 'issues']).optional() }),
+        callback: async (input) => {
+            const type = input.type || 'repositories';
+            const data = await ghApi(`/search/${type}?q=${encodeURIComponent(input.query)}&per_page=10`);
+            return { total: data.total_count, items: data.items?.map(i => ({ name: i.full_name || i.name, url: i.html_url, description: i.description })) };
+        }
+    });
+
+    const githubReadFileTool = tool({
+        name: 'github_read_file',
+        description: 'Read a file from a GitHub repo. Returns content decoded from base64.',
+        inputSchema: z.object({ owner: z.string(), repo: z.string(), path: z.string(), ref: z.string().optional() }),
+        callback: async (input) => {
+            const ref = input.ref ? `?ref=${input.ref}` : '';
+            const data = await ghApi(`/repos/${input.owner}/${input.repo}/contents/${input.path}${ref}`);
+            return { path: data.path, content: atob(data.content), size: data.size };
+        }
+    });
+
+    const githubListReposTool = tool({
+        name: 'github_list_repos',
+        description: 'List repos for authenticated user or a specified user/org.',
+        inputSchema: z.object({ owner: z.string().optional(), type: z.enum(['all', 'owner', 'member']).optional() }),
+        callback: async (input) => {
+            const path = input.owner ? `/users/${input.owner}/repos` : '/user/repos';
+            const data = await ghApi(`${path}?per_page=30&sort=updated&type=${input.type || 'all'}`);
+            return data.map(r => ({ name: r.full_name, description: r.description, url: r.html_url, stars: r.stargazers_count }));
+        }
+    });
+
+    const githubCreateIssueTool = tool({
+        name: 'github_create_issue',
+        description: 'Create a GitHub issue.',
+        inputSchema: z.object({ owner: z.string(), repo: z.string(), title: z.string(), body: z.string().optional(), labels: z.array(z.string()).optional() }),
+        callback: async (input) => {
+            const data = await ghApi(`/repos/${input.owner}/${input.repo}/issues`, { method: 'POST', body: JSON.stringify({ title: input.title, body: input.body, labels: input.labels }) });
+            return { number: data.number, url: data.html_url };
+        }
+    });
+
+    const githubListIssuesTool = tool({
+        name: 'github_list_issues',
+        description: 'List issues for a repo.',
+        inputSchema: z.object({ owner: z.string(), repo: z.string(), state: z.enum(['open', 'closed', 'all']).optional() }),
+        callback: async (input) => {
+            const data = await ghApi(`/repos/${input.owner}/${input.repo}/issues?state=${input.state || 'open'}&per_page=20`);
+            return data.map(i => ({ number: i.number, title: i.title, state: i.state, url: i.html_url, labels: i.labels?.map(l => l.name) }));
+        }
+    });
+
+    const githubCreatePrTool = tool({
+        name: 'github_create_pr',
+        description: 'Create a pull request. Also adds it as a pipeline completion card if a pipeline is active.',
+        inputSchema: z.object({ owner: z.string(), repo: z.string(), title: z.string(), body: z.string().optional(), head: z.string(), base: z.string().optional() }),
+        callback: async (input) => {
+            const data = await ghApi(`/repos/${input.owner}/${input.repo}/pulls`, { method: 'POST', body: JSON.stringify({ title: input.title, body: input.body, head: input.head, base: input.base || 'main' }) });
+            // Wire into pipeline completion cards
+            const pipelines = getPipelines(); const active = getActivePipeline();
+            if (active) {
+                if (!active.completionActions) active.completionActions = [];
+                active.completionActions.push({ label: `PR #${data.number}`, description: input.title, url: data.html_url });
+                savePipelines(pipelines); renderCompletionCards();
+            }
+            return { number: data.number, url: data.html_url };
+        }
+    });
+
+    const githubReadPrTool = tool({
+        name: 'github_read_pr',
+        description: 'Read PR details including diff stats and review status.',
+        inputSchema: z.object({ owner: z.string(), repo: z.string(), number: z.number() }),
+        callback: async (input) => {
+            const [pr, reviews] = await Promise.all([
+                ghApi(`/repos/${input.owner}/${input.repo}/pulls/${input.number}`),
+                ghApi(`/repos/${input.owner}/${input.repo}/pulls/${input.number}/reviews`)
+            ]);
+            return { title: pr.title, state: pr.state, mergeable: pr.mergeable, additions: pr.additions, deletions: pr.deletions, url: pr.html_url, reviews: reviews.map(r => ({ user: r.user?.login, state: r.state })) };
+        }
+    });
+
     const TOOLS = [
         // Core
         renderUiTool, javascriptEvalTool, storageGetTool, storageSetTool, fetchUrlTool, notifyTool,
@@ -3251,7 +3396,9 @@ Example - create a tool that gets weather:
         // Sandbox
         sandboxCreateTool, sandboxUpdateTool, sandboxReadTool, sandboxListTool, sandboxDeleteTool,
         // Delegation
-        delegateToAgentTool
+        delegateToAgentTool,
+        // GitHub
+        githubSearchTool, githubReadFileTool, githubListReposTool, githubCreateIssueTool, githubListIssuesTool, githubCreatePrTool, githubReadPrTool
     ];
     
     // ═══════════════════════════════════════════════════════════════════════════
@@ -3985,7 +4132,27 @@ ${getRingContext()}`;
             { name: 'list_agents', desc: 'List all agents' },
             { name: 'invoke_remote_agent', desc: 'Call remote agent' },
             { name: 'subscribe_topic', desc: 'Subscribe to topic' },
-            { name: 'publish_topic', desc: 'Publish to topic' }
+            { name: 'publish_topic', desc: 'Publish to topic' },
+            { name: 'create_pipeline', desc: 'Create pipeline' },
+            { name: 'read_pipeline', desc: 'Read pipeline' },
+            { name: 'add_task', desc: 'Add pipeline task' },
+            { name: 'update_task_status', desc: 'Update task status' },
+            { name: 'update_task_deps', desc: 'Update task deps' },
+            { name: 'complete_pipeline', desc: 'Complete pipeline' },
+            { name: 'emit_status', desc: 'Emit status update' },
+            { name: 'sandbox_create', desc: 'Create sandbox' },
+            { name: 'sandbox_update', desc: 'Update sandbox' },
+            { name: 'sandbox_read', desc: 'Read sandbox' },
+            { name: 'sandbox_list', desc: 'List sandboxes' },
+            { name: 'sandbox_delete', desc: 'Delete sandbox' },
+            { name: 'delegate_to_agent', desc: 'Delegate to child agent' },
+            { name: 'github_search', desc: 'Search GitHub' },
+            { name: 'github_read_file', desc: 'Read repo file' },
+            { name: 'github_list_repos', desc: 'List repos' },
+            { name: 'github_create_issue', desc: 'Create issue' },
+            { name: 'github_list_issues', desc: 'List issues' },
+            { name: 'github_create_pr', desc: 'Create PR' },
+            { name: 'github_read_pr', desc: 'Read PR details' }
         ];
         
         container.innerHTML = allTools.map(t => `
@@ -3998,6 +4165,23 @@ ${getRingContext()}`;
             </label>
         `).join('');
     }
+
+    const TOOL_GROUPS = {
+        core: ['render_ui','javascript_eval','storage_get','storage_set','fetch_url','notify','update_self','create_tool','list_tools','delete_tool'],
+        sandbox: ['sandbox_create','sandbox_update','sandbox_read','sandbox_list','sandbox_delete'],
+        pipeline: ['create_pipeline','read_pipeline','add_task','update_task_status','update_task_deps','complete_pipeline','emit_status'],
+        agents: ['use_agent','scheduler','invoke_agent','broadcast_to_agents','list_agents','invoke_remote_agent','subscribe_topic','publish_topic','delegate_to_agent'],
+        github: ['github_search','github_read_file','github_list_repos','github_create_issue','github_list_issues','github_create_pr','github_read_pr']
+    };
+
+    window.selectToolGroup = function(group) {
+        const boxes = document.querySelectorAll('#spawnToolsList input[name="spawn-tool"]');
+        if (group === 'all') { boxes.forEach(b => { b.checked = true; b.closest('.tool-item').classList.add('enabled'); }); return; }
+        if (group === 'none') { boxes.forEach(b => { b.checked = false; b.closest('.tool-item').classList.remove('enabled'); }); return; }
+        const names = TOOL_GROUPS[group] || [];
+        boxes.forEach(b => { b.checked = false; b.closest('.tool-item').classList.remove('enabled'); });
+        boxes.forEach(b => { if (names.includes(b.value)) { b.checked = true; b.closest('.tool-item').classList.add('enabled'); } });
+    };
     
     window.openEditAgentModal = function(agentId, event) {
         event.stopPropagation();
@@ -4166,6 +4350,7 @@ ${getRingContext()}`;
         document.getElementById('openaiKey').value = state.credentials.openai.apiKey;
         document.getElementById('bedrockKey').value = state.credentials.bedrock.apiKey;
         document.getElementById('bedrockRegion').value = state.credentials.bedrock.region;
+        document.getElementById('githubToken').value = state.credentials.github?.token || '';
         // Load network settings
         document.getElementById('relayUrl').value = localStorage.getItem('mesh_relay_url') || '';
         document.getElementById('instanceId').value = agentMesh.instanceId || '';
@@ -4275,6 +4460,7 @@ ${getRingContext()}`;
             document.getElementById('openaiKey').value = state.credentials.openai.apiKey || '';
             document.getElementById('bedrockKey').value = state.credentials.bedrock.apiKey || '';
             document.getElementById('bedrockRegion').value = state.credentials.bedrock.region || 'us-east-1';
+            document.getElementById('githubToken').value = state.credentials.github?.token || '';
             
             saveState();
             showToast('Settings imported!');
@@ -4311,6 +4497,8 @@ ${getRingContext()}`;
         state.credentials.openai.apiKey = document.getElementById('openaiKey').value.trim();
         state.credentials.bedrock.apiKey = document.getElementById('bedrockKey').value.trim();
         state.credentials.bedrock.region = document.getElementById('bedrockRegion').value;
+        state.credentials.github = state.credentials.github || {};
+        state.credentials.github.token = document.getElementById('githubToken').value.trim();
         saveState();
         showToast('Credentials saved');
         closeModal('settingsModal');
