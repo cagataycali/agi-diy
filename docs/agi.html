@@ -685,6 +685,7 @@
                 </div>
                 <div class="header-right">
                     <button class="header-btn" onclick="broadcastMessage()">📢 Broadcast</button>
+                    <button class="header-btn" onclick="clearChat()">🗑️ Clear</button>
                     <button class="header-btn" onclick="openSettingsModal()">⚙️ Settings</button>
                 </div>
             </header>
@@ -694,11 +695,11 @@
                     <div class="message system">
                         <div class="message-content">
                             <strong>Multi-Agent AGI</strong><br><br>
-                            Spawn multiple AI agents that run concurrently. Each agent has its own context but shares a ring buffer for coordination.<br><br>
+                            Start chatting immediately — a default agent is created with your saved credentials.<br><br>
                             • <strong>use_agent</strong>: Create sub-agents for parallel tasks<br>
                             • <strong>scheduler</strong>: Schedule recurring tasks with cron<br>
                             • <strong>Ring Attention</strong>: Agents share context automatically<br><br>
-                            Click "+ New Agent" to get started.
+                            Click "+ New Agent" to spawn additional agents, or ⚙️ Settings to configure API keys.
                         </div>
                     </div>
                 </div>
@@ -2323,6 +2324,63 @@ ${getRingContext()}`;
         }
     };
     
+    // Auto-create default agent if none exist and credentials are available
+    async function autoCreateDefaultAgent() {
+        if (state.agents.size > 0) return; // Already have agents
+        
+        // Check for any configured credentials
+        const hasAnthropic = state.credentials.anthropic.apiKey;
+        const hasOpenAI = state.credentials.openai.apiKey;
+        const hasBedrock = state.credentials.bedrock.apiKey;
+        
+        if (!hasAnthropic && !hasOpenAI && !hasBedrock) {
+            console.log('No API keys configured - please add credentials in settings');
+            return;
+        }
+        
+        // Determine which provider to use (priority: anthropic > openai > bedrock)
+        let provider = 'anthropic';
+        if (hasAnthropic) provider = 'anthropic';
+        else if (hasOpenAI) provider = 'openai';
+        else if (hasBedrock) provider = 'bedrock';
+        
+        try {
+            const model = createModel(provider);
+            const agent = new Agent({
+                model,
+                tools: TOOLS,
+                systemPrompt: buildSystemPrompt('assistant', 'You are AGI, a helpful AI assistant. You can spawn sub-agents, schedule tasks, and coordinate with other agents.'),
+                printer: false
+            });
+            
+            const color = state.agentColors[state.colorIndex % state.agentColors.length];
+            state.colorIndex++;
+            
+            state.agents.set('assistant', {
+                agent,
+                model,
+                config: { 
+                    provider, 
+                    systemPrompt: 'You are AGI, a helpful AI assistant. You can spawn sub-agents, schedule tasks, and coordinate with other agents.', 
+                    maxTokens: 4096 
+                },
+                messages: [],
+                status: 'ready',
+                color
+            });
+            
+            state.activeAgentId = 'assistant';
+            updateAgentUI();
+            renderMessages();
+            saveState();
+            
+            console.log('✅ Default agent "assistant" created automatically');
+            showToast('Default agent ready');
+        } catch (e) {
+            console.warn('Could not auto-create default agent:', e);
+        }
+    }
+    
     // ═══════════════════════════════════════════════════════════════════════════
     // MESSAGING
     // ═══════════════════════════════════════════════════════════════════════════
@@ -2398,6 +2456,29 @@ ${getRingContext()}`;
         if (!text) return;
         
         const target = document.getElementById('targetAgent').value;
+        
+        // If no agents exist, try to create default agent first
+        if (state.agents.size === 0) {
+            const hasAnyKey = state.credentials.anthropic.apiKey || 
+                              state.credentials.openai.apiKey || 
+                              state.credentials.bedrock.apiKey;
+            
+            if (!hasAnyKey) {
+                showToast('Add API key in Settings first');
+                openSettingsModal();
+                return;
+            }
+            
+            // Create default agent on the fly
+            showToast('Creating agent...');
+            await autoCreateDefaultAgent();
+            
+            if (state.agents.size === 0) {
+                showToast('Failed to create agent');
+                return;
+            }
+        }
+        
         input.value = '';
         
         if (target === 'all') {
@@ -2418,6 +2499,21 @@ ${getRingContext()}`;
         }
     };
     
+    window.clearChat = function() {
+        if (!state.activeAgentId) {
+            showToast('No active agent to clear');
+            return;
+        }
+        
+        const agentData = state.agents.get(state.activeAgentId);
+        if (agentData) {
+            agentData.messages = [];
+            renderMessages();
+            showToast('Chat cleared');
+            saveState();
+        }
+    };
+    
     window.handleKeyDown = function(e) {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
@@ -2434,7 +2530,12 @@ ${getRingContext()}`;
         inner.innerHTML = '';
         
         if (!state.activeAgentId) {
-            inner.innerHTML = '<div class="message system"><div class="message-content">Select or spawn an agent to start.</div></div>';
+            inner.innerHTML = `<div class="message system"><div class="message-content">
+                <strong>Getting Started</strong><br><br>
+                ${Object.values(state.credentials).some(c => c.apiKey) 
+                    ? 'Creating default agent... If this takes too long, try clicking "+ New Agent".'
+                    : 'Add your API key in ⚙️ Settings to start chatting, or click "+ New Agent" to configure a new agent.'}
+            </div></div>`;
             document.getElementById('currentAgentName').textContent = 'No Agent Selected';
             document.getElementById('currentAgentModel').textContent = '—';
             return;
@@ -2794,6 +2895,9 @@ ${getRingContext()}`;
     updateRingUI();
     updateScheduleUI();
     renderMessages();
+    
+    // Run auto-create after a short delay to ensure UI is ready
+    setTimeout(autoCreateDefaultAgent, 100);
     
     // Request notification permission
     if ('Notification' in window && Notification.permission === 'default') {
