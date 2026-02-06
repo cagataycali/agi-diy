@@ -3149,16 +3149,36 @@ Example - create a tool that gets weather:
 
     const delegateToAgentTool = tool({
         name: 'delegate_to_agent',
-        description: 'Delegate a task to a child agent. Creates a temporary agent that runs to completion and returns the result. Use for subtasks like research, coding, analysis. The child agent has the same tools as the parent.',
+        description: 'Delegate a task to an agent. If targetAgent is provided, sends the task to that existing named agent. Otherwise creates a temporary child agent. Use for subtasks like planning, research, coding, analysis.',
         inputSchema: z.object({
-            task: z.string().describe('The task/prompt for the child agent'),
-            systemPrompt: z.string().optional().describe('Optional system prompt override for the child'),
+            task: z.string().describe('The task/prompt for the agent'),
+            targetAgent: z.string().optional().describe('Name of an existing agent to delegate to (e.g. "kaa-planner", "kaa-coding")'),
+            systemPrompt: z.string().optional().describe('Optional system prompt override (only for child agents)'),
             provider: z.string().optional().describe('Model provider override (anthropic/openai/bedrock)')
         }),
         callback: async (input) => {
             const parentId = state.activeAgentId || 'main';
             const parentData = state.agents.get(parentId);
             if (!parentData) return { error: 'No active agent context' };
+
+            // Route to existing named agent
+            if (input.targetAgent) {
+                const target = state.agents.get(input.targetAgent);
+                if (!target) return { error: `Agent "${input.targetAgent}" not found` };
+                if (target.status !== 'ready') return { error: `Agent "${input.targetAgent}" is ${target.status}` };
+                addMessageToUI('system', `⏳ Delegating to ${input.targetAgent}...`, parentId, parentData.color);
+                try {
+                    const result = await runAgentMessage(input.targetAgent, input.task);
+                    const text = typeof result === 'string' ? result : (result?.message?.content?.[0]?.text || JSON.stringify(result));
+                    addMessageToUI('assistant', `✅ ${input.targetAgent} result:\n${text}`, parentId, parentData.color);
+                    return { agent: input.targetAgent, result: text };
+                } catch (e) {
+                    addMessageToUI('error', `❌ ${input.targetAgent} failed: ${e.message}`, parentId, parentData.color);
+                    return { error: e.message };
+                }
+            }
+
+            // Create temporary child agent
             const childId = `${parentId}-child-${Date.now().toString(36)}`;
             addMessageToUI('system', `⏳ Delegating to child agent: ${childId}`, parentId, parentData.color);
             try {
@@ -3777,6 +3797,7 @@ ${getRingContext()}`;
             
             agentData.status = 'ready';
             document.getElementById('interruptBtn').style.display = 'none';
+            return currentText;
         } catch (e) {
             console.error(`Agent ${agentId} error:`, e);
             agentData.status = 'error';
