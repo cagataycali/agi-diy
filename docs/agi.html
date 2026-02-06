@@ -799,6 +799,7 @@
             <div class="modal-body">
                 <div class="tabs">
                     <button class="tab active" onclick="showTab(event,'credentials')">API Keys</button>
+                    <button class="tab" onclick="showTab(event,'network')">Network</button>
                     <button class="tab" onclick="showTab(event,'tools')">Tools</button>
                     <button class="tab" onclick="showTab(event,'export')">Export</button>
                 </div>
@@ -828,12 +829,50 @@
                     <button class="btn btn-primary" onclick="saveCredentials()">Save Credentials</button>
                 </div>
                 
+                <div class="tab-content" id="tab-network">
+                    <div class="form-group">
+                        <label class="form-label">🌐 P2P Network Mode</label>
+                        <div style="font-size:12px;color:var(--text-tertiary);margin-bottom:12px;">
+                            Connect to remote agents via WebSocket relay. Local agents use BroadcastChannel automatically.
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Relay Server URL</label>
+                        <input type="text" class="form-input" id="relayUrl" placeholder="wss://your-relay.example.com">
+                        <div class="form-hint">WebSocket URL for cross-browser/device P2P</div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Instance ID</label>
+                        <input type="text" class="form-input" id="instanceId" placeholder="Leave blank for auto-generated">
+                        <div class="form-hint">Unique identifier for this browser instance</div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Connection Status</label>
+                        <div id="networkStatus" style="font-family:'SF Mono',monospace;font-size:12px;padding:12px;background:rgba(0,0,0,0.3);border-radius:8px;">
+                            <div>Local: <span style="color:#0f0">● BroadcastChannel active</span></div>
+                            <div>Remote: <span id="wsStatus" style="color:#f66">● Disconnected</span></div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Remote Peers</label>
+                        <div id="remotePeersList" style="font-size:12px;color:var(--text-tertiary);padding:8px;background:rgba(0,0,0,0.2);border-radius:6px;min-height:40px;">
+                            No remote peers connected
+                        </div>
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn btn-primary" onclick="connectRelay()">Connect</button>
+                        <button class="btn" onclick="disconnectRelay()">Disconnect</button>
+                    </div>
+                </div>
+                
                 <div class="tab-content" id="tab-tools">
                     <div class="form-group">
                         <label class="form-label">Built-in Tools</label>
                         <div style="font-size:12px;color:var(--text-secondary);line-height:2;">
-                            <code>render_ui</code> <code>javascript_eval</code> <code>storage_get</code> <code>storage_set</code> <code>fetch_url</code><br>
-                            <code>use_agent</code> <code>scheduler</code> <code>notify</code>
+                            <strong>Core:</strong> <code>render_ui</code> <code>javascript_eval</code> <code>storage_get</code> <code>storage_set</code> <code>fetch_url</code> <code>notify</code><br>
+                            <strong>Agents:</strong> <code>use_agent</code> <code>scheduler</code><br>
+                            <strong>Mesh:</strong> <code>invoke_agent</code> <code>broadcast_to_agents</code> <code>list_agents</code> <code>invoke_remote_agent</code><br>
+                            <strong>PubSub:</strong> <code>subscribe_topic</code> <code>publish_topic</code>
                         </div>
                     </div>
                     <div class="form-group">
@@ -1399,7 +1438,728 @@
         }
     });
     
-    const TOOLS = [renderUiTool, javascriptEvalTool, storageGetTool, storageSetTool, fetchUrlTool, notifyTool, useAgentTool, schedulerTool];
+    // ═══════════════════════════════════════════════════════════════════════════
+    // AGENT MESH - Hybrid P2P: BroadcastChannel (local) + WebSocket (remote)
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    const agentMesh = {
+        // Local mesh (same-origin tabs)
+        bus: new BroadcastChannel('agi-mesh'),
+        
+        // Remote mesh (WebSocket relay)
+        ws: null,
+        wsConnected: false,
+        instanceId: localStorage.getItem('mesh_instance_id') || `agi-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,6)}`,
+        remotePeers: new Map(), // instanceId -> { agents: [], lastSeen, hostname }
+        heartbeatInterval: null,
+        
+        // Shared state
+        pendingRequests: new Map(),
+        messageLog: [],
+        
+        init() {
+            // Save instance ID
+            localStorage.setItem('mesh_instance_id', this.instanceId);
+            
+            // Local mesh
+            this.bus.onmessage = (e) => this.handleMessage(e.data, 'local');
+            
+            // Auto-connect if relay URL saved
+            const savedRelay = localStorage.getItem('mesh_relay_url');
+            if (savedRelay) {
+                setTimeout(() => this.connectRelay(savedRelay), 1000);
+            }
+            
+            console.log(`🔗 Agent mesh initialized (instance: ${this.instanceId})`);
+        },
+        
+        // ─────────────────────────────────────────────────────────────────────────
+        // WebSocket Relay Connection
+        // ─────────────────────────────────────────────────────────────────────────
+        
+        connectRelay(url) {
+            if (this.ws) this.disconnectRelay();
+            
+            try {
+                this.ws = new WebSocket(url);
+                
+                this.ws.onopen = () => {
+                    this.wsConnected = true;
+                    console.log('🌐 WebSocket relay connected');
+                    this.updateWsStatus(true);
+                    
+                    // Send presence announcement
+                    this.sendRemote({
+                        type: 'presence',
+                        from: this.instanceId,
+                        data: {
+                            agents: [...state.agents.keys()],
+                            hostname: location.hostname,
+                            timestamp: Date.now()
+                        }
+                    });
+                    
+                    // Start heartbeat
+                    this.heartbeatInterval = setInterval(() => {
+                        if (this.wsConnected) {
+                            this.sendRemote({
+                                type: 'heartbeat',
+                                from: this.instanceId,
+                                data: { agents: [...state.agents.keys()], timestamp: Date.now() }
+                            });
+                            // Clean stale peers (no heartbeat in 30s)
+                            const now = Date.now();
+                            for (const [id, peer] of this.remotePeers) {
+                                if (now - peer.lastSeen > 30000) {
+                                    this.remotePeers.delete(id);
+                                }
+                            }
+                            this.updateRemotePeersUI();
+                        }
+                    }, 10000);
+                    
+                    localStorage.setItem('mesh_relay_url', url);
+                    showToast('Relay connected');
+                };
+                
+                this.ws.onmessage = (e) => {
+                    try {
+                        const msg = JSON.parse(e.data);
+                        if (msg.from !== this.instanceId) {
+                            this.handleMessage(msg, 'remote');
+                        }
+                    } catch (err) {
+                        console.warn('Invalid relay message:', err);
+                    }
+                };
+                
+                this.ws.onclose = () => {
+                    this.wsConnected = false;
+                    this.updateWsStatus(false);
+                    if (this.heartbeatInterval) {
+                        clearInterval(this.heartbeatInterval);
+                        this.heartbeatInterval = null;
+                    }
+                    console.log('🌐 WebSocket relay disconnected');
+                };
+                
+                this.ws.onerror = (err) => {
+                    console.error('WebSocket error:', err);
+                    showToast('Relay connection failed');
+                };
+                
+            } catch (err) {
+                console.error('Failed to connect relay:', err);
+                showToast('Invalid relay URL');
+            }
+        },
+        
+        disconnectRelay() {
+            if (this.ws) {
+                this.ws.close();
+                this.ws = null;
+            }
+            this.wsConnected = false;
+            this.remotePeers.clear();
+            if (this.heartbeatInterval) {
+                clearInterval(this.heartbeatInterval);
+                this.heartbeatInterval = null;
+            }
+            this.updateWsStatus(false);
+            this.updateRemotePeersUI();
+            showToast('Relay disconnected');
+        },
+        
+        sendRemote(msg) {
+            if (this.ws && this.wsConnected) {
+                this.ws.send(JSON.stringify(msg));
+            }
+        },
+        
+        updateWsStatus(connected) {
+            const el = document.getElementById('wsStatus');
+            if (el) {
+                el.innerHTML = connected 
+                    ? '<span style="color:#0f0">● Connected</span>'
+                    : '<span style="color:#f66">● Disconnected</span>';
+            }
+        },
+        
+        updateRemotePeersUI() {
+            const el = document.getElementById('remotePeersList');
+            if (!el) return;
+            
+            if (this.remotePeers.size === 0) {
+                el.innerHTML = 'No remote peers connected';
+                return;
+            }
+            
+            const peerHtml = [...this.remotePeers.entries()].map(([id, peer]) => {
+                const agentCount = peer.agents?.length || 0;
+                const age = Math.round((Date.now() - peer.lastSeen) / 1000);
+                return `<div style="margin-bottom:4px;">
+                    <span style="color:#0f0">●</span> ${id.slice(0,12)}... 
+                    <span style="color:var(--text-tertiary)">(${agentCount} agents, ${age}s ago)</span>
+                </div>`;
+            }).join('');
+            
+            el.innerHTML = peerHtml;
+        },
+        
+        // ─────────────────────────────────────────────────────────────────────────
+        // Message Handling (both local and remote)
+        // ─────────────────────────────────────────────────────────────────────────
+        
+        handleMessage(msg, source) {
+            const { type, from, to, turnId, data, timestamp } = msg;
+            
+            // Log for watching
+            this.messageLog.push({ type, from, to, turnId, source, data: typeof data === 'string' ? data.slice(0, 100) : data, timestamp });
+            if (this.messageLog.length > 200) this.messageLog.shift();
+            updateMeshLog();
+            
+            // Handle presence/heartbeat from remote peers
+            if ((type === 'presence' || type === 'heartbeat') && source === 'remote') {
+                this.remotePeers.set(from, {
+                    agents: data.agents || [],
+                    hostname: data.hostname || 'unknown',
+                    lastSeen: Date.now()
+                });
+                this.updateRemotePeersUI();
+                return;
+            }
+            
+            // Handle broadcast command
+            if (type === 'broadcast' || type === 'direct') {
+                // Skip if from ourselves (same instance)
+                if (from === this.instanceId) return;
+                
+                // For local messages, check active agent
+                if (source === 'local') {
+                    if (type === 'direct' && to !== state.activeAgentId) return;
+                    if (from === state.activeAgentId) return;
+                }
+                
+                // Process with local agents
+                for (const [agentId, agentData] of state.agents) {
+                    if (type === 'direct' && agentId !== to) continue;
+                    if (from === agentId) continue;
+                    
+                    this.processIncomingCommand(agentId, from, turnId, data.command, source);
+                }
+                return;
+            }
+            
+            // Handle response streams
+            if (type === 'stream' || type === 'ack' || type === 'turn_end' || type === 'error') {
+                const pending = this.pendingRequests.get(turnId);
+                if (!pending) return;
+                
+                if (type === 'stream') {
+                    if (!pending.streamed[from]) pending.streamed[from] = '';
+                    pending.streamed[from] += data.chunk;
+                    updateStreamingResponse(turnId, from, pending.streamed[from]);
+                }
+                else if (type === 'ack') {
+                    addMeshEvent(from, 'Processing...', 'ack');
+                }
+                else if (type === 'turn_end') {
+                    pending.responses.push({ from, result: data.result, chunks: data.chunks });
+                    pending.completed++;
+                    if (pending.completed >= pending.expected || pending.timeout) {
+                        pending.resolve(pending);
+                    }
+                }
+                else if (type === 'error') {
+                    pending.responses.push({ from, error: data.error });
+                    pending.completed++;
+                }
+            }
+        },
+        
+        async processIncomingCommand(agentId, fromId, turnId, command, source) {
+            const agentData = state.agents.get(agentId);
+            if (!agentData) return;
+            
+            // Send ACK
+            this.publish({ type: 'ack', from: agentId, to: fromId, turnId, timestamp: Date.now() });
+            
+            agentData.status = 'processing';
+            updateAgentUI();
+            
+            try {
+                let fullText = '';
+                let chunkCount = 0;
+                
+                const sourceLabel = source === 'remote' ? `[Remote: ${fromId}]` : `[From agent ${fromId}]`;
+                
+                for await (const event of agentData.agent.stream(`${sourceLabel}: ${command}`)) {
+                    if (event?.type === 'modelContentBlockDeltaEvent' && event.delta?.type === 'textDelta') {
+                        fullText += event.delta.text;
+                        chunkCount++;
+                        this.publish({
+                            type: 'stream',
+                            from: agentId,
+                            to: fromId,
+                            turnId,
+                            data: { chunk: event.delta.text, chunkNum: chunkCount },
+                            timestamp: Date.now()
+                        });
+                    }
+                }
+                
+                this.publish({
+                    type: 'turn_end',
+                    from: agentId,
+                    to: fromId,
+                    turnId,
+                    data: { result: fullText, chunks: chunkCount },
+                    timestamp: Date.now()
+                });
+                
+                agentData.messages.push({ role: 'user', content: `${sourceLabel}: ${command}`, timestamp: Date.now() });
+                agentData.messages.push({ role: 'assistant', content: fullText, timestamp: Date.now() });
+                
+                state.ringBuffer.push({ agentId, role: 'assistant', content: fullText, timestamp: Date.now() });
+                updateRingUI();
+                
+            } catch (e) {
+                this.publish({
+                    type: 'error',
+                    from: agentId,
+                    to: fromId,
+                    turnId,
+                    data: { error: e.message },
+                    timestamp: Date.now()
+                });
+            }
+            
+            agentData.status = 'ready';
+            updateAgentUI();
+        },
+        
+        // ─────────────────────────────────────────────────────────────────────────
+        // Publishing (bridges local and remote)
+        // ─────────────────────────────────────────────────────────────────────────
+        
+        publish(msg) {
+            // Always publish to local BroadcastChannel
+            this.bus.postMessage(msg);
+            
+            // Also publish to WebSocket relay if connected
+            if (this.wsConnected) {
+                this.sendRemote({ ...msg, instanceId: this.instanceId });
+            }
+            
+            // Handle locally for same-tab agents
+            setTimeout(() => this.handleMessage(msg, 'local'), 0);
+        },
+        
+        // ─────────────────────────────────────────────────────────────────────────
+        // High-level API
+        // ─────────────────────────────────────────────────────────────────────────
+        
+        async broadcast(fromAgentId, command, waitTime = 30) {
+            const turnId = crypto.randomUUID().slice(0, 8);
+            
+            // Count local + remote agents
+            let peerCount = state.agents.size - 1;
+            for (const [, peer] of this.remotePeers) {
+                peerCount += peer.agents?.length || 0;
+            }
+            
+            if (peerCount === 0) {
+                return { error: 'No other agents to broadcast to' };
+            }
+            
+            return new Promise((resolve) => {
+                const pending = {
+                    resolve,
+                    responses: [],
+                    streamed: {},
+                    completed: 0,
+                    expected: peerCount,
+                    timeout: false
+                };
+                this.pendingRequests.set(turnId, pending);
+                
+                // Publish broadcast
+                this.publish({
+                    type: 'broadcast',
+                    from: fromAgentId,
+                    turnId,
+                    data: { command },
+                    timestamp: Date.now()
+                });
+                
+                // Timeout
+                setTimeout(() => {
+                    pending.timeout = true;
+                    resolve(pending);
+                    this.pendingRequests.delete(turnId);
+                }, waitTime * 1000);
+            });
+        },
+        
+        async sendTo(fromAgentId, toAgentId, command, waitTime = 60) {
+            const turnId = crypto.randomUUID().slice(0, 8);
+            
+            if (!state.agents.has(toAgentId)) {
+                return { error: `Agent ${toAgentId} not found` };
+            }
+            
+            return new Promise((resolve) => {
+                const pending = {
+                    resolve,
+                    responses: [],
+                    streamed: {},
+                    completed: 0,
+                    expected: 1,
+                    timeout: false
+                };
+                this.pendingRequests.set(turnId, pending);
+                
+                // Publish direct message
+                this.publish({
+                    type: 'direct',
+                    from: fromAgentId,
+                    to: toAgentId,
+                    turnId,
+                    data: { command },
+                    timestamp: Date.now()
+                });
+                
+                // Timeout
+                setTimeout(() => {
+                    pending.timeout = true;
+                    resolve(pending);
+                    this.pendingRequests.delete(turnId);
+                }, waitTime * 1000);
+            });
+        },
+        
+        listAgents(includeRemote = true) {
+            const agents = [];
+            
+            // Local agents
+            for (const [id, data] of state.agents) {
+                agents.push({
+                    id,
+                    location: 'local',
+                    instanceId: this.instanceId,
+                    status: data.status,
+                    provider: data.config.provider,
+                    model: data.config.modelId || 'default',
+                    messageCount: data.messages.length
+                });
+            }
+            
+            // Remote agents
+            if (includeRemote) {
+                for (const [instanceId, peer] of this.remotePeers) {
+                    for (const agentId of peer.agents || []) {
+                        agents.push({
+                            id: agentId,
+                            location: 'remote',
+                            instanceId: instanceId,
+                            hostname: peer.hostname,
+                            lastSeen: peer.lastSeen
+                        });
+                    }
+                }
+            }
+            
+            return agents;
+        },
+        
+        // Send to remote instance
+        async sendToRemoteAgent(fromAgentId, targetInstanceId, targetAgentId, command, waitTime = 60) {
+            if (!this.wsConnected) {
+                return { error: 'Not connected to relay' };
+            }
+            
+            const peer = this.remotePeers.get(targetInstanceId);
+            if (!peer || !peer.agents.includes(targetAgentId)) {
+                return { error: `Remote agent ${targetAgentId}@${targetInstanceId} not found` };
+            }
+            
+            const turnId = crypto.randomUUID().slice(0, 8);
+            
+            return new Promise((resolve) => {
+                const pending = {
+                    resolve,
+                    responses: [],
+                    streamed: {},
+                    completed: 0,
+                    expected: 1,
+                    timeout: false
+                };
+                this.pendingRequests.set(turnId, pending);
+                
+                // Send direct to remote
+                this.sendRemote({
+                    type: 'direct',
+                    from: fromAgentId,
+                    to: targetAgentId,
+                    instanceId: this.instanceId,
+                    targetInstanceId: targetInstanceId,
+                    turnId,
+                    data: { command },
+                    timestamp: Date.now()
+                });
+                
+                setTimeout(() => {
+                    pending.timeout = true;
+                    resolve(pending);
+                    this.pendingRequests.delete(turnId);
+                }, waitTime * 1000);
+            });
+        }
+    };
+    
+    // Initialize mesh
+    agentMesh.init();
+    
+    // Mesh UI helpers
+    function updateMeshLog() {
+        // Update ring panel with recent mesh activity
+        const recent = agentMesh.messageLog.slice(-10).reverse();
+        const meshHtml = recent.map(m => {
+            const icon = m.type === 'broadcast' ? '📢' : m.type === 'direct' ? '📨' : m.type === 'stream' ? '📡' : m.type === 'turn_end' ? '✅' : '•';
+            return `<div style="font-size:10px;color:var(--text-tertiary);margin-bottom:4px;">${icon} ${m.from}${m.to ? '→' + m.to : ''}: ${m.type}</div>`;
+        }).join('');
+        
+        const meshSection = document.getElementById('meshActivity');
+        if (meshSection) meshSection.innerHTML = meshHtml || '<div style="font-size:10px;color:var(--text-tertiary);">No mesh activity</div>';
+    }
+    
+    function updateStreamingResponse(turnId, from, text) {
+        // Show streaming in a special area or update existing message
+        const el = document.getElementById(`mesh-stream-${turnId}-${from}`);
+        if (el) {
+            el.querySelector('.markdown-content').innerHTML = marked.parse(text);
+        }
+    }
+    
+    function addMeshEvent(agentId, message, type) {
+        const color = state.agents.get(agentId)?.color || '#888';
+        showToast(`🔗 ${agentId}: ${message}`);
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // MESH TOOLS - Agent-to-Agent Communication
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    // invoke_agent - Call another agent and get response
+    const invokeAgentTool = tool({
+        name: 'invoke_agent',
+        description: 'Send a message to another agent and wait for their response. Use this to delegate tasks or collaborate with other agents.',
+        inputSchema: z.object({
+            targetAgentId: z.string().describe('ID of the agent to invoke'),
+            message: z.string().describe('Message/command to send'),
+            waitTime: z.number().optional().describe('Max seconds to wait (default: 60)')
+        }),
+        callback: async (input, { agent }) => {
+            // Find which agent is calling this
+            let callerAgentId = state.activeAgentId;
+            for (const [id, data] of state.agents) {
+                if (data.agent === agent) {
+                    callerAgentId = id;
+                    break;
+                }
+            }
+            
+            if (!state.agents.has(input.targetAgentId)) {
+                return { error: `Agent '${input.targetAgentId}' not found`, available: [...state.agents.keys()] };
+            }
+            
+            if (input.targetAgentId === callerAgentId) {
+                return { error: 'Cannot invoke yourself' };
+            }
+            
+            const result = await agentMesh.sendTo(callerAgentId, input.targetAgentId, input.message, input.waitTime || 60);
+            
+            if (result.error) return { error: result.error };
+            
+            const response = result.responses[0];
+            if (response?.error) return { error: response.error };
+            
+            return {
+                success: true,
+                from: input.targetAgentId,
+                response: result.streamed[input.targetAgentId] || response?.result || 'No response',
+                chunks: response?.chunks || 0
+            };
+        }
+    });
+    
+    // broadcast_to_agents - Send to all agents
+    const broadcastToAgentsTool = tool({
+        name: 'broadcast_to_agents',
+        description: 'Broadcast a message to ALL other agents. Each will process and respond.',
+        inputSchema: z.object({
+            message: z.string().describe('Message to broadcast'),
+            waitTime: z.number().optional().describe('Max seconds to wait (default: 30)')
+        }),
+        callback: async (input, { agent }) => {
+            let callerAgentId = state.activeAgentId;
+            for (const [id, data] of state.agents) {
+                if (data.agent === agent) {
+                    callerAgentId = id;
+                    break;
+                }
+            }
+            
+            const result = await agentMesh.broadcast(callerAgentId, input.message, input.waitTime || 30);
+            
+            if (result.error) return { error: result.error };
+            
+            const responses = [];
+            for (const [agentId, text] of Object.entries(result.streamed)) {
+                responses.push({ agentId, response: text });
+            }
+            for (const r of result.responses) {
+                if (r.result && !result.streamed[r.from]) {
+                    responses.push({ agentId: r.from, response: r.result });
+                }
+            }
+            
+            return {
+                success: true,
+                broadcastedTo: state.agents.size - 1,
+                responses
+            };
+        }
+    });
+    
+    // list_agents - See available agents (local + remote)
+    const listAgentsTool = tool({
+        name: 'list_agents',
+        description: 'List all available agents (local and remote). Shows agent ID, location (local/remote), instance, and status.',
+        inputSchema: z.object({
+            includeRemote: z.boolean().optional().describe('Include remote agents from relay (default: true)')
+        }),
+        callback: async (input) => {
+            const includeRemote = input?.includeRemote !== false;
+            const agents = agentMesh.listAgents(includeRemote);
+            const localCount = agents.filter(a => a.location === 'local').length;
+            const remoteCount = agents.filter(a => a.location === 'remote').length;
+            return { 
+                agents,
+                summary: {
+                    local: localCount,
+                    remote: remoteCount,
+                    total: agents.length,
+                    relayConnected: agentMesh.wsConnected
+                }
+            };
+        }
+    });
+    
+    // invoke_remote_agent - Call an agent on a remote instance
+    const invokeRemoteAgentTool = tool({
+        name: 'invoke_remote_agent',
+        description: 'Send a message to an agent running on a different browser/device via the relay server. Use list_agents to see remote agents first.',
+        inputSchema: z.object({
+            instanceId: z.string().describe('Remote instance ID (from list_agents)'),
+            agentId: z.string().describe('Agent ID on the remote instance'),
+            message: z.string().describe('Message to send'),
+            waitTime: z.number().optional().describe('Seconds to wait for response (default: 60)')
+        }),
+        callback: async (input, { agent }) => {
+            // Find caller agent
+            let callerAgentId = state.activeAgentId;
+            for (const [id, data] of state.agents) {
+                if (data.agent === agent) {
+                    callerAgentId = id;
+                    break;
+                }
+            }
+            
+            const result = await agentMesh.sendToRemoteAgent(
+                callerAgentId,
+                input.instanceId,
+                input.agentId,
+                input.message,
+                input.waitTime || 60
+            );
+            
+            if (result.error) return { error: result.error };
+            
+            const response = result.responses[0];
+            if (response?.error) return { error: response.error };
+            
+            return {
+                success: true,
+                from: `${input.agentId}@${input.instanceId}`,
+                response: result.streamed[input.agentId] || response?.result || 'No response'
+            };
+        }
+    });
+    
+    // subscribe_topic - Watch for messages on a topic
+    const subscribeTopicTool = tool({
+        name: 'subscribe_topic',
+        description: 'Subscribe to a topic to receive messages. Creates a listener that triggers on new messages.',
+        inputSchema: z.object({
+            topic: z.string().describe('Topic name to subscribe to'),
+            handler: z.string().describe('JavaScript code to run when message received (receives msg parameter)')
+        }),
+        callback: async (input) => {
+            // Store subscription
+            if (!state.subscriptions) state.subscriptions = new Map();
+            
+            const subId = `sub-${Date.now()}`;
+            state.subscriptions.set(subId, {
+                topic: input.topic,
+                handler: new Function('msg', input.handler)
+            });
+            
+            return { success: true, subscriptionId: subId, topic: input.topic };
+        }
+    });
+    
+    // publish_topic - Publish to a topic
+    const publishTopicTool = tool({
+        name: 'publish_topic',
+        description: 'Publish a message to a topic. All subscribers will receive it.',
+        inputSchema: z.object({
+            topic: z.string().describe('Topic name'),
+            message: z.any().describe('Message to publish (string or object)')
+        }),
+        callback: async (input) => {
+            agentMesh.publish({
+                type: 'topic',
+                topic: input.topic,
+                data: input.message,
+                timestamp: Date.now()
+            });
+            
+            // Notify local subscribers
+            if (state.subscriptions) {
+                for (const [id, sub] of state.subscriptions) {
+                    if (sub.topic === input.topic) {
+                        try {
+                            sub.handler(input.message);
+                        } catch (e) {
+                            console.error(`Subscription ${id} error:`, e);
+                        }
+                    }
+                }
+            }
+            
+            return { success: true, topic: input.topic };
+        }
+    });
+    
+    const TOOLS = [
+        // Core
+        renderUiTool, javascriptEvalTool, storageGetTool, storageSetTool, fetchUrlTool, notifyTool,
+        // Agent management
+        useAgentTool, schedulerTool,
+        // Mesh communication (local + remote)
+        invokeAgentTool, broadcastToAgentsTool, listAgentsTool, invokeRemoteAgentTool, subscribeTopicTool, publishTopicTool
+    ];
     
     // ═══════════════════════════════════════════════════════════════════════════
     // AGENT MANAGEMENT
@@ -1833,6 +2593,11 @@ ${getRingContext()}`;
         document.getElementById('openaiKey').value = state.credentials.openai.apiKey;
         document.getElementById('bedrockKey').value = state.credentials.bedrock.apiKey;
         document.getElementById('bedrockRegion').value = state.credentials.bedrock.region;
+        // Load network settings
+        document.getElementById('relayUrl').value = localStorage.getItem('mesh_relay_url') || '';
+        document.getElementById('instanceId').value = agentMesh.instanceId || '';
+        agentMesh.updateWsStatus(agentMesh.wsConnected);
+        agentMesh.updateRemotePeersUI();
         document.getElementById('settingsModal').classList.add('active');
     };
     window.closeModal = (id) => document.getElementById(id).classList.remove('active');
@@ -1864,6 +2629,29 @@ ${getRingContext()}`;
         saveState();
         showToast('Credentials saved');
         closeModal('settingsModal');
+    };
+    
+    // Network relay functions
+    window.connectRelay = function() {
+        const url = document.getElementById('relayUrl').value.trim();
+        const instanceId = document.getElementById('instanceId').value.trim();
+        
+        if (!url) {
+            showToast('Enter relay URL');
+            return;
+        }
+        
+        if (instanceId) {
+            agentMesh.instanceId = instanceId;
+            localStorage.setItem('mesh_instance_id', instanceId);
+        }
+        
+        agentMesh.connectRelay(url);
+    };
+    
+    window.disconnectRelay = function() {
+        agentMesh.disconnectRelay();
+        localStorage.removeItem('mesh_relay_url');
     };
     
     function saveState() {
