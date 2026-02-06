@@ -4001,6 +4001,7 @@ ${getRingContext()}`;
     
     function updateRingUI() {
         const container = document.getElementById('ringContent');
+        if (!container) return;
         const recent = state.ringBuffer.slice(-20).reverse();
         
         if (recent.length === 0) {
