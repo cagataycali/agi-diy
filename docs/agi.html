@@ -147,8 +147,11 @@
             cursor: pointer;
             color: rgba(255,100,100,0.6);
             transition: opacity 0.2s;
+            padding: 4px;
+            -webkit-tap-highlight-color: transparent;
         }
         .agent-card:hover .agent-kill { opacity: 1; }
+        .agent-card.active .agent-kill { opacity: 1; } /* Show on active/selected */
         .agent-kill:hover { color: rgba(255,100,100,1); }
         .agent-edit {
             opacity: 0;
@@ -156,9 +159,19 @@
             color: var(--text-tertiary);
             transition: opacity 0.2s;
             margin-right: 8px;
+            padding: 4px;
+            -webkit-tap-highlight-color: transparent;
         }
         .agent-card:hover .agent-edit { opacity: 1; }
+        .agent-card.active .agent-edit { opacity: 1; } /* Show on active/selected */
         .agent-edit:hover { color: var(--text); }
+        
+        /* Mobile: always show edit/kill buttons */
+        @media (max-width: 900px) {
+            .agent-kill, .agent-edit { opacity: 0.7; }
+            .agent-card.active .agent-kill,
+            .agent-card.active .agent-edit { opacity: 1; }
+        }
         
         /* Tools Grid */
         .tools-grid {
