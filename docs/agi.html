@@ -1440,7 +1440,7 @@
 
     function getPipelines() { try { return JSON.parse(localStorage.getItem('agi_pipelines') || '{}'); } catch { return {}; } }
     function savePipelines(p) { localStorage.setItem('agi_pipelines', JSON.stringify(p)); }
-    function getActivePipeline() { const p = getPipelines(); const keys = Object.keys(p); return keys.length ? p[keys[keys.length - 1]] : null; }
+    function getActivePipeline(pipelines) { const p = pipelines || getPipelines(); const keys = Object.keys(p); return keys.length ? p[keys[keys.length - 1]] : null; }
 
     function getReadyTasks(pipeline) {
         return pipeline.tasks.filter(t => t.status === 'pending' && t.dependsOn.every(d => pipeline.tasks.find(x => x.id === d)?.status === 'done'));
@@ -3233,7 +3233,7 @@ Example - create a tool that gets weather:
         name: 'add_task', description: 'Add a task to the active pipeline (for new requirements or review fixes).',
         inputSchema: z.object({ id: z.string(), name: z.string(), dependsOn: z.array(z.string()).default([]), color: z.string().optional() }),
         callback: async (input) => {
-            const pipelines = getPipelines(); const p = getActivePipeline();
+            const pipelines = getPipelines(); const p = getActivePipeline(pipelines);
             if (!p) return { error: 'No active pipeline' };
             p.tasks.push({ id: input.id, name: input.name, dependsOn: input.dependsOn, status: 'pending', assignedTo: null, color: input.color || TASK_COLORS[input.id] || TASK_COLORS.custom, activities: [] });
             savePipelines(pipelines); updatePipelineUI();
@@ -3245,7 +3245,7 @@ Example - create a tool that gets weather:
         name: 'update_task_status', description: 'Update a pipeline task status and optionally add an activity message.',
         inputSchema: z.object({ taskId: z.string(), status: z.enum(['pending', 'working', 'done', 'success', 'error', 'failed', 'partial']), agentId: z.string().optional(), activity: z.string().optional() }),
         callback: async (input) => {
-            const pipelines = getPipelines(); const p = getActivePipeline();
+            const pipelines = getPipelines(); const p = getActivePipeline(pipelines);
             if (!p) return { error: 'No active pipeline' };
             const task = p.tasks.find(t => t.id === input.taskId);
             if (!task) return { error: 'Task not found' };
@@ -3262,7 +3262,7 @@ Example - create a tool that gets weather:
         name: 'update_task_deps', description: 'Change a task\'s dependencies (e.g. for review cycles).',
         inputSchema: z.object({ taskId: z.string(), dependsOn: z.array(z.string()) }),
         callback: async (input) => {
-            const pipelines = getPipelines(); const p = getActivePipeline();
+            const pipelines = getPipelines(); const p = getActivePipeline(pipelines);
             if (!p) return { error: 'No active pipeline' };
             const task = p.tasks.find(t => t.id === input.taskId);
             if (!task) return { error: 'Task not found' };
@@ -3276,7 +3276,7 @@ Example - create a tool that gets weather:
         name: 'complete_pipeline', description: 'Mark pipeline complete and set action cards.',
         inputSchema: z.object({ actions: z.array(z.object({ label: z.string(), description: z.string().optional(), url: z.string().optional() })).optional() }),
         callback: async (input) => {
-            const pipelines = getPipelines(); const p = getActivePipeline();
+            const pipelines = getPipelines(); const p = getActivePipeline(pipelines);
             if (!p) return { error: 'No active pipeline' };
             p.completionActions = input.actions || [];
             savePipelines(pipelines); updatePipelineUI();
@@ -3288,7 +3288,7 @@ Example - create a tool that gets weather:
         name: 'emit_status', description: 'Emit a short status update for the pipeline activity log. Keep under 100 chars.',
         inputSchema: z.object({ taskId: z.string(), text: z.string(), done: z.boolean().optional() }),
         callback: async (input) => {
-            const pipelines = getPipelines(); const p = getActivePipeline();
+            const pipelines = getPipelines(); const p = getActivePipeline(pipelines);
             if (!p) return { error: 'No active pipeline' };
             const task = p.tasks.find(t => t.id === input.taskId);
             if (!task) return { error: 'Task not found' };
@@ -3557,7 +3557,7 @@ Example - create a tool that gets weather:
         callback: async (input) => {
             const data = await ghApi(`/repos/${input.owner}/${input.repo}/pulls`, { method: 'POST', body: JSON.stringify({ title: input.title, body: input.body, head: input.head, base: input.base || 'main' }) });
             // Wire into pipeline completion cards
-            const pipelines = getPipelines(); const active = getActivePipeline();
+            const pipelines = getPipelines(); const active = getActivePipeline(pipelines);
             if (active) {
                 if (!active.completionActions) active.completionActions = [];
                 active.completionActions.push({ label: `PR #${data.number}`, description: input.title, url: data.html_url });
