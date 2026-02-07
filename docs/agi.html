@@ -1678,7 +1678,13 @@
             
             // Add additional request fields (thinking, etc.)
             if (additionalRequestFields) {
-                body.additionalModelRequestFields = additionalRequestFields;
+                // Thinking conflicts with forced toolChoice - strip it
+                if (options?.toolChoice) {
+                    const { thinking, ...rest } = additionalRequestFields;
+                    if (Object.keys(rest).length > 0) body.additionalModelRequestFields = rest;
+                } else {
+                    body.additionalModelRequestFields = additionalRequestFields;
+                }
             }
             
             const response = await fetch(`https://bedrock-runtime.${region}.amazonaws.com/model/${encodeURIComponent(modelId)}/converse-stream`, {
