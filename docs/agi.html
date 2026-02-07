@@ -916,6 +916,15 @@
         .pf-edge.done { border-color: #00ff88; }
         .pf-edge.working { border-color: var(--task-color, #ffaa00); border-style: solid; }
         .pf-back { position: absolute; border: 1px dashed #ff6666; border-radius: 0 0 8px 8px; pointer-events: none; }
+        /* Preview mode — sandbox as background, chat overlays */
+        #previewBackground { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1; pointer-events: none; }
+        #previewBackground iframe { width: 100%; height: 100%; border: none; }
+        body.preview-mode, body.preview-mode .app, body.preview-mode .messages-container, body.preview-mode .messages-inner { background: transparent !important; }
+        body.preview-mode .header, body.preview-mode .input-field, body.preview-mode .send-btn, body.preview-mode .message.system, body.preview-mode .tool-block, body.preview-mode .dynamic-ui { background: rgba(0,0,0,0.75) !important; backdrop-filter: none !important; }
+        body.preview-mode .message.assistant .message-content { background: rgba(0,0,0,0.6); padding: 12px 16px; border-radius: 12px; }
+        body.preview-mode .sidebar, body.preview-mode .pipeline-panel { background: rgba(10,10,15,0.9) !important; }
+        body.preview-mode .pipeline-flow { background: rgba(0,0,0,0.75) !important; }
+        body.preview-mode .input-container { background: transparent !important; }
         /* Sandbox */
         .sandbox-wrap { margin: 8px 0; border: 1px solid var(--glass-border); border-radius: 8px; overflow: hidden; }
         .sandbox-header { display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; background: var(--glass); font-size: 12px; color: var(--text-secondary); }
@@ -924,6 +933,7 @@
     </style>
 </head>
 <body>
+    <div id="previewBackground"></div>
     <div class="app">
         <!-- Sidebar -->
         <aside class="sidebar">
@@ -964,6 +974,7 @@
                     <a href="index.html" class="header-btn" title="Single Agent Mode">◈ single</a>
                     <button class="header-btn" onclick="broadcastMessage()">📢 Broadcast</button>
                     <button class="header-btn" onclick="clearChat()">🗑️ Clear</button>
+                    <button class="header-btn" id="previewToggle" onclick="togglePreviewMode()" title="Toggle app preview background">🖼️ Preview</button>
                     <button class="header-btn" onclick="openSettingsModal()">⚙️ Settings</button>
                 </div>
             </header>
@@ -1447,11 +1458,10 @@
         if (!pipeline || !pipeline.tasks.length) { el.classList.remove('active'); el.innerHTML = ''; return; }
         el.classList.add('active');
         const sorted = topoSort(pipeline.tasks);
-        // Compute layers via BFS depth
-        const depth = {};
-        sorted.forEach(t => { depth[t.id] = t.dependsOn.length ? Math.max(...t.dependsOn.map(d => (depth[d] || 0) + 1)) : 0; });
+        const idxMap = {}; sorted.forEach((t, i) => idxMap[t.id] = i);
         const inner = document.createElement('div');
         inner.className = 'pipeline-flow-inner';
+        const nodeEls = [];
         sorted.forEach((task, i) => {
             if (i > 0) {
                 const edge = document.createElement('span');
@@ -1460,12 +1470,35 @@
             }
             const node = document.createElement('span');
             node.className = 'pf-node ' + task.status;
+            node.dataset.idx = i;
             if (task.status === 'working') node.style.setProperty('--task-color', task.color || '#ffaa00');
             node.textContent = task.name;
             inner.appendChild(node);
+            nodeEls.push(node);
         });
         el.innerHTML = '';
         el.appendChild(inner);
+        // Draw back-lines for deps that go backward (iteration)
+        requestAnimationFrame(() => {
+            sorted.forEach((task, i) => {
+                task.dependsOn.forEach(depId => {
+                    const di = idxMap[depId];
+                    if (di !== undefined && di > i) {
+                        const from = nodeEls[i], to = nodeEls[di];
+                        if (!from || !to) return;
+                        const pr = inner.getBoundingClientRect(), fr = from.getBoundingClientRect(), tr = to.getBoundingClientRect();
+                        const line = document.createElement('div');
+                        line.className = 'pf-back';
+                        line.style.left = (fr.left - pr.left + fr.width / 2) + 'px';
+                        line.style.width = (tr.left - fr.left) + 'px';
+                        line.style.top = (fr.bottom - pr.top + 2) + 'px';
+                        line.style.height = '10px';
+                        line.style.borderTop = 'none';
+                        inner.appendChild(line);
+                    }
+                });
+            });
+        });
     }
     
     // ═══════════════════════════════════════════════════════════════════════════
@@ -3182,6 +3215,17 @@ Example - create a tool that gets weather:
     // SANDBOX TOOLS
     // ═══════════════════════════════════════════════════════════════════════════
 
+    let latestSandboxId = null;
+    window.togglePreviewMode = function() {
+        const bg = document.getElementById('previewBackground');
+        const isActive = document.body.classList.toggle('preview-mode');
+        document.getElementById('previewToggle').style.color = isActive ? '#00ff88' : '';
+        if (isActive && latestSandboxId) {
+            const sb = getSandboxes()[latestSandboxId];
+            if (sb) { bg.innerHTML = ''; const f = document.createElement('iframe'); f.sandbox = 'allow-scripts'; f.style.cssText = 'width:100%;height:100%;border:none;'; f.srcdoc = `<!DOCTYPE html><html><head><style>${sb.css||''}</style></head><body>${sb.html||''}<script>${sb.js||''}<\/script></body></html>`; bg.appendChild(f); }
+        } else { bg.innerHTML = ''; }
+    };
+
     function getSandboxes() { try { return JSON.parse(localStorage.getItem('agi_sandboxes') || '{}'); } catch { return {}; } }
     function saveSandboxes(s) { localStorage.setItem('agi_sandboxes', JSON.stringify(s)); }
 
@@ -3209,6 +3253,7 @@ Example - create a tool that gets weather:
             const container = document.getElementById('messagesInner');
             if (container) container.appendChild(renderSandboxIframe(sandbox));
             scrollToBottom();
+            latestSandboxId = id;
             return { created: id, name: input.name };
         }
     });
@@ -3229,6 +3274,7 @@ Example - create a tool that gets weather:
             const container = document.getElementById('messagesInner');
             if (container) container.appendChild(renderSandboxIframe(sb));
             scrollToBottom();
+            latestSandboxId = input.id;
             return { updated: input.id };
         }
     });
