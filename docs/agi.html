@@ -1509,6 +1509,11 @@
         });
         el.innerHTML = '';
         el.appendChild(inner);
+        // Scroll active (working/pending) box into view, prefer working
+        requestAnimationFrame(() => {
+            const target = inner.querySelector('.pf-node.working') || inner.querySelector('.pf-node.pending');
+            if (target) target.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        });
         // Draw back-lines for deps that go backward (iteration)
         requestAnimationFrame(() => {
             sorted.forEach((task, i) => {
