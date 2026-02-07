@@ -3950,10 +3950,12 @@ ${getRingContext()}`;
                     if (shouldShow) updateStreaming(currentText, agentId, agentData.color);
                 }
                 else if (event.type === 'beforeToolCallEvent' && shouldShow) {
+                    // Finalize current streaming so next text appears after tool block
+                    if (streamingEls.has(agentId)) { finalizeStreaming(currentText, agentId, agentData.color); }
                     addToolCall(event.toolUse?.name, event.toolUse?.input, 'running');
                 }
                 else if (event.type === 'afterToolCallEvent' && shouldShow) {
-                    updateToolStatus(event.toolUse?.name, event.result?.status || 'success');
+                    updateToolStatus(event.toolUse?.name, event.result?.status || 'success', event.result);
                 }
             }
             
@@ -4259,11 +4261,19 @@ ${getRingContext()}`;
         appendActivityFeed(state.activeAgentId || 'system', `🔧 ${name}`, 'tool');
     }
     
-    function updateToolStatus(name, status) {
+    function updateToolStatus(name, status, result) {
         const blocks = document.querySelectorAll('.tool-block');
         for (let i = blocks.length - 1; i >= 0; i--) {
             if (blocks[i].querySelector('.tool-name')?.textContent === name) {
                 blocks[i].querySelector('.tool-status').className = `tool-status ${status === 'error' ? 'error' : ''}`;
+                if (result) {
+                    const out = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
+                    if (out && out.length > 2) {
+                        const d = document.createElement('details');
+                        d.innerHTML = `<summary style="cursor:pointer;color:var(--text-tertiary);font-size:10px;margin-top:4px;">output</summary><div class="tool-input">${escapeHtml(out.substring(0, 2000))}</div>`;
+                        blocks[i].appendChild(d);
+                    }
+                }
                 break;
             }
         }
