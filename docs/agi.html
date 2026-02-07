@@ -3949,13 +3949,15 @@ ${getRingContext()}`;
                     currentText += event.delta.text;
                     if (shouldShow) updateStreaming(currentText, agentId, agentData.color);
                 }
-                else if (event.type === 'beforeToolCallEvent' && shouldShow) {
-                    // Finalize current streaming so next text appears after tool block
-                    if (streamingEls.has(agentId)) { finalizeStreaming(currentText, agentId, agentData.color); }
-                    addToolCall(event.toolUse?.name, event.toolUse?.input, 'running');
+                else if (event.type === 'beforeToolCallEvent') {
+                    if (shouldShow) {
+                        if (streamingEls.has(agentId)) { finalizeStreaming(currentText, agentId, agentData.color); }
+                        addToolCall(event.toolUse?.name, event.toolUse?.input, 'running');
+                    }
+                    appendActivityFeed(agentId, `🔧 ${event.toolUse?.name}`, 'tool');
                 }
-                else if (event.type === 'afterToolCallEvent' && shouldShow) {
-                    updateToolStatus(event.toolUse?.name, event.result?.status || 'success', event.result);
+                else if (event.type === 'afterToolCallEvent') {
+                    if (shouldShow) updateToolStatus(event.toolUse?.name, event.result?.status || 'success', event.result);
                 }
             }
             
@@ -3964,6 +3966,7 @@ ${getRingContext()}`;
                 removeThinking();
                 if (currentText) finalizeStreaming(currentText, agentId, agentData.color);
             }
+            if (currentText) appendActivityFeed(agentId, currentText.replace(/[#*`]/g, '').substring(0, 200));
             
             agentData.messages.push({ role: 'assistant', content: currentText, timestamp: Date.now() });
             
@@ -4207,7 +4210,6 @@ ${getRingContext()}`;
         
         inner.appendChild(msg);
         if (scroll) scrollToBottom();
-        if (role === 'assistant' && content) appendActivityFeed(agentId, content.replace(/[#*`]/g, '').substring(0, 200));
     }
     
     function updateStreaming(text, agentId, color) {
@@ -4258,7 +4260,6 @@ ${getRingContext()}`;
         `;
         inner.appendChild(tool);
         scrollToBottom();
-        appendActivityFeed(state.activeAgentId || 'system', `🔧 ${name}`, 'tool');
     }
     
     function updateToolStatus(name, status, result) {
