@@ -2498,9 +2498,12 @@
                     data: { error: e.message },
                     timestamp: Date.now()
                 });
+                console.error(`Agent ${agentId} processIncomingCommand error:`, e);
+                agentData.status = 'error';
+                appendActivityFeed(agentId, `❌ Error: ${e.message}`, 'msg');
             }
             
-            agentData.status = 'ready';
+            if (agentData.status !== 'error') agentData.status = 'ready';
             updateAgentUI();
             updatePipelineUI(); // Refresh pipeline in case tools modified it
         },
@@ -2754,7 +2757,7 @@
             return {
                 success: true,
                 from: input.targetAgentId,
-                response: result.streamed[input.targetAgentId] || response?.result || 'No response',
+                response: (result.streamed[input.targetAgentId] || response?.result || 'No response').substring(0, 50000),
                 chunks: response?.chunks || 0
             };
         }
@@ -3993,6 +3996,7 @@ ${getRingContext()}`;
         
         try {
             let currentText = '';
+            const watchdog = setTimeout(() => { console.error(`⏰ Agent ${agentId} timeout`); ac.abort(); }, 300000);
             
             for await (const event of activeAgent.stream(message)) {
                 if (ac.signal.aborted) break;
@@ -4045,17 +4049,22 @@ ${getRingContext()}`;
             updateRingUI();
             
             agentData.status = 'ready';
+            abortControllers.delete(agentId);
+            clearTimeout(watchdog);
             document.getElementById('interruptBtn').style.display = 'none';
             return currentText;
         } catch (e) {
             console.error(`Agent ${agentId} error:`, e);
             agentData.status = 'error';
+            abortControllers.delete(agentId);
+            clearTimeout(watchdog);
             document.getElementById('interruptBtn').style.display = 'none';
             
             if (shouldShow) {
                 removeThinking();
                 addMessageToUI('error', e.message, agentId, agentData.color);
             }
+            appendActivityFeed(agentId, `❌ Error: ${e.message}`, 'msg');
         }
         
         updateAgentUI();
@@ -4219,8 +4228,7 @@ ${getRingContext()}`;
         const feed = document.getElementById('activityFeed');
         if (!feed) return;
         const filter = document.getElementById('activityFilter')?.value;
-        if (filter && filter.startsWith('task:')) return; // don't append while viewing task
-        if (filter && filter !== 'all' && filter !== agentId) return;
+        if (filter && filter !== 'all' && filter !== agentId && !filter.startsWith('task:')) return;
         renderActivityEntry(feed, activityLog[activityLog.length - 1]);
         feed.scrollTop = feed.scrollHeight;
     }
@@ -4264,7 +4272,8 @@ ${getRingContext()}`;
     function appendToolOutput(entry) {
         const idx = activityLog.indexOf(entry);
         const el = idx >= 0 ? document.getElementById('af-' + idx) : null;
-        if (!el || !entry.extra?.output) return;
+        if (!el) { if (entry.extra?.output) console.warn('appendToolOutput: DOM element not found for af-' + idx); return; }
+        if (!entry.extra?.output) return;
         const d = document.createElement('details');
         const out = typeof entry.extra.output === 'string' ? entry.extra.output : JSON.stringify(entry.extra.output, null, 2);
         d.innerHTML = `<summary style="cursor:pointer;color:var(--text-tertiary);font-size:10px;margin-top:4px">output</summary><div class="tool-input">${escapeHtml(out.substring(0, 2000))}</div>`;
