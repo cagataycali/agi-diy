@@ -991,6 +991,7 @@
                     <a href="index.html" class="header-btn" title="Single Agent Mode">◈ single</a>
                     <button class="header-btn" onclick="broadcastMessage()">📢 Broadcast</button>
                     <button class="header-btn" onclick="clearChat()">🗑️ Clear</button>
+                    <button class="header-btn" onclick="clearAllChats()">🗑️ Clear All</button>
                     <button class="header-btn" id="previewToggle" onclick="togglePreviewMode()" title="Toggle app preview background">🖼️ Preview</button>
                     <button class="header-btn" onclick="openSettingsModal()">⚙️ Settings</button>
                 </div>
@@ -2468,7 +2469,7 @@
                     }
                     else if (event?.type === 'afterToolCallEvent') {
                         const last = activityLog.findLast(e => e.type === 'tool' && e.agentId === agentId);
-                        if (last && event.result) last.extra = { ...last.extra, output: event.result };
+                        if (last && event.result) { last.extra = { ...last.extra, output: event.result }; appendToolOutput(last); }
                     }
                 }
                 
@@ -4014,9 +4015,12 @@ ${getRingContext()}`;
                 }
                 else if (event.type === 'afterToolCallEvent') {
                     if (shouldShow) updateToolStatus(event.toolUse?.toolUseId, event.toolUse?.name, event.result?.status || 'success', event.result);
-                    // Update last tool entry in activity log with output
+                    // Update last tool entry in activity log + DOM with output
                     const last = activityLog.findLast(e => e.type === 'tool' && e.agentId === agentId);
-                    if (last && event.result) last.extra = { ...last.extra, output: event.result };
+                    if (last && event.result) {
+                        last.extra = { ...last.extra, output: event.result };
+                        appendToolOutput(last);
+                    }
                 }
             }
             
@@ -4135,6 +4139,23 @@ ${getRingContext()}`;
         }
     };
     
+    window.clearAllChats = function() {
+        for (const [id, ac] of abortControllers) ac.abort();
+        abortControllers.clear();
+        for (const [id, data] of state.agents) { data.status = 'ready'; data.messages = []; }
+        localStorage.removeItem('agi_pipelines');
+        updatePipelineUI();
+        updateAgentUI();
+        renderMessages();
+        activityLog.length = 0;
+        const feed = document.getElementById('activityFeed');
+        if (feed) { feed.innerHTML = ''; feed._lastAgent = null; }
+        const sel = document.getElementById('activityFilter');
+        if (sel) { sel.value = 'all'; updateActivityFilterOptions(); }
+        saveState();
+        showToast('All cleared');
+    };
+
     window.sendInterrupt = function() {
         const input = document.getElementById('inputField');
         const text = input.value.trim();
@@ -4207,8 +4228,10 @@ ${getRingContext()}`;
             feed.appendChild(h);
             feed._lastAgent = entry.agentId;
         }
+        const idx = activityLog.indexOf(entry);
         const line = document.createElement('div');
         line.className = entry.type === 'tool' ? 'af-tool tool-block' : 'af-msg';
+        if (idx >= 0) line.id = 'af-' + idx;
         line.style.setProperty('--agent-color', entry.color);
         if (entry.type === 'tool' && entry.extra) {
             const hdr = document.createElement('div');
@@ -4230,6 +4253,16 @@ ${getRingContext()}`;
             line.textContent = entry.text.length > 500 ? entry.text.substring(0, 500) + '…' : entry.text;
         }
         feed.appendChild(line);
+    }
+
+    function appendToolOutput(entry) {
+        const idx = activityLog.indexOf(entry);
+        const el = idx >= 0 ? document.getElementById('af-' + idx) : null;
+        if (!el || !entry.extra?.output) return;
+        const d = document.createElement('details');
+        const out = typeof entry.extra.output === 'string' ? entry.extra.output : JSON.stringify(entry.extra.output, null, 2);
+        d.innerHTML = `<summary style="cursor:pointer;color:var(--text-tertiary);font-size:10px;margin-top:4px">output</summary><div class="tool-input">${escapeHtml(out.substring(0, 2000))}</div>`;
+        el.appendChild(d);
     }
 
     function filterActivityFeed() {
@@ -5120,6 +5153,12 @@ ${getRingContext()}`;
     loadState();
     updateAgentUI();
     updateRingUI();
+    
+    // Periodic pipeline refresh while agents are processing
+    setInterval(() => {
+        const anyProcessing = [...state.agents.values()].some(a => a.status === 'processing');
+        if (anyProcessing) updatePipelineUI();
+    }, 2000);
     updateScheduleUI();
     renderMessages();
     updatePipelineUI();
