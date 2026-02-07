@@ -3962,8 +3962,10 @@ ${getRingContext()}`;
                 }
                 else if (event.type === 'beforeToolCallEvent') {
                     if (shouldShow) {
-                        if (streamingEls.has(agentId)) { finalizeStreaming(currentText, agentId, agentData.color); }
                         addToolCall(event.toolUse?.name, event.toolUse?.input, 'running');
+                        // Move streaming element after tool block so text stays in one place
+                        const se = streamingEls.get(agentId);
+                        if (se) document.getElementById('messagesInner').appendChild(se);
                     }
                     appendActivityFeed(agentId, `🔧 ${event.toolUse?.name}`, 'tool');
                 }
