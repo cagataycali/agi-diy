@@ -2420,7 +2420,7 @@
                     addMeshEvent(from, 'Processing...', 'ack');
                 }
                 else if (type === 'turn_end') {
-                    pending.responses.push({ from, result: data.result, chunks: data.chunks });
+                    pending.responses.push({ from, result: data.result, lastResponse: data.lastResponse, chunks: data.chunks });
                     pending.completed++;
                     if (pending.completed >= pending.expected || pending.timeout) {
                         pending.resolve(pending);
@@ -2445,6 +2445,7 @@
             
             try {
                 let fullText = '';
+                let lastTextStart = 0;
                 let chunkCount = 0;
                 
                 const sourceLabel = source === 'remote' ? `[Remote: ${fromId}]` : `[From agent ${fromId}]`;
@@ -2463,6 +2464,7 @@
                         });
                     }
                     else if (event?.type === 'beforeToolCallEvent') {
+                        lastTextStart = fullText.length;
                         const tn = event.toolUse?.name, ti = event.toolUse?.input;
                         const fl = tn === 'invoke_agent' && ti?.targetAgentId ? `🔧 invoke_agent → ${ti.targetAgentId}` : `🔧 ${tn}`;
                         appendActivityFeed(agentId, fl, 'tool', { input: ti });
@@ -2478,7 +2480,7 @@
                     from: agentId,
                     to: fromId,
                     turnId,
-                    data: { result: fullText, chunks: chunkCount },
+                    data: { result: fullText, lastResponse: fullText.slice(lastTextStart), chunks: chunkCount },
                     timestamp: Date.now()
                 });
                 
@@ -2755,12 +2757,11 @@
             if (response?.error) return { error: response.error };
             
             const fullResponse = result.streamed[input.targetAgentId] || response?.result || 'No response';
-            // Return only the tail — the sub-agent's final summary, not its full narration
-            const trimmed = fullResponse.length > 2000 ? '...' + fullResponse.slice(-2000) : fullResponse;
+            // Return the sub-agent's last text response (after final tool call), not full narration
             return {
                 success: true,
                 from: input.targetAgentId,
-                response: trimmed,
+                response: response?.lastResponse || fullResponse.slice(-2000),
                 chunks: response?.chunks || 0
             };
         }
