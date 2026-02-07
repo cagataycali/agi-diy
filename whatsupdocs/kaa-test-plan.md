@@ -161,6 +161,22 @@ Poll agent state every 30-60 seconds:
 
 ## Previous Test Results
 
+### Test 3 (2026-02-07, commit 2186704)
+- Pipeline persistence fix (double-parse bug in getActivePipeline)
+- Sidebar now shows current task name when agent is processing
+- Full flow: kaa-chat → kaa-planner (14 tasks) → kaa-coding (all 14 done) ✅
+- Pipeline boxes updated: pending → working → done ✅
+- Activity feed showed tool calls with inputs and outputs ✅
+- Tool names correct (add_task, update_task_status, read_pipeline) ✅
+
+### Test 2 (2026-02-07, commit 561f31b)
+- kaa-chat called list_agents, invoked planner, then coding ✅
+- kaa-planner created 14-task pipeline ✅
+- kaa-coding called update_task_status successfully ✅
+- Pipeline boxes stayed "pending" despite successful tool calls ❌
+- Root cause: getActivePipeline() double-parse bug — mutations on detached object
+- Fixed in commit 8c1f902
+
 ### Test 1 (before fixes)
 - kaa-chat DID call list_agents and invoke_agent ✅
 - kaa-planner DID create a pipeline with 8 tasks across 7 layers ✅
@@ -169,16 +185,10 @@ Poll agent state every 30-60 seconds:
 - Pipeline side panel never updated ❌ (same root cause)
 - Sandbox rendered inline but too small ❌
 
-### Root Cause
-Spawn configs used wrong tool names:
-- `add_pipeline_task` → should be `add_task`
-- `update_pipeline_task` → should be `update_task_status`
-- `get_pipeline` → should be `read_pipeline`
-
-These are fixed in this test plan.
-
 ## Changes Since Last Test
 
-- `af1bdfc`: Preview mode (sandbox as background) + pipeline back-lines
-- `9c6ec65`: Pipeline flow visualization above chat + larger sandbox (500px/80vh)
-- `9804589`: Model catalog with autocomplete + per-model feature flags
+- `2186704`: Sidebar shows current task name when agent is processing
+- `8c1f902`: Fix pipeline task updates not persisting (double-parse bug)
+- `e9fcaa8`: Clear All button, appendToolOutput, pipeline polling refresh
+- `561f31b`: Pipeline refresh after invoke, message direction colors
+- `a5d4a67`: Rich activity feed with tool input/output details
