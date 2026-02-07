@@ -245,12 +245,16 @@
         .schedule-delete:hover { color: rgba(255,100,100,1); }
         
         /* Main Area */
-        .main {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            min-width: 0;
-        }
+        .content-area { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+        .content-panels { flex: 1; display: flex; min-height: 0; }
+        .chat-panel { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+        .activity-panel { width: 380px; flex-shrink: 0; border-left: 1px solid var(--divider); display: flex; flex-direction: column; overflow: hidden; }
+        .activity-panel-header { padding: 12px 16px; font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .05em; border-bottom: 1px solid var(--divider); }
+        .activity-feed { flex: 1; overflow-y: auto; padding: 8px 12px; font-size: 12px; }
+        .activity-feed .af-agent { font-weight: 600; margin-top: 8px; padding: 2px 0; }
+        .activity-feed .af-agent:first-child { margin-top: 0; }
+        .activity-feed .af-msg { color: #ccc; padding: 1px 0 1px 8px; border-left: 2px solid var(--agent-color, #555); line-height: 1.5; }
+        .activity-feed .af-tool { color: #888; padding: 1px 0 1px 8px; border-left: 2px solid var(--agent-color, #555); font-style: italic; }
         
         /* Header */
         .header {
@@ -922,14 +926,14 @@
         body.preview-mode, body.preview-mode .app, body.preview-mode .messages-container, body.preview-mode .messages-inner { background: transparent !important; }
         body.preview-mode .header, body.preview-mode .input-field, body.preview-mode .send-btn, body.preview-mode .message.system, body.preview-mode .tool-block, body.preview-mode .dynamic-ui { background: rgba(0,0,0,0.75) !important; backdrop-filter: none !important; }
         body.preview-mode .message.assistant .message-content { background: rgba(0,0,0,0.6); padding: 12px 16px; border-radius: 12px; }
-        body.preview-mode .sidebar, body.preview-mode .pipeline-panel { background: rgba(10,10,15,0.9) !important; }
+        body.preview-mode .sidebar, body.preview-mode .activity-panel { background: rgba(10,10,15,0.9) !important; }
         body.preview-mode .pipeline-flow { background: rgba(0,0,0,0.75) !important; }
         body.preview-mode .input-container { background: transparent !important; }
         /* Sandbox */
         .sandbox-wrap { margin: 8px 0; border: 1px solid var(--glass-border); border-radius: 8px; overflow: hidden; }
         .sandbox-header { display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; background: var(--glass); font-size: 12px; color: var(--text-secondary); }
         .sandbox-header button { background: none; border: none; color: var(--text-tertiary); cursor: pointer; font-size: 14px; }
-        @media (max-width: 1100px) { .pipeline-panel { display: none; } }
+        @media (max-width: 1100px) { .activity-panel { display: none; } }
     </style>
 </head>
 <body>
@@ -960,8 +964,8 @@
             </div>
         </aside>
         
-        <!-- Main -->
-        <main class="main">
+        <!-- Content Area -->
+        <div class="content-area">
             <header class="header">
                 <div class="header-left">
                     <button class="mobile-menu-btn" onclick="toggleMobileSidebar()">☰</button>
@@ -980,50 +984,53 @@
             </header>
             
             <div class="pipeline-flow" id="pipelineFlow"></div>
-            <div class="messages-container" id="messagesContainer">
-                <div class="messages-inner" id="messagesInner">
-                    <div class="message system">
-                        <div class="message-content">
-                            <strong>Multi-Agent AGI</strong><br><br>
-                            Start chatting immediately — a default agent is created with your saved credentials.<br><br>
-                            • <strong>use_agent</strong>: Create sub-agents for parallel tasks<br>
-                            • <strong>scheduler</strong>: Schedule recurring tasks with cron<br>
-                            • <strong>create_tool</strong>: Build new tools at runtime<br>
-                            • <strong>update_self</strong>: Modify agent system prompts<br>
-                            • <strong>Ring Attention</strong>: Agents share context automatically<br><br>
-                            Click "+ New Agent" to spawn additional agents, or ⚙️ Settings to configure API keys.
+            <div class="content-panels">
+                <main class="chat-panel">
+                    <div class="messages-container" id="messagesContainer">
+                        <div class="messages-inner" id="messagesInner">
+                            <div class="message system">
+                                <div class="message-content">
+                                    <strong>Multi-Agent AGI</strong><br><br>
+                                    Start chatting immediately — a default agent is created with your saved credentials.<br><br>
+                                    • <strong>use_agent</strong>: Create sub-agents for parallel tasks<br>
+                                    • <strong>scheduler</strong>: Schedule recurring tasks with cron<br>
+                                    • <strong>create_tool</strong>: Build new tools at runtime<br>
+                                    • <strong>update_self</strong>: Modify agent system prompts<br>
+                                    • <strong>Ring Attention</strong>: Agents share context automatically<br><br>
+                                    Click "+ New Agent" to spawn additional agents, or ⚙️ Settings to configure API keys.
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
+                    
+                    <div class="input-container">
+                        <div class="input-wrapper">
+                            <select class="target-select" id="targetAgent">
+                                <option value="all">All Agents</option>
+                            </select>
+                            <textarea class="input-field" id="inputField" placeholder="Send a message..." rows="1" onkeydown="handleKeyDown(event)"></textarea>
+                            <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                    <polyline points="12 5 19 12 12 19"></polyline>
+                                </svg>
+                            </button>
+                            <button class="send-btn" id="interruptBtn" title="Send as interrupt (inject into running agent)" onclick="sendInterrupt()" style="background:var(--warning);display:none;">⚡</button>
+                        </div>
+                    </div>
+                </main>
+                
+                <aside class="activity-panel" id="activityPanel">
+                    <div class="activity-panel-header">All Agents</div>
+                    <div class="activity-feed" id="activityFeed"></div>
+                </aside>
             </div>
-            
-            <div class="input-container">
-                <div class="input-wrapper">
-                    <select class="target-select" id="targetAgent">
-                        <option value="all">All Agents</option>
-                    </select>
-                    <textarea class="input-field" id="inputField" placeholder="Send a message..." rows="1" onkeydown="handleKeyDown(event)"></textarea>
-                    <button class="send-btn" id="sendBtn" onclick="sendMessage()">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="5" y1="12" x2="19" y2="12"></line>
-                            <polyline points="12 5 19 12 12 19"></polyline>
-                        </svg>
-                    </button>
-                    <button class="send-btn" id="interruptBtn" title="Send as interrupt (inject into running agent)" onclick="sendInterrupt()" style="background:var(--warning);display:none;">⚡</button>
-                </div>
-            </div>
-        </main>
+        </div>
         
-        <!-- Ring Context Panel -->
-        <aside class="pipeline-panel" id="pipelinePanel">
-            <div class="pipeline-header">
-                <span class="pipeline-header-title">Pipeline</span>
-                <button class="ring-clear-btn" onclick="clearRingContext()" title="Ring context">Ring</button>
-            </div>
+        <!-- Hidden: old pipeline panel kept for data functions -->
+        <aside class="pipeline-panel" id="pipelinePanel" style="display:none;">
             <div class="pipeline-pills" id="pipelinePills"></div>
-            <div class="activity-log" id="activityLog">
-                <div class="pipeline-empty">No active pipeline. Agents will create one for complex tasks.</div>
-            </div>
+            <div class="activity-log" id="activityLog"></div>
             <div class="completion-cards" id="completionCards" style="display:none;"></div>
         </aside>
     </div>
@@ -4055,6 +4062,28 @@ ${getRingContext()}`;
         scrollToBottom();
     }
     
+    function appendActivityFeed(agentId, text, type = 'msg') {
+        const feed = document.getElementById('activityFeed');
+        if (!feed) return;
+        const agentData = state.agents.get(agentId);
+        const color = agentData?.color || '#888';
+        // Add agent heading if last heading isn't this agent
+        if (!feed.lastAgent || feed.lastAgent !== agentId) {
+            const h = document.createElement('div');
+            h.className = 'af-agent';
+            h.style.color = color;
+            h.textContent = agentId;
+            feed.appendChild(h);
+            feed.lastAgent = agentId;
+        }
+        const line = document.createElement('div');
+        line.className = type === 'tool' ? 'af-tool' : 'af-msg';
+        line.style.setProperty('--agent-color', color);
+        line.textContent = text.length > 120 ? text.substring(0, 120) + '…' : text;
+        feed.appendChild(line);
+        feed.scrollTop = feed.scrollHeight;
+    }
+
     function addMessageToUI(role, content, agentId, color, scroll = true) {
         const inner = document.getElementById('messagesInner');
         const msg = document.createElement('div');
@@ -4073,6 +4102,7 @@ ${getRingContext()}`;
         
         inner.appendChild(msg);
         if (scroll) scrollToBottom();
+        if (role === 'assistant' && content) appendActivityFeed(agentId, content.replace(/[#*`]/g, '').substring(0, 200));
     }
     
     function updateStreaming(text, agentId, color) {
@@ -4123,6 +4153,7 @@ ${getRingContext()}`;
         `;
         inner.appendChild(tool);
         scrollToBottom();
+        appendActivityFeed(state.activeAgentId || 'system', `🔧 ${name}`, 'tool');
     }
     
     function updateToolStatus(name, status) {
