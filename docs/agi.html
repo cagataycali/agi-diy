@@ -1472,7 +1472,7 @@
             node.className = 'pf-node ' + task.status;
             node.dataset.idx = i;
             if (task.status === 'working') node.style.setProperty('--task-color', task.color || '#ffaa00');
-            node.textContent = task.name;
+            node.textContent = task.name.split(' — ')[0].split(' - ')[0];
             inner.appendChild(node);
             nodeEls.push(node);
         });
