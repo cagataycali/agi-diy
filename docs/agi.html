@@ -1009,7 +1009,7 @@
                     
                     <div class="input-container">
                         <div class="input-wrapper">
-                            <select class="target-select" id="targetAgent">
+                            <select class="target-select" id="targetAgent" onchange="if(this.value!=='all')selectAgent(this.value)">
                                 <option value="all">All Agents</option>
                             </select>
                             <textarea class="input-field" id="inputField" placeholder="Send a message..." rows="1" onkeydown="handleKeyDown(event)"></textarea>
@@ -3687,6 +3687,8 @@ ${getRingContext()}`;
             document.getElementById('currentAgentName').textContent = agentId;
             document.getElementById('currentAgentModel').textContent = `${agentData.config.provider} • ${agentData.config.modelId || 'default'}`;
         }
+        const sel = document.getElementById('targetAgent');
+        if (sel && sel.querySelector(`option[value="${agentId}"]`)) sel.value = agentId;
     };
     
     window.killAgent = function(agentId, event) {
