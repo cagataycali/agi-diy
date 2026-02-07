@@ -6,7 +6,7 @@ Testing the KAA (Keep Agents Aligned) 3-agent delegation pattern where a coordin
 
 ## Test Environment
 
-- URL: https://jsamuel1.github.io/agi-diy/agi.html
+- URL: https://jsamuel1.github.io/agi-diy/sauhsoj-ii.html
 - Provider: Amazon Bedrock
 - Model: `global.anthropic.claude-opus-4-6-v1` (all 3 agents)
 - Browser control: Chrome DevTools MCP (evaluate_script, take_snapshot, fill, press_key)
