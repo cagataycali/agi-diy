@@ -5,11 +5,12 @@
     Upstream fork point:  202c0bb (cagataycali/agi-diy) "mobile: optimize agi.html for better mobile UX"
     sauhsoj-ii fork point: 8f213ab (jsamuel1/agi-diy)  "chore: fork agi.html to sauhsoj-ii.html for transcript refactor"
 
-  To rebase onto upstream changes:
-    git fetch origin
-    git diff 202c0bb origin/main -- docs/agi.html > upstream.patch
-    git apply upstream.patch --directory=docs --include=docs/sauhsoj-ii.html
-    (resolve conflicts, update upstream fork point above)
+  To incorporate upstream changes:
+    1. git diff 202c0bb origin/main -- docs/agi.html   (review what changed upstream)
+    2. For each change, evaluate its INTENTION — don't blindly apply patches
+    3. The same logical change may need different code in sauhsoj-ii.html
+       due to the structured transcript refactor
+    4. After incorporating, update the upstream fork point above
 -->
 <!DOCTYPE html>
 <html lang="en">

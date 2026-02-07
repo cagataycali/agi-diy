@@ -318,6 +318,8 @@ docs/
 
 Baseline commits are recorded in a comment at the top of `sauhsoj-ii.html`. To incorporate upstream changes, diff `agi.html` from the recorded baseline to HEAD and apply to `sauhsoj-ii.html`.
 
+> **Note:** Mechanical patching/rebasing will rarely work cleanly due to structural divergence. Review each upstream change by its intention and re-implement it in the context of `sauhsoj-ii.html`'s architecture. Update the baseline comment after incorporating.
+
 ### Navigating agi.html
 
 `agi.html` contains a **Section Index TOC** at the top of its `<script>` block. Search for `═══ SECTION_NAME` to jump to any section. Each heading lists the key functions it contains.
