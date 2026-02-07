@@ -27,6 +27,13 @@ The context compaction only works within each agent's own conversation. invoke_a
 3. Clean up AbortController in success, error, and abort paths
 4. Set status to 'error' (not stuck on 'processing') when timeout fires
 
+### Test Results (commit c332772)
+- Watchdog fires correctly after 5 min ✅
+- `ac.abort()` does NOT interrupt a blocked `for await` iterator ⚠️
+- Watchdog now directly sets error state, cleans up, shows error message ✅
+- Root cause: the Strands SDK `agent.stream()` async iterator blocks indefinitely when the model fails to respond after receiving a massive tool result
+- The watchdog is a recovery mechanism, not a fix for the underlying hang
+
 ## Issue 2: Activity Feed Stops Updating Mid-Run
 
 ### Symptoms
