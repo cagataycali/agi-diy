@@ -2,7 +2,7 @@
   sauhsoj-ii.html — forked from agi.html for structured transcript refactor
 
   BASELINES (for merging/rebasing):
-    Upstream fork point:  202c0bb (cagataycali/agi-diy) "mobile: optimize agi.html for better mobile UX"
+    Upstream fork point:  47f93bd (cagataycali/agi-diy) "fix: show edit/kill buttons on mobile"
     sauhsoj-ii fork point: 8f213ab (jsamuel1/agi-diy)  "chore: fork agi.html to sauhsoj-ii.html for transcript refactor"
 
   To incorporate upstream changes:
@@ -161,8 +161,11 @@
             cursor: pointer;
             color: rgba(255,100,100,0.6);
             transition: opacity 0.2s;
+            padding: 4px;
+            -webkit-tap-highlight-color: transparent;
         }
         .agent-card:hover .agent-kill { opacity: 1; }
+        .agent-card.active .agent-kill { opacity: 1; } /* Show on active/selected */
         .agent-kill:hover { color: rgba(255,100,100,1); }
         .agent-edit {
             opacity: 0;
@@ -170,9 +173,19 @@
             color: var(--text-tertiary);
             transition: opacity 0.2s;
             margin-right: 8px;
+            padding: 4px;
+            -webkit-tap-highlight-color: transparent;
         }
         .agent-card:hover .agent-edit { opacity: 1; }
+        .agent-card.active .agent-edit { opacity: 1; } /* Show on active/selected */
         .agent-edit:hover { color: var(--text); }
+        
+        /* Mobile: always show edit/kill buttons */
+        @media (max-width: 900px) {
+            .agent-kill, .agent-edit { opacity: 0.7; }
+            .agent-card.active .agent-kill,
+            .agent-card.active .agent-edit { opacity: 1; }
+        }
         
         /* Tools Grid */
         .tools-grid {
