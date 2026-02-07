@@ -1386,6 +1386,32 @@
     <script type="module">
     import { Agent, tool, Model, z, BeforeModelCallEvent, AfterInvocationEvent, SlidingWindowConversationManager } from './strands.js';
     
+    // ╔═══════════════════════════════════════════════════════════════════════════╗
+    // ║  agi.html — Multi-Agent System                                          ║
+    // ║                                                                         ║
+    // ║  SECTION INDEX (search for ═══ SECTION_NAME to jump)                    ║
+    // ║                                                                         ║
+    // ║  STATE ................ App state, constants, config                     ║
+    // ║  PIPELINE MODEL ....... getPipelines, topoSort, renderPipelineFlow      ║
+    // ║  MODEL PROVIDERS ...... AnthropicModel, OpenAIModel, BedrockModel       ║
+    // ║  TOOLS ................ render_ui, javascript_eval, storage, fetch       ║
+    // ║  AGENT MESH ........... P2P messaging, processIncomingCommand            ║
+    // ║  MESH TOOLS ........... invoke_agent, broadcast, list_agents             ║
+    // ║  SELF-MODIFICATION .... create_tool, update_self, custom tools           ║
+    // ║  PIPELINE TOOLS ....... create_pipeline, add_task, update_task_status    ║
+    // ║  SANDBOX TOOLS ........ sandbox_create, sandbox_update, preview mode     ║
+    // ║  HOOKS ................ InterruptHook, SummarizingManager                ║
+    // ║  GITHUB ............... github auth, search, read, create PR             ║
+    // ║  AGENT MANAGEMENT ..... createAgent, updateAgentUI, selectAgent          ║
+    // ║  MESSAGING ............ runAgentMessage, sendMessage, clearChat          ║
+    // ║  ACTIVITY FEED ........ appendActivityFeed, filterActivityFeed           ║
+    // ║  UI RENDERING ......... addMessageToUI, streaming, tool calls, ring      ║
+    // ║  MODALS ............... spawn, edit, settings                            ║
+    // ║  SYNC ................. encrypted export/import via URL                  ║
+    // ║  PERSISTENCE .......... saveState, loadState, credentials               ║
+    // ║  CUSTOM TOOLS UI ...... tool management panel                           ║
+    // ║  INIT ................. DOMContentLoaded, query params, startup          ║
+    // ╚═══════════════════════════════════════════════════════════════════════════╝
     // ═══════════════════════════════════════════════════════════════════════════
     // STATE
     // ═══════════════════════════════════════════════════════════════════════════
@@ -1406,7 +1432,7 @@
     };
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // PIPELINE MODEL
+    // PIPELINE MODEL — getPipelines, topoSort, renderPipelineFlow, updatePipelineUI
     // ═══════════════════════════════════════════════════════════════════════════
 
     const TASK_COLORS = { requirements:'#00ff88', planning:'#9966ff', coding:'#ff8800', testing:'#00cccc', review:'#00ff88', pr:'#00ff88', docs:'#00ff88', custom:'#ffaa00' };
@@ -1551,7 +1577,7 @@
     }
     
     // ═══════════════════════════════════════════════════════════════════════════
-    // MODEL PROVIDERS
+    // MODEL PROVIDERS — AnthropicModel, OpenAIModel, BedrockModel, createModel
     // ═══════════════════════════════════════════════════════════════════════════
     
     class AnthropicModel extends Model {
@@ -1950,7 +1976,7 @@
     const DEFAULT_MAX_TOKENS = 60000;
     
     // ═══════════════════════════════════════════════════════════════════════════
-    // TOOLS
+    // TOOLS — render_ui, javascript_eval, storage, fetch, notify, use_agent, scheduler
     // ═══════════════════════════════════════════════════════════════════════════
     
     const renderUiTool = tool({
@@ -2172,7 +2198,7 @@
     });
     
     // ═══════════════════════════════════════════════════════════════════════════
-    // AGENT MESH - Hybrid P2P: BroadcastChannel (local) + WebSocket (remote)
+    // AGENT MESH — P2P messaging, processIncomingCommand, sendTo
     // ═══════════════════════════════════════════════════════════════════════════
     
     const agentMesh = {
@@ -2680,7 +2706,7 @@
     }
     
     // ═══════════════════════════════════════════════════════════════════════════
-    // MESH TOOLS - Agent-to-Agent Communication
+    // MESH TOOLS — invoke_agent, broadcast, list_agents
     // ═══════════════════════════════════════════════════════════════════════════
     
     // invoke_agent - Call another agent and get response
@@ -2897,7 +2923,7 @@
     });
     
     // ═══════════════════════════════════════════════════════════════════════════
-    // SELF-MODIFICATION TOOLS - Agent can create its own tools!
+    // SELF-MODIFICATION — create_tool, update_self, custom tools
     // ═══════════════════════════════════════════════════════════════════════════
     
     // Storage key for custom tools
@@ -3163,7 +3189,7 @@ Example - create a tool that gets weather:
     });
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // PIPELINE TOOLS
+    // PIPELINE TOOLS — create_pipeline, add_task, update_task_status, read_pipeline
     // ═══════════════════════════════════════════════════════════════════════════
 
     const createPipelineTool = tool({
@@ -3265,7 +3291,7 @@ Example - create a tool that gets weather:
     });
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // SANDBOX TOOLS
+    // SANDBOX TOOLS — sandbox_create, sandbox_update, togglePreviewMode
     // ═══════════════════════════════════════════════════════════════════════════
 
     let latestSandboxId = null;
@@ -3354,7 +3380,7 @@ Example - create a tool that gets weather:
     });
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // PHASE 4: MID-EXECUTION INTERRUPT HOOK
+    // HOOKS — InterruptHook, SummarizingManager
     // ═══════════════════════════════════════════════════════════════════════════
 
     const interruptQueues = new Map(); // agentId -> [message strings]
@@ -3378,10 +3404,6 @@ Example - create a tool that gets weather:
             });
         }
     }
-
-    // ═══════════════════════════════════════════════════════════════════════════
-    // PHASE 5: CONVERSATION SUMMARIZATION
-    // ═══════════════════════════════════════════════════════════════════════════
 
     class SummarizingManager {
         constructor({ windowSize = 40, summarizeAfter = 30 } = {}) {
@@ -3421,7 +3443,7 @@ Example - create a tool that gets weather:
     window.queueInterrupt = queueInterrupt;
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // PHASE 6: GITHUB INTEGRATION
+    // GITHUB — auth, search, read, create PR
     // ═══════════════════════════════════════════════════════════════════════════
 
     function ghToken() { return state.credentials.github?.token || ''; }
@@ -3568,7 +3590,7 @@ Example - create a tool that gets weather:
     ];
     
     // ═══════════════════════════════════════════════════════════════════════════
-    // AGENT MANAGEMENT
+    // AGENT MANAGEMENT — createAgent, updateAgentUI, selectAgent, killAgent, buildSystemPrompt
     // ═══════════════════════════════════════════════════════════════════════════
     
     window.spawnAgent = async function(idOrEvent, config) {
@@ -3871,7 +3893,7 @@ ${getRingContext()}`;
     }
     
     // ═══════════════════════════════════════════════════════════════════════════
-    // MESSAGING
+    // MESSAGING — runAgentMessage, sendMessage, clearChat, broadcastMessage
     // ═══════════════════════════════════════════════════════════════════════════
     
     let streamingEls = new Map(); // agentId -> streaming element
@@ -4116,7 +4138,7 @@ ${getRingContext()}`;
     };
     
     // ═══════════════════════════════════════════════════════════════════════════
-    // UI HELPERS
+    // UI RENDERING — addMessageToUI, streaming, tool calls, ring buffer
     // ═══════════════════════════════════════════════════════════════════════════
     
     function renderMessages() {
@@ -4144,7 +4166,9 @@ ${getRingContext()}`;
         scrollToBottom();
     }
     
-    // ── Activity Feed (data-driven) ──────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ACTIVITY FEED — appendActivityFeed, filterActivityFeed, activityLog[]
+    // ═══════════════════════════════════════════════════════════════════════════
     const activityLog = []; // { agentId, text, type, ts }
 
     function appendActivityFeed(agentId, text, type = 'msg') {
@@ -4395,7 +4419,7 @@ ${getRingContext()}`;
     }
     
     // ═══════════════════════════════════════════════════════════════════════════
-    // MODALS
+    // MODALS — spawn, edit, settings, tool groups
     // ═══════════════════════════════════════════════════════════════════════════
     
     window.openSpawnModal = () => {
@@ -4711,7 +4735,7 @@ ${getRingContext()}`;
     window.toggleMobileSidebar = () => document.getElementById('mobileSidebar').classList.toggle('active');
     
     // ═══════════════════════════════════════════════════════════════════════════
-    // ENCRYPTED SYNC - Export/Import API keys via encrypted URL
+    // SYNC — encrypted export/import via URL
     // ═══════════════════════════════════════════════════════════════════════════
     
     async function deriveKey(password, salt) {
@@ -4824,7 +4848,7 @@ ${getRingContext()}`;
     }
     
     // ═══════════════════════════════════════════════════════════════════════════
-    // CREDENTIALS & PERSISTENCE
+    // PERSISTENCE — saveState, loadState, saveCredentials, export/import agents
     // ═══════════════════════════════════════════════════════════════════════════
     
     window.saveCredentials = function() {
@@ -4994,7 +5018,7 @@ ${getRingContext()}`;
     };
     
     // ═══════════════════════════════════════════════════════════════════════════
-    // CUSTOM TOOLS UI
+    // CUSTOM TOOLS UI — updateCustomToolsUI, deleteCustomTool
     // ═══════════════════════════════════════════════════════════════════════════
     
     function updateCustomToolsUI() {
@@ -5044,7 +5068,7 @@ ${getRingContext()}`;
     };
     
     // ═══════════════════════════════════════════════════════════════════════════
-    // INIT
+    // INIT — DOMContentLoaded, autoCreateDefaultAgent, checkForQueryParam
     // ═══════════════════════════════════════════════════════════════════════════
     
     // Panel resizer
