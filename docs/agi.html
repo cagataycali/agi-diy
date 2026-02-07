@@ -1671,7 +1671,10 @@
                 inferenceConfig: { maxTokens }
             };
             if (options?.systemPrompt) body.system = [{ text: typeof options.systemPrompt === 'string' ? options.systemPrompt : options.systemPrompt.map(b => b.text).join('\n') }];
-            if (options?.toolSpecs?.length) body.toolConfig = { tools: options.toolSpecs.map(s => ({ toolSpec: { name: s.name, description: s.description, inputSchema: { json: s.inputSchema } } })) };
+            if (options?.toolSpecs?.length) {
+                body.toolConfig = { tools: options.toolSpecs.map(s => ({ toolSpec: { name: s.name, description: s.description, inputSchema: { json: s.inputSchema } } })) };
+                if (options.toolChoice) body.toolConfig.toolChoice = options.toolChoice;
+            }
             
             // Add additional request fields (thinking, etc.)
             if (additionalRequestFields) {
@@ -2609,7 +2612,7 @@
                     total: agents.length,
                     relayConnected: agentMesh.wsConnected
                 },
-                hint: 'Use delegate_to_agent with targetAgent to send tasks to these agents'
+                hint: 'Use invoke_agent with targetAgentId to send tasks to these agents'
             };
         }
     });
@@ -3155,68 +3158,6 @@ Example - create a tool that gets weather:
     });
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // PHASE 3: SYNCHRONOUS AGENT DELEGATION
-    // ═══════════════════════════════════════════════════════════════════════════
-
-    const delegateToAgentTool = tool({
-        name: 'delegate_to_agent',
-        description: 'REQUIRED: Delegate a task to another agent. You MUST use this tool to send work to other agents. Call list_agents first to see available agents, then provide targetAgent to route to them. Without targetAgent, creates a temporary child agent.',
-        inputSchema: z.object({
-            task: z.string().describe('The task/prompt for the agent'),
-            targetAgent: z.string().optional().describe('Name of an existing agent to route to. Call list_agents to discover available agents.'),
-            systemPrompt: z.string().optional().describe('System prompt override (only for temporary child agents)'),
-            provider: z.string().optional().describe('Model provider override')
-        }),
-        callback: async (input) => {
-            const parentId = state.activeAgentId || 'main';
-            const parentData = state.agents.get(parentId);
-            if (!parentData) return { error: 'No active agent context' };
-
-            // Route to existing named agent
-            if (input.targetAgent) {
-                const target = state.agents.get(input.targetAgent);
-                if (!target) return { error: `Agent "${input.targetAgent}" not found` };
-                if (target.status !== 'ready') return { error: `Agent "${input.targetAgent}" is ${target.status}` };
-                addMessageToUI('system', `⏳ Delegating to ${input.targetAgent}...`, parentId, parentData.color);
-                try {
-                    const result = await runAgentMessage(input.targetAgent, input.task);
-                    const text = typeof result === 'string' ? result : (result?.message?.content?.[0]?.text || JSON.stringify(result));
-                    addMessageToUI('assistant', `✅ ${input.targetAgent} result:\n${text}`, parentId, parentData.color);
-                    return { agent: input.targetAgent, result: text };
-                } catch (e) {
-                    addMessageToUI('error', `❌ ${input.targetAgent} failed: ${e.message}`, parentId, parentData.color);
-                    return { error: e.message };
-                }
-            }
-
-            // Create temporary child agent
-            const childId = `${parentId}-child-${Date.now().toString(36)}`;
-            addMessageToUI('system', `⏳ Delegating to child agent: ${childId}`, parentId, parentData.color);
-            try {
-                const model = createModel(input.provider || parentData.config.provider, {
-                    modelId: parentData.config.modelId,
-                    maxTokens: parentData.config.maxTokens || DEFAULT_MAX_TOKENS,
-                    additionalRequestFields: parentData.config.additionalRequestFields || null
-                });
-                const customTools = buildCustomTools();
-                const childAgent = new Agent({
-                    model,
-                    tools: [...TOOLS, ...customTools],
-                    systemPrompt: input.systemPrompt || `You are a focused sub-agent. Complete the given task concisely and return the result.`,
-                    printer: false
-                });
-                const result = await childAgent(input.task);
-                const text = typeof result === 'string' ? result : (result?.message?.content?.[0]?.text || JSON.stringify(result));
-                addMessageToUI('assistant', `✅ Child ${childId} result:\n${text}`, parentId, parentData.color);
-                return { childId, result: text };
-            } catch (e) {
-                addMessageToUI('error', `❌ Child ${childId} failed: ${e.message}`, parentId, parentData.color);
-                return { error: e.message };
-            }
-        }
-    });
-
-    // ═══════════════════════════════════════════════════════════════════════════
     // PHASE 4: MID-EXECUTION INTERRUPT HOOK
     // ═══════════════════════════════════════════════════════════════════════════
 
@@ -3426,8 +3367,6 @@ Example - create a tool that gets weather:
         createPipelineTool, readPipelineTool, addTaskTool, updateTaskStatusTool, updateTaskDepsTool, completePipelineTool, emitStatusTool,
         // Sandbox
         sandboxCreateTool, sandboxUpdateTool, sandboxReadTool, sandboxListTool, sandboxDeleteTool,
-        // Delegation
-        delegateToAgentTool,
         // GitHub
         githubSearchTool, githubReadFileTool, githubListReposTool, githubCreateIssueTool, githubListIssuesTool, githubCreatePrTool, githubReadPrTool
     ];
@@ -3548,6 +3487,7 @@ You are agent "${agentId}" in a multi-agent system. You have access to:
 - scheduler: Schedule tasks (once or recurring cron)
 - invoke_agent: Call another agent and wait for response
 - broadcast_to_agents: Send message to all agents
+- list_agents: Discover all available agents and their capabilities
 
 ## Self-Modification
 - update_self: Modify your own system prompt
@@ -3774,10 +3714,9 @@ ${getRingContext()}`;
             
             // Inject toolChoice if configured (forces tool use)
             if (agentData.config.toolChoice) {
-                const origFormat = model._formatRequest.bind(model);
-                model._formatRequest = (msgs, opts) => {
-                    opts = { ...opts, toolChoice: agentData.config.toolChoice };
-                    return origFormat(msgs, opts);
+                const origStream = model.stream.bind(model);
+                model.stream = function(msgs, opts) {
+                    return origStream(msgs, { ...opts, toolChoice: agentData.config.toolChoice });
                 };
             }
             
@@ -4214,7 +4153,6 @@ ${getRingContext()}`;
             { name: 'sandbox_read', desc: 'Read sandbox' },
             { name: 'sandbox_list', desc: 'List sandboxes' },
             { name: 'sandbox_delete', desc: 'Delete sandbox' },
-            { name: 'delegate_to_agent', desc: 'Delegate to child agent' },
             { name: 'github_search', desc: 'Search GitHub' },
             { name: 'github_read_file', desc: 'Read repo file' },
             { name: 'github_list_repos', desc: 'List repos' },
@@ -4239,7 +4177,7 @@ ${getRingContext()}`;
         core: ['render_ui','javascript_eval','storage_get','storage_set','fetch_url','notify','update_self','create_tool','list_tools','delete_tool'],
         sandbox: ['sandbox_create','sandbox_update','sandbox_read','sandbox_list','sandbox_delete'],
         pipeline: ['create_pipeline','read_pipeline','add_task','update_task_status','update_task_deps','complete_pipeline','emit_status'],
-        agents: ['use_agent','scheduler','invoke_agent','broadcast_to_agents','list_agents','invoke_remote_agent','subscribe_topic','publish_topic','delegate_to_agent'],
+        agents: ['use_agent','scheduler','invoke_agent','broadcast_to_agents','list_agents','invoke_remote_agent','subscribe_topic','publish_topic'],
         github: ['github_search','github_read_file','github_list_repos','github_create_issue','github_list_issues','github_create_pr','github_read_pr']
     };
 
