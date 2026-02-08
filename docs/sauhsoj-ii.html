@@ -3955,6 +3955,13 @@ ${getRingContext()}`;
         const agentData = state.agents.get(agentId);
         if (!agentData) return;
         
+        // Validate API key before attempting model call
+        const creds = state.credentials[agentData.config.provider];
+        if (!creds?.apiKey) {
+            addMessageToUI('error', `No API key configured for ${agentData.config.provider}. Open Settings to add one.`, agentId, agentData.color);
+            return;
+        }
+        
         // Cancel any existing run for this agent
         if (abortControllers.has(agentId)) abortControllers.get(agentId).abort();
         const ac = new AbortController();
@@ -4032,7 +4039,7 @@ ${getRingContext()}`;
         try {
             let currentText = '';
             const transcript = [];
-            const watchdog = setTimeout(() => {
+            var watchdog = setTimeout(() => {
                 console.error(`⏰ Agent ${agentId} timeout`);
                 ac.abort();
                 agentData.status = 'error';
@@ -4389,13 +4396,13 @@ ${getRingContext()}`;
         
         const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         const userColor = '#3b82f6';
-        const arrow = role === 'user' 
-            ? `<span style="color:${userColor}">you</span> → <span style="color:${color}">${agentId}</span>`
-            : `<span style="color:${color}">${agentId}</span> → <span style="color:${userColor}">you</span>`;
+        const header = role === 'user' 
+            ? `<span style="color:${userColor}">you</span> → <span class="message-agent" style="background:${color}20;color:${color}">${agentId}</span>`
+            : `<span class="message-role">agi</span><span class="message-agent" style="background:${color}20;color:${color}">${agentId}</span> → <span style="color:${userColor}">you</span>`;
         
         msg.innerHTML = `
             <div class="message-header">
-                ${arrow}
+                ${header}
                 <span class="message-time">${time}</span>
             </div>
             <div class="message-content">${role === 'user' ? escapeHtml(content) : `<div class="markdown-content">${marked.parse(content)}</div>`}</div>
