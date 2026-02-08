@@ -24,21 +24,27 @@ const SDK_DIR = resolve(__dirname, '../../StrandsAgentsSDKTypescript');
 const OUT_FILE = resolve(__dirname, 'docs/strands.js');
 
 const ENTRY = `
-  // Core SDK
+  // Core SDK — import directly to avoid pulling in zod-tool (zod = 703KB)
+  export { Agent } from '${SDK_DIR}/dist/src/agent/agent.js';
+  export { AgentResult } from '${SDK_DIR}/dist/src/types/agent.js';
+  export { FunctionTool } from '${SDK_DIR}/dist/src/tools/function-tool.js';
+  export { Tool } from '${SDK_DIR}/dist/src/tools/tool.js';
+  export { Model } from '${SDK_DIR}/dist/src/models/model.js';
+  export { Message, TextBlock, JsonBlock, ToolResultBlock } from '${SDK_DIR}/dist/src/types/messages.js';
+  export { ImageBlock } from '${SDK_DIR}/dist/src/types/media.js';
   export {
-    Agent, AgentResult, FunctionTool, ImageBlock, JsonBlock, Message, Model, TextBlock, Tool, ToolResultBlock,
-    AfterInvocationEvent, AfterModelCallEvent, BeforeModelCallEvent, BeforeToolCallEvent,
-    SlidingWindowConversationManager, NullConversationManager,
-    McpClient
-  } from '${SDK_DIR}/dist/src/index.js';
+    AfterInvocationEvent, AfterModelCallEvent, BeforeModelCallEvent, BeforeToolCallEvent
+  } from '${SDK_DIR}/dist/src/hooks/index.js';
+  export { SlidingWindowConversationManager } from '${SDK_DIR}/dist/src/conversation-manager/sliding-window-conversation-manager.js';
+  export { NullConversationManager } from '${SDK_DIR}/dist/src/conversation-manager/null-conversation-manager.js';
+  export { McpClient } from '${SDK_DIR}/dist/src/mcp.js';
 
   // Model providers
   export { BedrockModel } from '${SDK_DIR}/dist/src/models/bedrock.js';
   export { AnthropicModel } from '${SDK_DIR}/dist/src/models/anthropic.js';
   export { OpenAIModel } from '${SDK_DIR}/dist/src/models/openai.js';
 
-  // MCP transports (browser-compatible only)
-  export { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
+  // MCP transport (browser-compatible, streamable HTTP only)
   export { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 `;
 
@@ -52,8 +58,17 @@ await build({
   outfile: OUT_FILE,
   target: ['es2022'],
   treeShaking: true,
-  // Stub Node-only modules
   alias: {
+    // Zod — MCP SDK uses for protocol validation, stub with pass-through (saves ~700KB)
+    'zod': resolve(STUBS, 'zod'),
+    'zod/v3': resolve(STUBS, 'zod/v3.js'),
+    'zod/v4': resolve(STUBS, 'zod/v4.js'),
+    'zod/v4/mini': resolve(STUBS, 'zod/v4-mini.js'),
+    'zod/v4-mini': resolve(STUBS, 'zod/v4-mini.js'),
+    'zod-to-json-schema': resolve(STUBS, 'zod-to-json-schema.js'),
+    'ajv': resolve(STUBS, 'ajv.js'),
+    'ajv-formats': resolve(STUBS, 'empty.js'),
+    // Node-only transports
     '@modelcontextprotocol/sdk/client/stdio.js': resolve(STUBS, 'empty.js'),
     'node:child_process': resolve(STUBS, 'empty.js'),
     'node:events': resolve(STUBS, 'events.js'),
