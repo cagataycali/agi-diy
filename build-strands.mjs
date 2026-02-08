@@ -50,6 +50,31 @@ const ENTRY = `
 
 const STUBS = resolve(__dirname, 'stubs');
 
+// OpenAI resources to keep (chat, responses, shared). Stub everything else.
+const OPENAI_KEEP = new Set(['chat', 'responses', 'shared', 'index']);
+const STUB_RESOURCE = resolve(STUBS, 'openai-resource.js');
+const openaiTrimPlugin = {
+  name: 'openai-trim',
+  setup(build) {
+    // Intercept resolved OpenAI resource files — stub unused ones
+    build.onLoad({ filter: /openai\/resources\/.*\.mjs$/ }, args => {
+      const match = args.path.match(/resources\/([^/.]+)/);
+      if (match && !OPENAI_KEEP.has(match[1])) {
+        // Generate exports matching what the file normally exports
+        return { contents: `
+          const S = class { constructor() {} };
+          export { S as default };
+          export const Audio=S, Batches=S, Beta=S, Completions=S, Containers=S;
+          export const Conversations=S, Embeddings=S, Evals=S, Files=S;
+          export const FineTuning=S, Graders=S, Images=S, Models=S;
+          export const Moderations=S, Realtime=S, Uploads=S, VectorStores=S;
+          export const Videos=S, Webhooks=S;
+        `, loader: 'js' };
+      }
+    });
+  }
+};
+
 await build({
   stdin: { contents: ENTRY, resolveDir: SDK_DIR, loader: 'js' },
   bundle: true,
@@ -58,6 +83,7 @@ await build({
   outfile: OUT_FILE,
   target: ['es2022'],
   treeShaking: true,
+  plugins: [openaiTrimPlugin],
   nodePaths: [resolve(SDK_DIR, 'node_modules')],
   alias: {
     // Zod — MCP SDK uses for protocol validation, stub with pass-through (saves ~700KB)

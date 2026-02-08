@@ -2001,7 +2001,7 @@ var RawSha256 = (
       return out;
     };
     RawSha2562.prototype.hashBuffer = function() {
-      var _a4 = this, buffer = _a4.buffer, state = _a4.state;
+      var _a3 = this, buffer = _a3.buffer, state = _a3.state;
       var state0 = state[0], state1 = state[1], state2 = state[2], state3 = state[3], state4 = state[4], state5 = state[5], state6 = state[6], state7 = state[7];
       for (var i = 0; i < BLOCK_SIZE; i++) {
         if (i < 16) {
@@ -2121,7 +2121,7 @@ var Sha256 = (
     };
     Sha2562.prototype.digest = function() {
       return __awaiter(this, void 0, void 0, function() {
-        return __generator(this, function(_a4) {
+        return __generator(this, function(_a3) {
           return [2, this.digestSync()];
         });
       });
@@ -2173,7 +2173,7 @@ var AwsCrc32 = (
     };
     AwsCrc322.prototype.digest = function() {
       return __awaiter(this, void 0, void 0, function() {
-        return __generator(this, function(_a4) {
+        return __generator(this, function(_a3) {
           return [2, numToUint8(this.crc32.digest())];
         });
       });
@@ -2193,7 +2193,7 @@ var Crc32 = (
       this.checksum = 4294967295;
     }
     Crc322.prototype.update = function(data) {
-      var e_1, _a4;
+      var e_1, _a3;
       try {
         for (var data_1 = __values(data), data_1_1 = data_1.next(); !data_1_1.done; data_1_1 = data_1.next()) {
           var byte = data_1_1.value;
@@ -2203,7 +2203,7 @@ var Crc32 = (
         e_1 = { error: e_1_1 };
       } finally {
         try {
-          if (data_1_1 && !data_1_1.done && (_a4 = data_1.return)) _a4.call(data_1);
+          if (data_1_1 && !data_1_1.done && (_a3 = data_1.return)) _a3.call(data_1);
         } finally {
           if (e_1) throw e_1.error;
         }
@@ -8888,13 +8888,13 @@ function __classPrivateFieldGet(receiver, state, kind, f) {
 
 // ../../StrandsAgentsSDKTypescript/node_modules/@anthropic-ai/sdk/internal/utils/uuid.mjs
 var uuid4 = function() {
-  const { crypto: crypto3 } = globalThis;
-  if (crypto3?.randomUUID) {
-    uuid4 = crypto3.randomUUID.bind(crypto3);
-    return crypto3.randomUUID();
+  const { crypto: crypto2 } = globalThis;
+  if (crypto2?.randomUUID) {
+    uuid4 = crypto2.randomUUID.bind(crypto2);
+    return crypto2.randomUUID();
   }
   const u8 = new Uint8Array(1);
-  const randomByte = crypto3 ? () => crypto3.getRandomValues(u8)[0] : () => Math.random() * 255 & 255;
+  const randomByte = crypto2 ? () => crypto2.getRandomValues(u8)[0] : () => Math.random() * 255 & 255;
   return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c) => (+c ^ randomByte() & 15 >> +c / 4).toString(16));
 };
 
@@ -9854,8 +9854,8 @@ var AbstractPage = class {
   }
 };
 var PagePromise = class extends APIPromise {
-  constructor(client, request, Page3) {
-    super(client, request, async (client2, props) => new Page3(client2, props.response, await defaultParseResponse(client2, props), props.options));
+  constructor(client, request, Page2) {
+    super(client, request, async (client2, props) => new Page2(client2, props.response, await defaultParseResponse(client2, props), props.options));
   }
   /**
    * Allow auto-paginating iteration on an unawaited list call, eg:
@@ -11402,7 +11402,7 @@ var BetaToolRunner = class {
     ];
     return true;
   }, Symbol.asyncIterator)]() {
-    var _a4;
+    var _a3;
     if (__classPrivateFieldGet(this, _BetaToolRunner_consumed, "f")) {
       throw new AnthropicError("Cannot iterate over a consumed stream");
     }
@@ -11418,7 +11418,7 @@ var BetaToolRunner = class {
           }
           __classPrivateFieldSet(this, _BetaToolRunner_mutated, false, "f");
           __classPrivateFieldSet(this, _BetaToolRunner_toolResponse, void 0, "f");
-          __classPrivateFieldSet(this, _BetaToolRunner_iterationCount, (_a4 = __classPrivateFieldGet(this, _BetaToolRunner_iterationCount, "f"), _a4++, _a4), "f");
+          __classPrivateFieldSet(this, _BetaToolRunner_iterationCount, (_a3 = __classPrivateFieldGet(this, _BetaToolRunner_iterationCount, "f"), _a3++, _a3), "f");
           __classPrivateFieldSet(this, _BetaToolRunner_message, void 0, "f");
           const { max_iterations, compactionControl, ...params } = __classPrivateFieldGet(this, _BetaToolRunner_state, "f").params;
           if (params.stream) {
@@ -13284,12 +13284,12 @@ var BaseAnthropic = class {
     }));
     return { response, options, controller, requestLogID, retryOfRequestLogID, startTime };
   }
-  getAPIList(path3, Page3, opts) {
-    return this.requestAPIList(Page3, { method: "get", path: path3, ...opts });
+  getAPIList(path3, Page2, opts) {
+    return this.requestAPIList(Page2, { method: "get", path: path3, ...opts });
   }
-  requestAPIList(Page3, options) {
+  requestAPIList(Page2, options) {
     const request = this.makeRequest(options, null, void 0);
-    return new PagePromise(this, request, Page3);
+    return new PagePromise(this, request, Page2);
   }
   async fetchWithTimeout(url2, init, ms, controller) {
     const { signal, method, ...options } = init || {};
@@ -13882,13 +13882,13 @@ function __classPrivateFieldGet2(receiver, state, kind, f) {
 
 // ../../StrandsAgentsSDKTypescript/node_modules/openai/internal/utils/uuid.mjs
 var uuid42 = function() {
-  const { crypto: crypto3 } = globalThis;
-  if (crypto3?.randomUUID) {
-    uuid42 = crypto3.randomUUID.bind(crypto3);
-    return crypto3.randomUUID();
+  const { crypto: crypto2 } = globalThis;
+  if (crypto2?.randomUUID) {
+    uuid42 = crypto2.randomUUID.bind(crypto2);
+    return crypto2.randomUUID();
   }
   const u8 = new Uint8Array(1);
-  const randomByte = crypto3 ? () => crypto3.getRandomValues(u8)[0] : () => Math.random() * 255 & 255;
+  const randomByte = crypto2 ? () => crypto2.getRandomValues(u8)[0] : () => Math.random() * 255 & 255;
   return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c) => (+c ^ randomByte() & 15 >> +c / 4).toString(16));
 };
 
@@ -14054,9 +14054,6 @@ function isEmptyObj2(obj) {
 }
 function hasOwn2(obj, key) {
   return Object.prototype.hasOwnProperty.call(obj, key);
-}
-function isObj(obj) {
-  return obj != null && typeof obj === "object" && !Array.isArray(obj);
 }
 var validatePositiveInteger2 = (name, n) => {
   if (typeof n !== "number" || !Number.isInteger(n)) {
@@ -15249,8 +15246,8 @@ var AbstractPage2 = class {
   }
 };
 var PagePromise2 = class extends APIPromise2 {
-  constructor(client, request, Page3) {
-    super(client, request, async (client2, props) => new Page3(client2, props.response, await defaultParseResponse2(client2, props), props.options));
+  constructor(client, request, Page2) {
+    super(client, request, async (client2, props) => new Page2(client2, props.response, await defaultParseResponse2(client2, props), props.options));
   }
   /**
    * Allow auto-paginating iteration on an unawaited list call, eg:
@@ -15264,19 +15261,6 @@ var PagePromise2 = class extends APIPromise2 {
     for await (const item of page) {
       yield item;
     }
-  }
-};
-var Page2 = class extends AbstractPage2 {
-  constructor(client, response, body, options) {
-    super(client, response, body, options);
-    this.data = body.data || [];
-    this.object = body.object;
-  }
-  getPaginatedItems() {
-    return this.data ?? [];
-  }
-  nextPageRequestOptions() {
-    return null;
   }
 };
 var CursorPage = class extends AbstractPage2 {
@@ -15309,36 +15293,6 @@ var CursorPage = class extends AbstractPage2 {
     };
   }
 };
-var ConversationCursorPage = class extends AbstractPage2 {
-  constructor(client, response, body, options) {
-    super(client, response, body, options);
-    this.data = body.data || [];
-    this.has_more = body.has_more || false;
-    this.last_id = body.last_id || "";
-  }
-  getPaginatedItems() {
-    return this.data ?? [];
-  }
-  hasNextPage() {
-    if (this.has_more === false) {
-      return false;
-    }
-    return super.hasNextPage();
-  }
-  nextPageRequestOptions() {
-    const cursor = this.last_id;
-    if (!cursor) {
-      return null;
-    }
-    return {
-      ...this.options,
-      query: {
-        ...maybeObj2(this.options.query),
-        after: cursor
-      }
-    };
-  }
-};
 
 // ../../StrandsAgentsSDKTypescript/node_modules/openai/internal/uploads.mjs
 var checkFileSupport2 = () => {
@@ -15356,80 +15310,6 @@ function getName2(value) {
   return (typeof value === "object" && value !== null && ("name" in value && value.name && String(value.name) || "url" in value && value.url && String(value.url) || "filename" in value && value.filename && String(value.filename) || "path" in value && value.path && String(value.path)) || "").split(/[\\/]/).pop() || void 0;
 }
 var isAsyncIterable2 = (value) => value != null && typeof value === "object" && typeof value[Symbol.asyncIterator] === "function";
-var maybeMultipartFormRequestOptions = async (opts, fetch2) => {
-  if (!hasUploadableValue(opts.body))
-    return opts;
-  return { ...opts, body: await createForm2(opts.body, fetch2) };
-};
-var multipartFormRequestOptions2 = async (opts, fetch2) => {
-  return { ...opts, body: await createForm2(opts.body, fetch2) };
-};
-var supportsFormDataMap2 = /* @__PURE__ */ new WeakMap();
-function supportsFormData2(fetchObject) {
-  const fetch2 = typeof fetchObject === "function" ? fetchObject : fetchObject.fetch;
-  const cached = supportsFormDataMap2.get(fetch2);
-  if (cached)
-    return cached;
-  const promise = (async () => {
-    try {
-      const FetchResponse = "Response" in fetch2 ? fetch2.Response : (await fetch2("data:,")).constructor;
-      const data = new FormData();
-      if (data.toString() === await new FetchResponse(data).text()) {
-        return false;
-      }
-      return true;
-    } catch {
-      return true;
-    }
-  })();
-  supportsFormDataMap2.set(fetch2, promise);
-  return promise;
-}
-var createForm2 = async (body, fetch2) => {
-  if (!await supportsFormData2(fetch2)) {
-    throw new TypeError("The provided fetch function does not support file uploads with the current global FormData class.");
-  }
-  const form = new FormData();
-  await Promise.all(Object.entries(body || {}).map(([key, value]) => addFormValue2(form, key, value)));
-  return form;
-};
-var isNamedBlob2 = (value) => value instanceof Blob && "name" in value;
-var isUploadable = (value) => typeof value === "object" && value !== null && (value instanceof Response || isAsyncIterable2(value) || isNamedBlob2(value));
-var hasUploadableValue = (value) => {
-  if (isUploadable(value))
-    return true;
-  if (Array.isArray(value))
-    return value.some(hasUploadableValue);
-  if (value && typeof value === "object") {
-    for (const k in value) {
-      if (hasUploadableValue(value[k]))
-        return true;
-    }
-  }
-  return false;
-};
-var addFormValue2 = async (form, key, value) => {
-  if (value === void 0)
-    return;
-  if (value == null) {
-    throw new TypeError(`Received null for "${key}"; to pass null in FormData, you must use the string 'null'`);
-  }
-  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
-    form.append(key, String(value));
-  } else if (value instanceof Response) {
-    form.append(key, makeFile2([await value.blob()], getName2(value)));
-  } else if (isAsyncIterable2(value)) {
-    form.append(key, makeFile2([await new Response(ReadableStreamFrom2(value)).blob()], getName2(value)));
-  } else if (isNamedBlob2(value)) {
-    form.append(key, value, getName2(value));
-  } else if (Array.isArray(value)) {
-    await Promise.all(value.map((entry) => addFormValue2(form, key + "[]", entry)));
-  } else if (typeof value === "object") {
-    await Promise.all(Object.entries(value).map(([name, prop]) => addFormValue2(form, `${key}[${name}]`, prop)));
-  } else {
-    throw new TypeError(`Invalid value given to form, expected a string, number, boolean, object, Array, File or Blob but got ${value} instead`);
-  }
-};
 
 // ../../StrandsAgentsSDKTypescript/node_modules/openai/internal/to-file.mjs
 var isBlobLike2 = (value) => value != null && typeof value === "object" && typeof value.size === "number" && typeof value.type === "string" && typeof value.text === "function" && typeof value.slice === "function" && typeof value.arrayBuffer === "function";
@@ -16610,7 +16490,7 @@ var ChatCompletionStream = class _ChatCompletionStream extends AbstractChatCompl
     }
     return null;
   }, _ChatCompletionStream_accumulateChatCompletion = function _ChatCompletionStream_accumulateChatCompletion2(chunk) {
-    var _a4, _b, _c, _d;
+    var _a3, _b, _c, _d;
     let snapshot = __classPrivateFieldGet2(this, _ChatCompletionStream_currentChatCompletionSnapshot, "f");
     const { choices, ...rest } = chunk;
     if (!snapshot) {
@@ -16634,7 +16514,7 @@ var ChatCompletionStream = class _ChatCompletionStream extends AbstractChatCompl
           assertIsEmpty(rest3);
           Object.assign(choice.logprobs, rest3);
           if (content2) {
-            (_a4 = choice.logprobs).content ?? (_a4.content = []);
+            (_a3 = choice.logprobs).content ?? (_a3.content = []);
             choice.logprobs.content.push(...content2);
           }
           if (refusal2) {
@@ -16977,2165 +16857,110 @@ var Chat = class extends APIResource2 {
 };
 Chat.Completions = Completions2;
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/internal/headers.mjs
-var brand_privateNullableHeaders2 = /* @__PURE__ */ Symbol("brand.privateNullableHeaders");
-function* iterateHeaders2(headers) {
-  if (!headers)
-    return;
-  if (brand_privateNullableHeaders2 in headers) {
-    const { values, nulls } = headers;
-    yield* values.entries();
-    for (const name of nulls) {
-      yield [name, null];
-    }
-    return;
-  }
-  let shouldClear = false;
-  let iter;
-  if (headers instanceof Headers) {
-    iter = headers.entries();
-  } else if (isReadonlyArray2(headers)) {
-    iter = headers;
-  } else {
-    shouldClear = true;
-    iter = Object.entries(headers ?? {});
-  }
-  for (let row of iter) {
-    const name = row[0];
-    if (typeof name !== "string")
-      throw new TypeError("expected header name to be a string");
-    const values = isReadonlyArray2(row[1]) ? row[1] : [row[1]];
-    let didClear = false;
-    for (const value of values) {
-      if (value === void 0)
-        continue;
-      if (shouldClear && !didClear) {
-        didClear = true;
-        yield [name, null];
-      }
-      yield [name, value];
-    }
-  }
-}
-var buildHeaders2 = (newHeaders) => {
-  const targetHeaders = new Headers();
-  const nullHeaders = /* @__PURE__ */ new Set();
-  for (const headers of newHeaders) {
-    const seenHeaders = /* @__PURE__ */ new Set();
-    for (const [name, value] of iterateHeaders2(headers)) {
-      const lowerName = name.toLowerCase();
-      if (!seenHeaders.has(lowerName)) {
-        targetHeaders.delete(name);
-        seenHeaders.add(lowerName);
-      }
-      if (value === null) {
-        targetHeaders.delete(name);
-        nullHeaders.add(lowerName);
-      } else {
-        targetHeaders.append(name, value);
-        nullHeaders.delete(lowerName);
-      }
-    }
-  }
-  return { [brand_privateNullableHeaders2]: true, values: targetHeaders, nulls: nullHeaders };
-};
-
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/audio/speech.mjs
-var Speech = class extends APIResource2 {
-  /**
-   * Generates audio from the input text.
-   *
-   * @example
-   * ```ts
-   * const speech = await client.audio.speech.create({
-   *   input: 'input',
-   *   model: 'string',
-   *   voice: 'ash',
-   * });
-   *
-   * const content = await speech.blob();
-   * console.log(content);
-   * ```
-   */
-  create(body, options) {
-    return this._client.post("/audio/speech", {
-      body,
-      ...options,
-      headers: buildHeaders2([{ Accept: "application/octet-stream" }, options?.headers]),
-      __binaryResponse: true
-    });
-  }
-};
-
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/audio/transcriptions.mjs
-var Transcriptions = class extends APIResource2 {
-  create(body, options) {
-    return this._client.post("/audio/transcriptions", multipartFormRequestOptions2({
-      body,
-      ...options,
-      stream: body.stream ?? false,
-      __metadata: { model: body.model }
-    }, this._client));
-  }
-};
-
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/audio/translations.mjs
-var Translations = class extends APIResource2 {
-  create(body, options) {
-    return this._client.post("/audio/translations", multipartFormRequestOptions2({ body, ...options, __metadata: { model: body.model } }, this._client));
-  }
-};
-
 // ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/audio/audio.mjs
-var Audio = class extends APIResource2 {
+var S = class {
   constructor() {
-    super(...arguments);
-    this.transcriptions = new Transcriptions(this._client);
-    this.translations = new Translations(this._client);
-    this.speech = new Speech(this._client);
   }
 };
-Audio.Transcriptions = Transcriptions;
-Audio.Translations = Translations;
-Audio.Speech = Speech;
+var Audio = S;
 
 // ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/batches.mjs
-var Batches3 = class extends APIResource2 {
-  /**
-   * Creates and executes a batch from an uploaded file of requests
-   */
-  create(body, options) {
-    return this._client.post("/batches", { body, ...options });
-  }
-  /**
-   * Retrieves a batch.
-   */
-  retrieve(batchID, options) {
-    return this._client.get(path2`/batches/${batchID}`, options);
-  }
-  /**
-   * List your organization's batches.
-   */
-  list(query = {}, options) {
-    return this._client.getAPIList("/batches", CursorPage, { query, ...options });
-  }
-  /**
-   * Cancels an in-progress batch. The batch will be in status `cancelling` for up to
-   * 10 minutes, before changing to `cancelled`, where it will have partial results
-   * (if any) available in the output file.
-   */
-  cancel(batchID, options) {
-    return this._client.post(path2`/batches/${batchID}/cancel`, options);
-  }
-};
-
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/beta/assistants.mjs
-var Assistants = class extends APIResource2 {
-  /**
-   * Create an assistant with a model and instructions.
-   *
-   * @deprecated
-   */
-  create(body, options) {
-    return this._client.post("/assistants", {
-      body,
-      ...options,
-      headers: buildHeaders2([{ "OpenAI-Beta": "assistants=v2" }, options?.headers])
-    });
-  }
-  /**
-   * Retrieves an assistant.
-   *
-   * @deprecated
-   */
-  retrieve(assistantID, options) {
-    return this._client.get(path2`/assistants/${assistantID}`, {
-      ...options,
-      headers: buildHeaders2([{ "OpenAI-Beta": "assistants=v2" }, options?.headers])
-    });
-  }
-  /**
-   * Modifies an assistant.
-   *
-   * @deprecated
-   */
-  update(assistantID, body, options) {
-    return this._client.post(path2`/assistants/${assistantID}`, {
-      body,
-      ...options,
-      headers: buildHeaders2([{ "OpenAI-Beta": "assistants=v2" }, options?.headers])
-    });
-  }
-  /**
-   * Returns a list of assistants.
-   *
-   * @deprecated
-   */
-  list(query = {}, options) {
-    return this._client.getAPIList("/assistants", CursorPage, {
-      query,
-      ...options,
-      headers: buildHeaders2([{ "OpenAI-Beta": "assistants=v2" }, options?.headers])
-    });
-  }
-  /**
-   * Delete an assistant.
-   *
-   * @deprecated
-   */
-  delete(assistantID, options) {
-    return this._client.delete(path2`/assistants/${assistantID}`, {
-      ...options,
-      headers: buildHeaders2([{ "OpenAI-Beta": "assistants=v2" }, options?.headers])
-    });
-  }
-};
-
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/beta/realtime/sessions.mjs
-var Sessions = class extends APIResource2 {
-  /**
-   * Create an ephemeral API token for use in client-side applications with the
-   * Realtime API. Can be configured with the same session parameters as the
-   * `session.update` client event.
-   *
-   * It responds with a session object, plus a `client_secret` key which contains a
-   * usable ephemeral API token that can be used to authenticate browser clients for
-   * the Realtime API.
-   *
-   * @example
-   * ```ts
-   * const session =
-   *   await client.beta.realtime.sessions.create();
-   * ```
-   */
-  create(body, options) {
-    return this._client.post("/realtime/sessions", {
-      body,
-      ...options,
-      headers: buildHeaders2([{ "OpenAI-Beta": "assistants=v2" }, options?.headers])
-    });
-  }
-};
-
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/beta/realtime/transcription-sessions.mjs
-var TranscriptionSessions = class extends APIResource2 {
-  /**
-   * Create an ephemeral API token for use in client-side applications with the
-   * Realtime API specifically for realtime transcriptions. Can be configured with
-   * the same session parameters as the `transcription_session.update` client event.
-   *
-   * It responds with a session object, plus a `client_secret` key which contains a
-   * usable ephemeral API token that can be used to authenticate browser clients for
-   * the Realtime API.
-   *
-   * @example
-   * ```ts
-   * const transcriptionSession =
-   *   await client.beta.realtime.transcriptionSessions.create();
-   * ```
-   */
-  create(body, options) {
-    return this._client.post("/realtime/transcription_sessions", {
-      body,
-      ...options,
-      headers: buildHeaders2([{ "OpenAI-Beta": "assistants=v2" }, options?.headers])
-    });
-  }
-};
-
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/beta/realtime/realtime.mjs
-var Realtime = class extends APIResource2 {
+var S2 = class {
   constructor() {
-    super(...arguments);
-    this.sessions = new Sessions(this._client);
-    this.transcriptionSessions = new TranscriptionSessions(this._client);
   }
 };
-Realtime.Sessions = Sessions;
-Realtime.TranscriptionSessions = TranscriptionSessions;
-
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/beta/chatkit/sessions.mjs
-var Sessions2 = class extends APIResource2 {
-  /**
-   * Create a ChatKit session
-   *
-   * @example
-   * ```ts
-   * const chatSession =
-   *   await client.beta.chatkit.sessions.create({
-   *     user: 'x',
-   *     workflow: { id: 'id' },
-   *   });
-   * ```
-   */
-  create(body, options) {
-    return this._client.post("/chatkit/sessions", {
-      body,
-      ...options,
-      headers: buildHeaders2([{ "OpenAI-Beta": "chatkit_beta=v1" }, options?.headers])
-    });
-  }
-  /**
-   * Cancel a ChatKit session
-   *
-   * @example
-   * ```ts
-   * const chatSession =
-   *   await client.beta.chatkit.sessions.cancel('cksess_123');
-   * ```
-   */
-  cancel(sessionID, options) {
-    return this._client.post(path2`/chatkit/sessions/${sessionID}/cancel`, {
-      ...options,
-      headers: buildHeaders2([{ "OpenAI-Beta": "chatkit_beta=v1" }, options?.headers])
-    });
-  }
-};
-
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/beta/chatkit/threads.mjs
-var Threads = class extends APIResource2 {
-  /**
-   * Retrieve a ChatKit thread
-   *
-   * @example
-   * ```ts
-   * const chatkitThread =
-   *   await client.beta.chatkit.threads.retrieve('cthr_123');
-   * ```
-   */
-  retrieve(threadID, options) {
-    return this._client.get(path2`/chatkit/threads/${threadID}`, {
-      ...options,
-      headers: buildHeaders2([{ "OpenAI-Beta": "chatkit_beta=v1" }, options?.headers])
-    });
-  }
-  /**
-   * List ChatKit threads
-   *
-   * @example
-   * ```ts
-   * // Automatically fetches more pages as needed.
-   * for await (const chatkitThread of client.beta.chatkit.threads.list()) {
-   *   // ...
-   * }
-   * ```
-   */
-  list(query = {}, options) {
-    return this._client.getAPIList("/chatkit/threads", ConversationCursorPage, {
-      query,
-      ...options,
-      headers: buildHeaders2([{ "OpenAI-Beta": "chatkit_beta=v1" }, options?.headers])
-    });
-  }
-  /**
-   * Delete a ChatKit thread
-   *
-   * @example
-   * ```ts
-   * const thread = await client.beta.chatkit.threads.delete(
-   *   'cthr_123',
-   * );
-   * ```
-   */
-  delete(threadID, options) {
-    return this._client.delete(path2`/chatkit/threads/${threadID}`, {
-      ...options,
-      headers: buildHeaders2([{ "OpenAI-Beta": "chatkit_beta=v1" }, options?.headers])
-    });
-  }
-  /**
-   * List ChatKit thread items
-   *
-   * @example
-   * ```ts
-   * // Automatically fetches more pages as needed.
-   * for await (const thread of client.beta.chatkit.threads.listItems(
-   *   'cthr_123',
-   * )) {
-   *   // ...
-   * }
-   * ```
-   */
-  listItems(threadID, query = {}, options) {
-    return this._client.getAPIList(path2`/chatkit/threads/${threadID}/items`, ConversationCursorPage, { query, ...options, headers: buildHeaders2([{ "OpenAI-Beta": "chatkit_beta=v1" }, options?.headers]) });
-  }
-};
-
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/beta/chatkit/chatkit.mjs
-var ChatKit = class extends APIResource2 {
-  constructor() {
-    super(...arguments);
-    this.sessions = new Sessions2(this._client);
-    this.threads = new Threads(this._client);
-  }
-};
-ChatKit.Sessions = Sessions2;
-ChatKit.Threads = Threads;
-
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/beta/threads/messages.mjs
-var Messages4 = class extends APIResource2 {
-  /**
-   * Create a message.
-   *
-   * @deprecated The Assistants API is deprecated in favor of the Responses API
-   */
-  create(threadID, body, options) {
-    return this._client.post(path2`/threads/${threadID}/messages`, {
-      body,
-      ...options,
-      headers: buildHeaders2([{ "OpenAI-Beta": "assistants=v2" }, options?.headers])
-    });
-  }
-  /**
-   * Retrieve a message.
-   *
-   * @deprecated The Assistants API is deprecated in favor of the Responses API
-   */
-  retrieve(messageID, params, options) {
-    const { thread_id } = params;
-    return this._client.get(path2`/threads/${thread_id}/messages/${messageID}`, {
-      ...options,
-      headers: buildHeaders2([{ "OpenAI-Beta": "assistants=v2" }, options?.headers])
-    });
-  }
-  /**
-   * Modifies a message.
-   *
-   * @deprecated The Assistants API is deprecated in favor of the Responses API
-   */
-  update(messageID, params, options) {
-    const { thread_id, ...body } = params;
-    return this._client.post(path2`/threads/${thread_id}/messages/${messageID}`, {
-      body,
-      ...options,
-      headers: buildHeaders2([{ "OpenAI-Beta": "assistants=v2" }, options?.headers])
-    });
-  }
-  /**
-   * Returns a list of messages for a given thread.
-   *
-   * @deprecated The Assistants API is deprecated in favor of the Responses API
-   */
-  list(threadID, query = {}, options) {
-    return this._client.getAPIList(path2`/threads/${threadID}/messages`, CursorPage, {
-      query,
-      ...options,
-      headers: buildHeaders2([{ "OpenAI-Beta": "assistants=v2" }, options?.headers])
-    });
-  }
-  /**
-   * Deletes a message.
-   *
-   * @deprecated The Assistants API is deprecated in favor of the Responses API
-   */
-  delete(messageID, params, options) {
-    const { thread_id } = params;
-    return this._client.delete(path2`/threads/${thread_id}/messages/${messageID}`, {
-      ...options,
-      headers: buildHeaders2([{ "OpenAI-Beta": "assistants=v2" }, options?.headers])
-    });
-  }
-};
-
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/beta/threads/runs/steps.mjs
-var Steps = class extends APIResource2 {
-  /**
-   * Retrieves a run step.
-   *
-   * @deprecated The Assistants API is deprecated in favor of the Responses API
-   */
-  retrieve(stepID, params, options) {
-    const { thread_id, run_id, ...query } = params;
-    return this._client.get(path2`/threads/${thread_id}/runs/${run_id}/steps/${stepID}`, {
-      query,
-      ...options,
-      headers: buildHeaders2([{ "OpenAI-Beta": "assistants=v2" }, options?.headers])
-    });
-  }
-  /**
-   * Returns a list of run steps belonging to a run.
-   *
-   * @deprecated The Assistants API is deprecated in favor of the Responses API
-   */
-  list(runID, params, options) {
-    const { thread_id, ...query } = params;
-    return this._client.getAPIList(path2`/threads/${thread_id}/runs/${runID}/steps`, CursorPage, {
-      query,
-      ...options,
-      headers: buildHeaders2([{ "OpenAI-Beta": "assistants=v2" }, options?.headers])
-    });
-  }
-};
-
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/internal/utils/base64.mjs
-var toFloat32Array = (base64Str) => {
-  if (typeof Buffer !== "undefined") {
-    const buf = Buffer.from(base64Str, "base64");
-    return Array.from(new Float32Array(buf.buffer, buf.byteOffset, buf.length / Float32Array.BYTES_PER_ELEMENT));
-  } else {
-    const binaryStr = atob(base64Str);
-    const len = binaryStr.length;
-    const bytes = new Uint8Array(len);
-    for (let i = 0; i < len; i++) {
-      bytes[i] = binaryStr.charCodeAt(i);
-    }
-    return Array.from(new Float32Array(bytes.buffer));
-  }
-};
-
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/internal/utils/env.mjs
-var readEnv2 = (env) => {
-  if (typeof globalThis.process !== "undefined") {
-    return globalThis.process.env?.[env]?.trim() ?? void 0;
-  }
-  if (typeof globalThis.Deno !== "undefined") {
-    return globalThis.Deno.env?.get?.(env)?.trim();
-  }
-  return void 0;
-};
-
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/lib/AssistantStream.mjs
-var _AssistantStream_instances;
-var _a2;
-var _AssistantStream_events;
-var _AssistantStream_runStepSnapshots;
-var _AssistantStream_messageSnapshots;
-var _AssistantStream_messageSnapshot;
-var _AssistantStream_finalRun;
-var _AssistantStream_currentContentIndex;
-var _AssistantStream_currentContent;
-var _AssistantStream_currentToolCallIndex;
-var _AssistantStream_currentToolCall;
-var _AssistantStream_currentEvent;
-var _AssistantStream_currentRunSnapshot;
-var _AssistantStream_currentRunStepSnapshot;
-var _AssistantStream_addEvent;
-var _AssistantStream_endRequest;
-var _AssistantStream_handleMessage;
-var _AssistantStream_handleRunStep;
-var _AssistantStream_handleEvent;
-var _AssistantStream_accumulateRunStep;
-var _AssistantStream_accumulateMessage;
-var _AssistantStream_accumulateContent;
-var _AssistantStream_handleRun;
-var AssistantStream = class extends EventStream {
-  constructor() {
-    super(...arguments);
-    _AssistantStream_instances.add(this);
-    _AssistantStream_events.set(this, []);
-    _AssistantStream_runStepSnapshots.set(this, {});
-    _AssistantStream_messageSnapshots.set(this, {});
-    _AssistantStream_messageSnapshot.set(this, void 0);
-    _AssistantStream_finalRun.set(this, void 0);
-    _AssistantStream_currentContentIndex.set(this, void 0);
-    _AssistantStream_currentContent.set(this, void 0);
-    _AssistantStream_currentToolCallIndex.set(this, void 0);
-    _AssistantStream_currentToolCall.set(this, void 0);
-    _AssistantStream_currentEvent.set(this, void 0);
-    _AssistantStream_currentRunSnapshot.set(this, void 0);
-    _AssistantStream_currentRunStepSnapshot.set(this, void 0);
-  }
-  [(_AssistantStream_events = /* @__PURE__ */ new WeakMap(), _AssistantStream_runStepSnapshots = /* @__PURE__ */ new WeakMap(), _AssistantStream_messageSnapshots = /* @__PURE__ */ new WeakMap(), _AssistantStream_messageSnapshot = /* @__PURE__ */ new WeakMap(), _AssistantStream_finalRun = /* @__PURE__ */ new WeakMap(), _AssistantStream_currentContentIndex = /* @__PURE__ */ new WeakMap(), _AssistantStream_currentContent = /* @__PURE__ */ new WeakMap(), _AssistantStream_currentToolCallIndex = /* @__PURE__ */ new WeakMap(), _AssistantStream_currentToolCall = /* @__PURE__ */ new WeakMap(), _AssistantStream_currentEvent = /* @__PURE__ */ new WeakMap(), _AssistantStream_currentRunSnapshot = /* @__PURE__ */ new WeakMap(), _AssistantStream_currentRunStepSnapshot = /* @__PURE__ */ new WeakMap(), _AssistantStream_instances = /* @__PURE__ */ new WeakSet(), Symbol.asyncIterator)]() {
-    const pushQueue = [];
-    const readQueue = [];
-    let done = false;
-    this.on("event", (event) => {
-      const reader = readQueue.shift();
-      if (reader) {
-        reader.resolve(event);
-      } else {
-        pushQueue.push(event);
-      }
-    });
-    this.on("end", () => {
-      done = true;
-      for (const reader of readQueue) {
-        reader.resolve(void 0);
-      }
-      readQueue.length = 0;
-    });
-    this.on("abort", (err) => {
-      done = true;
-      for (const reader of readQueue) {
-        reader.reject(err);
-      }
-      readQueue.length = 0;
-    });
-    this.on("error", (err) => {
-      done = true;
-      for (const reader of readQueue) {
-        reader.reject(err);
-      }
-      readQueue.length = 0;
-    });
-    return {
-      next: async () => {
-        if (!pushQueue.length) {
-          if (done) {
-            return { value: void 0, done: true };
-          }
-          return new Promise((resolve, reject) => readQueue.push({ resolve, reject })).then((chunk2) => chunk2 ? { value: chunk2, done: false } : { value: void 0, done: true });
-        }
-        const chunk = pushQueue.shift();
-        return { value: chunk, done: false };
-      },
-      return: async () => {
-        this.abort();
-        return { value: void 0, done: true };
-      }
-    };
-  }
-  static fromReadableStream(stream) {
-    const runner = new _a2();
-    runner._run(() => runner._fromReadableStream(stream));
-    return runner;
-  }
-  async _fromReadableStream(readableStream, options) {
-    const signal = options?.signal;
-    if (signal) {
-      if (signal.aborted)
-        this.controller.abort();
-      signal.addEventListener("abort", () => this.controller.abort());
-    }
-    this._connected();
-    const stream = Stream2.fromReadableStream(readableStream, this.controller);
-    for await (const event of stream) {
-      __classPrivateFieldGet2(this, _AssistantStream_instances, "m", _AssistantStream_addEvent).call(this, event);
-    }
-    if (stream.controller.signal?.aborted) {
-      throw new APIUserAbortError2();
-    }
-    return this._addRun(__classPrivateFieldGet2(this, _AssistantStream_instances, "m", _AssistantStream_endRequest).call(this));
-  }
-  toReadableStream() {
-    const stream = new Stream2(this[Symbol.asyncIterator].bind(this), this.controller);
-    return stream.toReadableStream();
-  }
-  static createToolAssistantStream(runId, runs, params, options) {
-    const runner = new _a2();
-    runner._run(() => runner._runToolAssistantStream(runId, runs, params, {
-      ...options,
-      headers: { ...options?.headers, "X-Stainless-Helper-Method": "stream" }
-    }));
-    return runner;
-  }
-  async _createToolAssistantStream(run, runId, params, options) {
-    const signal = options?.signal;
-    if (signal) {
-      if (signal.aborted)
-        this.controller.abort();
-      signal.addEventListener("abort", () => this.controller.abort());
-    }
-    const body = { ...params, stream: true };
-    const stream = await run.submitToolOutputs(runId, body, {
-      ...options,
-      signal: this.controller.signal
-    });
-    this._connected();
-    for await (const event of stream) {
-      __classPrivateFieldGet2(this, _AssistantStream_instances, "m", _AssistantStream_addEvent).call(this, event);
-    }
-    if (stream.controller.signal?.aborted) {
-      throw new APIUserAbortError2();
-    }
-    return this._addRun(__classPrivateFieldGet2(this, _AssistantStream_instances, "m", _AssistantStream_endRequest).call(this));
-  }
-  static createThreadAssistantStream(params, thread, options) {
-    const runner = new _a2();
-    runner._run(() => runner._threadAssistantStream(params, thread, {
-      ...options,
-      headers: { ...options?.headers, "X-Stainless-Helper-Method": "stream" }
-    }));
-    return runner;
-  }
-  static createAssistantStream(threadId, runs, params, options) {
-    const runner = new _a2();
-    runner._run(() => runner._runAssistantStream(threadId, runs, params, {
-      ...options,
-      headers: { ...options?.headers, "X-Stainless-Helper-Method": "stream" }
-    }));
-    return runner;
-  }
-  currentEvent() {
-    return __classPrivateFieldGet2(this, _AssistantStream_currentEvent, "f");
-  }
-  currentRun() {
-    return __classPrivateFieldGet2(this, _AssistantStream_currentRunSnapshot, "f");
-  }
-  currentMessageSnapshot() {
-    return __classPrivateFieldGet2(this, _AssistantStream_messageSnapshot, "f");
-  }
-  currentRunStepSnapshot() {
-    return __classPrivateFieldGet2(this, _AssistantStream_currentRunStepSnapshot, "f");
-  }
-  async finalRunSteps() {
-    await this.done();
-    return Object.values(__classPrivateFieldGet2(this, _AssistantStream_runStepSnapshots, "f"));
-  }
-  async finalMessages() {
-    await this.done();
-    return Object.values(__classPrivateFieldGet2(this, _AssistantStream_messageSnapshots, "f"));
-  }
-  async finalRun() {
-    await this.done();
-    if (!__classPrivateFieldGet2(this, _AssistantStream_finalRun, "f"))
-      throw Error("Final run was not received.");
-    return __classPrivateFieldGet2(this, _AssistantStream_finalRun, "f");
-  }
-  async _createThreadAssistantStream(thread, params, options) {
-    const signal = options?.signal;
-    if (signal) {
-      if (signal.aborted)
-        this.controller.abort();
-      signal.addEventListener("abort", () => this.controller.abort());
-    }
-    const body = { ...params, stream: true };
-    const stream = await thread.createAndRun(body, { ...options, signal: this.controller.signal });
-    this._connected();
-    for await (const event of stream) {
-      __classPrivateFieldGet2(this, _AssistantStream_instances, "m", _AssistantStream_addEvent).call(this, event);
-    }
-    if (stream.controller.signal?.aborted) {
-      throw new APIUserAbortError2();
-    }
-    return this._addRun(__classPrivateFieldGet2(this, _AssistantStream_instances, "m", _AssistantStream_endRequest).call(this));
-  }
-  async _createAssistantStream(run, threadId, params, options) {
-    const signal = options?.signal;
-    if (signal) {
-      if (signal.aborted)
-        this.controller.abort();
-      signal.addEventListener("abort", () => this.controller.abort());
-    }
-    const body = { ...params, stream: true };
-    const stream = await run.create(threadId, body, { ...options, signal: this.controller.signal });
-    this._connected();
-    for await (const event of stream) {
-      __classPrivateFieldGet2(this, _AssistantStream_instances, "m", _AssistantStream_addEvent).call(this, event);
-    }
-    if (stream.controller.signal?.aborted) {
-      throw new APIUserAbortError2();
-    }
-    return this._addRun(__classPrivateFieldGet2(this, _AssistantStream_instances, "m", _AssistantStream_endRequest).call(this));
-  }
-  static accumulateDelta(acc, delta) {
-    for (const [key, deltaValue] of Object.entries(delta)) {
-      if (!acc.hasOwnProperty(key)) {
-        acc[key] = deltaValue;
-        continue;
-      }
-      let accValue = acc[key];
-      if (accValue === null || accValue === void 0) {
-        acc[key] = deltaValue;
-        continue;
-      }
-      if (key === "index" || key === "type") {
-        acc[key] = deltaValue;
-        continue;
-      }
-      if (typeof accValue === "string" && typeof deltaValue === "string") {
-        accValue += deltaValue;
-      } else if (typeof accValue === "number" && typeof deltaValue === "number") {
-        accValue += deltaValue;
-      } else if (isObj(accValue) && isObj(deltaValue)) {
-        accValue = this.accumulateDelta(accValue, deltaValue);
-      } else if (Array.isArray(accValue) && Array.isArray(deltaValue)) {
-        if (accValue.every((x) => typeof x === "string" || typeof x === "number")) {
-          accValue.push(...deltaValue);
-          continue;
-        }
-        for (const deltaEntry of deltaValue) {
-          if (!isObj(deltaEntry)) {
-            throw new Error(`Expected array delta entry to be an object but got: ${deltaEntry}`);
-          }
-          const index = deltaEntry["index"];
-          if (index == null) {
-            console.error(deltaEntry);
-            throw new Error("Expected array delta entry to have an `index` property");
-          }
-          if (typeof index !== "number") {
-            throw new Error(`Expected array delta entry \`index\` property to be a number but got ${index}`);
-          }
-          const accEntry = accValue[index];
-          if (accEntry == null) {
-            accValue.push(deltaEntry);
-          } else {
-            accValue[index] = this.accumulateDelta(accEntry, deltaEntry);
-          }
-        }
-        continue;
-      } else {
-        throw Error(`Unhandled record type: ${key}, deltaValue: ${deltaValue}, accValue: ${accValue}`);
-      }
-      acc[key] = accValue;
-    }
-    return acc;
-  }
-  _addRun(run) {
-    return run;
-  }
-  async _threadAssistantStream(params, thread, options) {
-    return await this._createThreadAssistantStream(thread, params, options);
-  }
-  async _runAssistantStream(threadId, runs, params, options) {
-    return await this._createAssistantStream(runs, threadId, params, options);
-  }
-  async _runToolAssistantStream(runId, runs, params, options) {
-    return await this._createToolAssistantStream(runs, runId, params, options);
-  }
-};
-_a2 = AssistantStream, _AssistantStream_addEvent = function _AssistantStream_addEvent2(event) {
-  if (this.ended)
-    return;
-  __classPrivateFieldSet2(this, _AssistantStream_currentEvent, event, "f");
-  __classPrivateFieldGet2(this, _AssistantStream_instances, "m", _AssistantStream_handleEvent).call(this, event);
-  switch (event.event) {
-    case "thread.created":
-      break;
-    case "thread.run.created":
-    case "thread.run.queued":
-    case "thread.run.in_progress":
-    case "thread.run.requires_action":
-    case "thread.run.completed":
-    case "thread.run.incomplete":
-    case "thread.run.failed":
-    case "thread.run.cancelling":
-    case "thread.run.cancelled":
-    case "thread.run.expired":
-      __classPrivateFieldGet2(this, _AssistantStream_instances, "m", _AssistantStream_handleRun).call(this, event);
-      break;
-    case "thread.run.step.created":
-    case "thread.run.step.in_progress":
-    case "thread.run.step.delta":
-    case "thread.run.step.completed":
-    case "thread.run.step.failed":
-    case "thread.run.step.cancelled":
-    case "thread.run.step.expired":
-      __classPrivateFieldGet2(this, _AssistantStream_instances, "m", _AssistantStream_handleRunStep).call(this, event);
-      break;
-    case "thread.message.created":
-    case "thread.message.in_progress":
-    case "thread.message.delta":
-    case "thread.message.completed":
-    case "thread.message.incomplete":
-      __classPrivateFieldGet2(this, _AssistantStream_instances, "m", _AssistantStream_handleMessage).call(this, event);
-      break;
-    case "error":
-      throw new Error("Encountered an error event in event processing - errors should be processed earlier");
-    default:
-      assertNever2(event);
-  }
-}, _AssistantStream_endRequest = function _AssistantStream_endRequest2() {
-  if (this.ended) {
-    throw new OpenAIError(`stream has ended, this shouldn't happen`);
-  }
-  if (!__classPrivateFieldGet2(this, _AssistantStream_finalRun, "f"))
-    throw Error("Final run has not been received");
-  return __classPrivateFieldGet2(this, _AssistantStream_finalRun, "f");
-}, _AssistantStream_handleMessage = function _AssistantStream_handleMessage2(event) {
-  const [accumulatedMessage, newContent] = __classPrivateFieldGet2(this, _AssistantStream_instances, "m", _AssistantStream_accumulateMessage).call(this, event, __classPrivateFieldGet2(this, _AssistantStream_messageSnapshot, "f"));
-  __classPrivateFieldSet2(this, _AssistantStream_messageSnapshot, accumulatedMessage, "f");
-  __classPrivateFieldGet2(this, _AssistantStream_messageSnapshots, "f")[accumulatedMessage.id] = accumulatedMessage;
-  for (const content of newContent) {
-    const snapshotContent = accumulatedMessage.content[content.index];
-    if (snapshotContent?.type == "text") {
-      this._emit("textCreated", snapshotContent.text);
-    }
-  }
-  switch (event.event) {
-    case "thread.message.created":
-      this._emit("messageCreated", event.data);
-      break;
-    case "thread.message.in_progress":
-      break;
-    case "thread.message.delta":
-      this._emit("messageDelta", event.data.delta, accumulatedMessage);
-      if (event.data.delta.content) {
-        for (const content of event.data.delta.content) {
-          if (content.type == "text" && content.text) {
-            let textDelta = content.text;
-            let snapshot = accumulatedMessage.content[content.index];
-            if (snapshot && snapshot.type == "text") {
-              this._emit("textDelta", textDelta, snapshot.text);
-            } else {
-              throw Error("The snapshot associated with this text delta is not text or missing");
-            }
-          }
-          if (content.index != __classPrivateFieldGet2(this, _AssistantStream_currentContentIndex, "f")) {
-            if (__classPrivateFieldGet2(this, _AssistantStream_currentContent, "f")) {
-              switch (__classPrivateFieldGet2(this, _AssistantStream_currentContent, "f").type) {
-                case "text":
-                  this._emit("textDone", __classPrivateFieldGet2(this, _AssistantStream_currentContent, "f").text, __classPrivateFieldGet2(this, _AssistantStream_messageSnapshot, "f"));
-                  break;
-                case "image_file":
-                  this._emit("imageFileDone", __classPrivateFieldGet2(this, _AssistantStream_currentContent, "f").image_file, __classPrivateFieldGet2(this, _AssistantStream_messageSnapshot, "f"));
-                  break;
-              }
-            }
-            __classPrivateFieldSet2(this, _AssistantStream_currentContentIndex, content.index, "f");
-          }
-          __classPrivateFieldSet2(this, _AssistantStream_currentContent, accumulatedMessage.content[content.index], "f");
-        }
-      }
-      break;
-    case "thread.message.completed":
-    case "thread.message.incomplete":
-      if (__classPrivateFieldGet2(this, _AssistantStream_currentContentIndex, "f") !== void 0) {
-        const currentContent = event.data.content[__classPrivateFieldGet2(this, _AssistantStream_currentContentIndex, "f")];
-        if (currentContent) {
-          switch (currentContent.type) {
-            case "image_file":
-              this._emit("imageFileDone", currentContent.image_file, __classPrivateFieldGet2(this, _AssistantStream_messageSnapshot, "f"));
-              break;
-            case "text":
-              this._emit("textDone", currentContent.text, __classPrivateFieldGet2(this, _AssistantStream_messageSnapshot, "f"));
-              break;
-          }
-        }
-      }
-      if (__classPrivateFieldGet2(this, _AssistantStream_messageSnapshot, "f")) {
-        this._emit("messageDone", event.data);
-      }
-      __classPrivateFieldSet2(this, _AssistantStream_messageSnapshot, void 0, "f");
-  }
-}, _AssistantStream_handleRunStep = function _AssistantStream_handleRunStep2(event) {
-  const accumulatedRunStep = __classPrivateFieldGet2(this, _AssistantStream_instances, "m", _AssistantStream_accumulateRunStep).call(this, event);
-  __classPrivateFieldSet2(this, _AssistantStream_currentRunStepSnapshot, accumulatedRunStep, "f");
-  switch (event.event) {
-    case "thread.run.step.created":
-      this._emit("runStepCreated", event.data);
-      break;
-    case "thread.run.step.delta":
-      const delta = event.data.delta;
-      if (delta.step_details && delta.step_details.type == "tool_calls" && delta.step_details.tool_calls && accumulatedRunStep.step_details.type == "tool_calls") {
-        for (const toolCall of delta.step_details.tool_calls) {
-          if (toolCall.index == __classPrivateFieldGet2(this, _AssistantStream_currentToolCallIndex, "f")) {
-            this._emit("toolCallDelta", toolCall, accumulatedRunStep.step_details.tool_calls[toolCall.index]);
-          } else {
-            if (__classPrivateFieldGet2(this, _AssistantStream_currentToolCall, "f")) {
-              this._emit("toolCallDone", __classPrivateFieldGet2(this, _AssistantStream_currentToolCall, "f"));
-            }
-            __classPrivateFieldSet2(this, _AssistantStream_currentToolCallIndex, toolCall.index, "f");
-            __classPrivateFieldSet2(this, _AssistantStream_currentToolCall, accumulatedRunStep.step_details.tool_calls[toolCall.index], "f");
-            if (__classPrivateFieldGet2(this, _AssistantStream_currentToolCall, "f"))
-              this._emit("toolCallCreated", __classPrivateFieldGet2(this, _AssistantStream_currentToolCall, "f"));
-          }
-        }
-      }
-      this._emit("runStepDelta", event.data.delta, accumulatedRunStep);
-      break;
-    case "thread.run.step.completed":
-    case "thread.run.step.failed":
-    case "thread.run.step.cancelled":
-    case "thread.run.step.expired":
-      __classPrivateFieldSet2(this, _AssistantStream_currentRunStepSnapshot, void 0, "f");
-      const details = event.data.step_details;
-      if (details.type == "tool_calls") {
-        if (__classPrivateFieldGet2(this, _AssistantStream_currentToolCall, "f")) {
-          this._emit("toolCallDone", __classPrivateFieldGet2(this, _AssistantStream_currentToolCall, "f"));
-          __classPrivateFieldSet2(this, _AssistantStream_currentToolCall, void 0, "f");
-        }
-      }
-      this._emit("runStepDone", event.data, accumulatedRunStep);
-      break;
-    case "thread.run.step.in_progress":
-      break;
-  }
-}, _AssistantStream_handleEvent = function _AssistantStream_handleEvent2(event) {
-  __classPrivateFieldGet2(this, _AssistantStream_events, "f").push(event);
-  this._emit("event", event);
-}, _AssistantStream_accumulateRunStep = function _AssistantStream_accumulateRunStep2(event) {
-  switch (event.event) {
-    case "thread.run.step.created":
-      __classPrivateFieldGet2(this, _AssistantStream_runStepSnapshots, "f")[event.data.id] = event.data;
-      return event.data;
-    case "thread.run.step.delta":
-      let snapshot = __classPrivateFieldGet2(this, _AssistantStream_runStepSnapshots, "f")[event.data.id];
-      if (!snapshot) {
-        throw Error("Received a RunStepDelta before creation of a snapshot");
-      }
-      let data = event.data;
-      if (data.delta) {
-        const accumulated = _a2.accumulateDelta(snapshot, data.delta);
-        __classPrivateFieldGet2(this, _AssistantStream_runStepSnapshots, "f")[event.data.id] = accumulated;
-      }
-      return __classPrivateFieldGet2(this, _AssistantStream_runStepSnapshots, "f")[event.data.id];
-    case "thread.run.step.completed":
-    case "thread.run.step.failed":
-    case "thread.run.step.cancelled":
-    case "thread.run.step.expired":
-    case "thread.run.step.in_progress":
-      __classPrivateFieldGet2(this, _AssistantStream_runStepSnapshots, "f")[event.data.id] = event.data;
-      break;
-  }
-  if (__classPrivateFieldGet2(this, _AssistantStream_runStepSnapshots, "f")[event.data.id])
-    return __classPrivateFieldGet2(this, _AssistantStream_runStepSnapshots, "f")[event.data.id];
-  throw new Error("No snapshot available");
-}, _AssistantStream_accumulateMessage = function _AssistantStream_accumulateMessage2(event, snapshot) {
-  let newContent = [];
-  switch (event.event) {
-    case "thread.message.created":
-      return [event.data, newContent];
-    case "thread.message.delta":
-      if (!snapshot) {
-        throw Error("Received a delta with no existing snapshot (there should be one from message creation)");
-      }
-      let data = event.data;
-      if (data.delta.content) {
-        for (const contentElement of data.delta.content) {
-          if (contentElement.index in snapshot.content) {
-            let currentContent = snapshot.content[contentElement.index];
-            snapshot.content[contentElement.index] = __classPrivateFieldGet2(this, _AssistantStream_instances, "m", _AssistantStream_accumulateContent).call(this, contentElement, currentContent);
-          } else {
-            snapshot.content[contentElement.index] = contentElement;
-            newContent.push(contentElement);
-          }
-        }
-      }
-      return [snapshot, newContent];
-    case "thread.message.in_progress":
-    case "thread.message.completed":
-    case "thread.message.incomplete":
-      if (snapshot) {
-        return [snapshot, newContent];
-      } else {
-        throw Error("Received thread message event with no existing snapshot");
-      }
-  }
-  throw Error("Tried to accumulate a non-message event");
-}, _AssistantStream_accumulateContent = function _AssistantStream_accumulateContent2(contentElement, currentContent) {
-  return _a2.accumulateDelta(currentContent, contentElement);
-}, _AssistantStream_handleRun = function _AssistantStream_handleRun2(event) {
-  __classPrivateFieldSet2(this, _AssistantStream_currentRunSnapshot, event.data, "f");
-  switch (event.event) {
-    case "thread.run.created":
-      break;
-    case "thread.run.queued":
-      break;
-    case "thread.run.in_progress":
-      break;
-    case "thread.run.requires_action":
-    case "thread.run.cancelled":
-    case "thread.run.failed":
-    case "thread.run.completed":
-    case "thread.run.expired":
-    case "thread.run.incomplete":
-      __classPrivateFieldSet2(this, _AssistantStream_finalRun, event.data, "f");
-      if (__classPrivateFieldGet2(this, _AssistantStream_currentToolCall, "f")) {
-        this._emit("toolCallDone", __classPrivateFieldGet2(this, _AssistantStream_currentToolCall, "f"));
-        __classPrivateFieldSet2(this, _AssistantStream_currentToolCall, void 0, "f");
-      }
-      break;
-    case "thread.run.cancelling":
-      break;
-  }
-};
-function assertNever2(_x) {
-}
-
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/beta/threads/runs/runs.mjs
-var Runs = class extends APIResource2 {
-  constructor() {
-    super(...arguments);
-    this.steps = new Steps(this._client);
-  }
-  create(threadID, params, options) {
-    const { include, ...body } = params;
-    return this._client.post(path2`/threads/${threadID}/runs`, {
-      query: { include },
-      body,
-      ...options,
-      headers: buildHeaders2([{ "OpenAI-Beta": "assistants=v2" }, options?.headers]),
-      stream: params.stream ?? false
-    });
-  }
-  /**
-   * Retrieves a run.
-   *
-   * @deprecated The Assistants API is deprecated in favor of the Responses API
-   */
-  retrieve(runID, params, options) {
-    const { thread_id } = params;
-    return this._client.get(path2`/threads/${thread_id}/runs/${runID}`, {
-      ...options,
-      headers: buildHeaders2([{ "OpenAI-Beta": "assistants=v2" }, options?.headers])
-    });
-  }
-  /**
-   * Modifies a run.
-   *
-   * @deprecated The Assistants API is deprecated in favor of the Responses API
-   */
-  update(runID, params, options) {
-    const { thread_id, ...body } = params;
-    return this._client.post(path2`/threads/${thread_id}/runs/${runID}`, {
-      body,
-      ...options,
-      headers: buildHeaders2([{ "OpenAI-Beta": "assistants=v2" }, options?.headers])
-    });
-  }
-  /**
-   * Returns a list of runs belonging to a thread.
-   *
-   * @deprecated The Assistants API is deprecated in favor of the Responses API
-   */
-  list(threadID, query = {}, options) {
-    return this._client.getAPIList(path2`/threads/${threadID}/runs`, CursorPage, {
-      query,
-      ...options,
-      headers: buildHeaders2([{ "OpenAI-Beta": "assistants=v2" }, options?.headers])
-    });
-  }
-  /**
-   * Cancels a run that is `in_progress`.
-   *
-   * @deprecated The Assistants API is deprecated in favor of the Responses API
-   */
-  cancel(runID, params, options) {
-    const { thread_id } = params;
-    return this._client.post(path2`/threads/${thread_id}/runs/${runID}/cancel`, {
-      ...options,
-      headers: buildHeaders2([{ "OpenAI-Beta": "assistants=v2" }, options?.headers])
-    });
-  }
-  /**
-   * A helper to create a run an poll for a terminal state. More information on Run
-   * lifecycles can be found here:
-   * https://platform.openai.com/docs/assistants/how-it-works/runs-and-run-steps
-   */
-  async createAndPoll(threadId, body, options) {
-    const run = await this.create(threadId, body, options);
-    return await this.poll(run.id, { thread_id: threadId }, options);
-  }
-  /**
-   * Create a Run stream
-   *
-   * @deprecated use `stream` instead
-   */
-  createAndStream(threadId, body, options) {
-    return AssistantStream.createAssistantStream(threadId, this._client.beta.threads.runs, body, options);
-  }
-  /**
-   * A helper to poll a run status until it reaches a terminal state. More
-   * information on Run lifecycles can be found here:
-   * https://platform.openai.com/docs/assistants/how-it-works/runs-and-run-steps
-   */
-  async poll(runId, params, options) {
-    const headers = buildHeaders2([
-      options?.headers,
-      {
-        "X-Stainless-Poll-Helper": "true",
-        "X-Stainless-Custom-Poll-Interval": options?.pollIntervalMs?.toString() ?? void 0
-      }
-    ]);
-    while (true) {
-      const { data: run, response } = await this.retrieve(runId, params, {
-        ...options,
-        headers: { ...options?.headers, ...headers }
-      }).withResponse();
-      switch (run.status) {
-        //If we are in any sort of intermediate state we poll
-        case "queued":
-        case "in_progress":
-        case "cancelling":
-          let sleepInterval = 5e3;
-          if (options?.pollIntervalMs) {
-            sleepInterval = options.pollIntervalMs;
-          } else {
-            const headerInterval = response.headers.get("openai-poll-after-ms");
-            if (headerInterval) {
-              const headerIntervalMs = parseInt(headerInterval);
-              if (!isNaN(headerIntervalMs)) {
-                sleepInterval = headerIntervalMs;
-              }
-            }
-          }
-          await sleep2(sleepInterval);
-          break;
-        //We return the run in any terminal state.
-        case "requires_action":
-        case "incomplete":
-        case "cancelled":
-        case "completed":
-        case "failed":
-        case "expired":
-          return run;
-      }
-    }
-  }
-  /**
-   * Create a Run stream
-   */
-  stream(threadId, body, options) {
-    return AssistantStream.createAssistantStream(threadId, this._client.beta.threads.runs, body, options);
-  }
-  submitToolOutputs(runID, params, options) {
-    const { thread_id, ...body } = params;
-    return this._client.post(path2`/threads/${thread_id}/runs/${runID}/submit_tool_outputs`, {
-      body,
-      ...options,
-      headers: buildHeaders2([{ "OpenAI-Beta": "assistants=v2" }, options?.headers]),
-      stream: params.stream ?? false
-    });
-  }
-  /**
-   * A helper to submit a tool output to a run and poll for a terminal run state.
-   * More information on Run lifecycles can be found here:
-   * https://platform.openai.com/docs/assistants/how-it-works/runs-and-run-steps
-   */
-  async submitToolOutputsAndPoll(runId, params, options) {
-    const run = await this.submitToolOutputs(runId, params, options);
-    return await this.poll(run.id, params, options);
-  }
-  /**
-   * Submit the tool outputs from a previous run and stream the run to a terminal
-   * state. More information on Run lifecycles can be found here:
-   * https://platform.openai.com/docs/assistants/how-it-works/runs-and-run-steps
-   */
-  submitToolOutputsStream(runId, params, options) {
-    return AssistantStream.createToolAssistantStream(runId, this._client.beta.threads.runs, params, options);
-  }
-};
-Runs.Steps = Steps;
-
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/beta/threads/threads.mjs
-var Threads2 = class extends APIResource2 {
-  constructor() {
-    super(...arguments);
-    this.runs = new Runs(this._client);
-    this.messages = new Messages4(this._client);
-  }
-  /**
-   * Create a thread.
-   *
-   * @deprecated The Assistants API is deprecated in favor of the Responses API
-   */
-  create(body = {}, options) {
-    return this._client.post("/threads", {
-      body,
-      ...options,
-      headers: buildHeaders2([{ "OpenAI-Beta": "assistants=v2" }, options?.headers])
-    });
-  }
-  /**
-   * Retrieves a thread.
-   *
-   * @deprecated The Assistants API is deprecated in favor of the Responses API
-   */
-  retrieve(threadID, options) {
-    return this._client.get(path2`/threads/${threadID}`, {
-      ...options,
-      headers: buildHeaders2([{ "OpenAI-Beta": "assistants=v2" }, options?.headers])
-    });
-  }
-  /**
-   * Modifies a thread.
-   *
-   * @deprecated The Assistants API is deprecated in favor of the Responses API
-   */
-  update(threadID, body, options) {
-    return this._client.post(path2`/threads/${threadID}`, {
-      body,
-      ...options,
-      headers: buildHeaders2([{ "OpenAI-Beta": "assistants=v2" }, options?.headers])
-    });
-  }
-  /**
-   * Delete a thread.
-   *
-   * @deprecated The Assistants API is deprecated in favor of the Responses API
-   */
-  delete(threadID, options) {
-    return this._client.delete(path2`/threads/${threadID}`, {
-      ...options,
-      headers: buildHeaders2([{ "OpenAI-Beta": "assistants=v2" }, options?.headers])
-    });
-  }
-  createAndRun(body, options) {
-    return this._client.post("/threads/runs", {
-      body,
-      ...options,
-      headers: buildHeaders2([{ "OpenAI-Beta": "assistants=v2" }, options?.headers]),
-      stream: body.stream ?? false
-    });
-  }
-  /**
-   * A helper to create a thread, start a run and then poll for a terminal state.
-   * More information on Run lifecycles can be found here:
-   * https://platform.openai.com/docs/assistants/how-it-works/runs-and-run-steps
-   */
-  async createAndRunPoll(body, options) {
-    const run = await this.createAndRun(body, options);
-    return await this.runs.poll(run.id, { thread_id: run.thread_id }, options);
-  }
-  /**
-   * Create a thread and stream the run back
-   */
-  createAndRunStream(body, options) {
-    return AssistantStream.createThreadAssistantStream(body, this._client.beta.threads, options);
-  }
-};
-Threads2.Runs = Runs;
-Threads2.Messages = Messages4;
+var Batches3 = S2;
 
 // ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/beta/beta.mjs
-var Beta2 = class extends APIResource2 {
+var S3 = class {
   constructor() {
-    super(...arguments);
-    this.realtime = new Realtime(this._client);
-    this.chatkit = new ChatKit(this._client);
-    this.assistants = new Assistants(this._client);
-    this.threads = new Threads2(this._client);
   }
 };
-Beta2.Realtime = Realtime;
-Beta2.ChatKit = ChatKit;
-Beta2.Assistants = Assistants;
-Beta2.Threads = Threads2;
+var Beta2 = S3;
 
 // ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/completions.mjs
-var Completions3 = class extends APIResource2 {
-  create(body, options) {
-    return this._client.post("/completions", { body, ...options, stream: body.stream ?? false });
-  }
-};
-
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/containers/files/content.mjs
-var Content = class extends APIResource2 {
-  /**
-   * Retrieve Container File Content
-   */
-  retrieve(fileID, params, options) {
-    const { container_id } = params;
-    return this._client.get(path2`/containers/${container_id}/files/${fileID}/content`, {
-      ...options,
-      headers: buildHeaders2([{ Accept: "application/binary" }, options?.headers]),
-      __binaryResponse: true
-    });
-  }
-};
-
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/containers/files/files.mjs
-var Files2 = class extends APIResource2 {
+var S4 = class {
   constructor() {
-    super(...arguments);
-    this.content = new Content(this._client);
-  }
-  /**
-   * Create a Container File
-   *
-   * You can send either a multipart/form-data request with the raw file content, or
-   * a JSON request with a file ID.
-   */
-  create(containerID, body, options) {
-    return this._client.post(path2`/containers/${containerID}/files`, multipartFormRequestOptions2({ body, ...options }, this._client));
-  }
-  /**
-   * Retrieve Container File
-   */
-  retrieve(fileID, params, options) {
-    const { container_id } = params;
-    return this._client.get(path2`/containers/${container_id}/files/${fileID}`, options);
-  }
-  /**
-   * List Container files
-   */
-  list(containerID, query = {}, options) {
-    return this._client.getAPIList(path2`/containers/${containerID}/files`, CursorPage, {
-      query,
-      ...options
-    });
-  }
-  /**
-   * Delete Container File
-   */
-  delete(fileID, params, options) {
-    const { container_id } = params;
-    return this._client.delete(path2`/containers/${container_id}/files/${fileID}`, {
-      ...options,
-      headers: buildHeaders2([{ Accept: "*/*" }, options?.headers])
-    });
   }
 };
-Files2.Content = Content;
+var Completions3 = S4;
 
 // ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/containers/containers.mjs
-var Containers = class extends APIResource2 {
+var S5 = class {
   constructor() {
-    super(...arguments);
-    this.files = new Files2(this._client);
-  }
-  /**
-   * Create Container
-   */
-  create(body, options) {
-    return this._client.post("/containers", { body, ...options });
-  }
-  /**
-   * Retrieve Container
-   */
-  retrieve(containerID, options) {
-    return this._client.get(path2`/containers/${containerID}`, options);
-  }
-  /**
-   * List Containers
-   */
-  list(query = {}, options) {
-    return this._client.getAPIList("/containers", CursorPage, { query, ...options });
-  }
-  /**
-   * Delete Container
-   */
-  delete(containerID, options) {
-    return this._client.delete(path2`/containers/${containerID}`, {
-      ...options,
-      headers: buildHeaders2([{ Accept: "*/*" }, options?.headers])
-    });
   }
 };
-Containers.Files = Files2;
-
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/conversations/items.mjs
-var Items = class extends APIResource2 {
-  /**
-   * Create items in a conversation with the given ID.
-   */
-  create(conversationID, params, options) {
-    const { include, ...body } = params;
-    return this._client.post(path2`/conversations/${conversationID}/items`, {
-      query: { include },
-      body,
-      ...options
-    });
-  }
-  /**
-   * Get a single item from a conversation with the given IDs.
-   */
-  retrieve(itemID, params, options) {
-    const { conversation_id, ...query } = params;
-    return this._client.get(path2`/conversations/${conversation_id}/items/${itemID}`, { query, ...options });
-  }
-  /**
-   * List all items for a conversation with the given ID.
-   */
-  list(conversationID, query = {}, options) {
-    return this._client.getAPIList(path2`/conversations/${conversationID}/items`, ConversationCursorPage, { query, ...options });
-  }
-  /**
-   * Delete an item from a conversation with the given IDs.
-   */
-  delete(itemID, params, options) {
-    const { conversation_id } = params;
-    return this._client.delete(path2`/conversations/${conversation_id}/items/${itemID}`, options);
-  }
-};
+var Containers = S5;
 
 // ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/conversations/conversations.mjs
-var Conversations = class extends APIResource2 {
+var S6 = class {
   constructor() {
-    super(...arguments);
-    this.items = new Items(this._client);
-  }
-  /**
-   * Create a conversation.
-   */
-  create(body = {}, options) {
-    return this._client.post("/conversations", { body, ...options });
-  }
-  /**
-   * Get a conversation
-   */
-  retrieve(conversationID, options) {
-    return this._client.get(path2`/conversations/${conversationID}`, options);
-  }
-  /**
-   * Update a conversation
-   */
-  update(conversationID, body, options) {
-    return this._client.post(path2`/conversations/${conversationID}`, { body, ...options });
-  }
-  /**
-   * Delete a conversation. Items in the conversation will not be deleted.
-   */
-  delete(conversationID, options) {
-    return this._client.delete(path2`/conversations/${conversationID}`, options);
   }
 };
-Conversations.Items = Items;
+var Conversations = S6;
 
 // ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/embeddings.mjs
-var Embeddings = class extends APIResource2 {
-  /**
-   * Creates an embedding vector representing the input text.
-   *
-   * @example
-   * ```ts
-   * const createEmbeddingResponse =
-   *   await client.embeddings.create({
-   *     input: 'The quick brown fox jumped over the lazy dog',
-   *     model: 'text-embedding-3-small',
-   *   });
-   * ```
-   */
-  create(body, options) {
-    const hasUserProvidedEncodingFormat = !!body.encoding_format;
-    let encoding_format = hasUserProvidedEncodingFormat ? body.encoding_format : "base64";
-    if (hasUserProvidedEncodingFormat) {
-      loggerFor2(this._client).debug("embeddings/user defined encoding_format:", body.encoding_format);
-    }
-    const response = this._client.post("/embeddings", {
-      body: {
-        ...body,
-        encoding_format
-      },
-      ...options
-    });
-    if (hasUserProvidedEncodingFormat) {
-      return response;
-    }
-    loggerFor2(this._client).debug("embeddings/decoding base64 embeddings from base64");
-    return response._thenUnwrap((response2) => {
-      if (response2 && response2.data) {
-        response2.data.forEach((embeddingBase64Obj) => {
-          const embeddingBase64Str = embeddingBase64Obj.embedding;
-          embeddingBase64Obj.embedding = toFloat32Array(embeddingBase64Str);
-        });
-      }
-      return response2;
-    });
-  }
-};
-
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/evals/runs/output-items.mjs
-var OutputItems = class extends APIResource2 {
-  /**
-   * Get an evaluation run output item by ID.
-   */
-  retrieve(outputItemID, params, options) {
-    const { eval_id, run_id } = params;
-    return this._client.get(path2`/evals/${eval_id}/runs/${run_id}/output_items/${outputItemID}`, options);
-  }
-  /**
-   * Get a list of output items for an evaluation run.
-   */
-  list(runID, params, options) {
-    const { eval_id, ...query } = params;
-    return this._client.getAPIList(path2`/evals/${eval_id}/runs/${runID}/output_items`, CursorPage, { query, ...options });
-  }
-};
-
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/evals/runs/runs.mjs
-var Runs2 = class extends APIResource2 {
+var S7 = class {
   constructor() {
-    super(...arguments);
-    this.outputItems = new OutputItems(this._client);
-  }
-  /**
-   * Kicks off a new run for a given evaluation, specifying the data source, and what
-   * model configuration to use to test. The datasource will be validated against the
-   * schema specified in the config of the evaluation.
-   */
-  create(evalID, body, options) {
-    return this._client.post(path2`/evals/${evalID}/runs`, { body, ...options });
-  }
-  /**
-   * Get an evaluation run by ID.
-   */
-  retrieve(runID, params, options) {
-    const { eval_id } = params;
-    return this._client.get(path2`/evals/${eval_id}/runs/${runID}`, options);
-  }
-  /**
-   * Get a list of runs for an evaluation.
-   */
-  list(evalID, query = {}, options) {
-    return this._client.getAPIList(path2`/evals/${evalID}/runs`, CursorPage, {
-      query,
-      ...options
-    });
-  }
-  /**
-   * Delete an eval run.
-   */
-  delete(runID, params, options) {
-    const { eval_id } = params;
-    return this._client.delete(path2`/evals/${eval_id}/runs/${runID}`, options);
-  }
-  /**
-   * Cancel an ongoing evaluation run.
-   */
-  cancel(runID, params, options) {
-    const { eval_id } = params;
-    return this._client.post(path2`/evals/${eval_id}/runs/${runID}`, options);
   }
 };
-Runs2.OutputItems = OutputItems;
+var Embeddings = S7;
 
 // ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/evals/evals.mjs
-var Evals = class extends APIResource2 {
+var S8 = class {
   constructor() {
-    super(...arguments);
-    this.runs = new Runs2(this._client);
-  }
-  /**
-   * Create the structure of an evaluation that can be used to test a model's
-   * performance. An evaluation is a set of testing criteria and the config for a
-   * data source, which dictates the schema of the data used in the evaluation. After
-   * creating an evaluation, you can run it on different models and model parameters.
-   * We support several types of graders and datasources. For more information, see
-   * the [Evals guide](https://platform.openai.com/docs/guides/evals).
-   */
-  create(body, options) {
-    return this._client.post("/evals", { body, ...options });
-  }
-  /**
-   * Get an evaluation by ID.
-   */
-  retrieve(evalID, options) {
-    return this._client.get(path2`/evals/${evalID}`, options);
-  }
-  /**
-   * Update certain properties of an evaluation.
-   */
-  update(evalID, body, options) {
-    return this._client.post(path2`/evals/${evalID}`, { body, ...options });
-  }
-  /**
-   * List evaluations for a project.
-   */
-  list(query = {}, options) {
-    return this._client.getAPIList("/evals", CursorPage, { query, ...options });
-  }
-  /**
-   * Delete an evaluation.
-   */
-  delete(evalID, options) {
-    return this._client.delete(path2`/evals/${evalID}`, options);
   }
 };
-Evals.Runs = Runs2;
+var Evals = S8;
 
 // ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/files.mjs
-var Files3 = class extends APIResource2 {
-  /**
-   * Upload a file that can be used across various endpoints. Individual files can be
-   * up to 512 MB, and each project can store up to 2.5 TB of files in total. There
-   * is no organization-wide storage limit.
-   *
-   * - The Assistants API supports files up to 2 million tokens and of specific file
-   *   types. See the
-   *   [Assistants Tools guide](https://platform.openai.com/docs/assistants/tools)
-   *   for details.
-   * - The Fine-tuning API only supports `.jsonl` files. The input also has certain
-   *   required formats for fine-tuning
-   *   [chat](https://platform.openai.com/docs/api-reference/fine-tuning/chat-input)
-   *   or
-   *   [completions](https://platform.openai.com/docs/api-reference/fine-tuning/completions-input)
-   *   models.
-   * - The Batch API only supports `.jsonl` files up to 200 MB in size. The input
-   *   also has a specific required
-   *   [format](https://platform.openai.com/docs/api-reference/batch/request-input).
-   *
-   * Please [contact us](https://help.openai.com/) if you need to increase these
-   * storage limits.
-   */
-  create(body, options) {
-    return this._client.post("/files", multipartFormRequestOptions2({ body, ...options }, this._client));
-  }
-  /**
-   * Returns information about a specific file.
-   */
-  retrieve(fileID, options) {
-    return this._client.get(path2`/files/${fileID}`, options);
-  }
-  /**
-   * Returns a list of files.
-   */
-  list(query = {}, options) {
-    return this._client.getAPIList("/files", CursorPage, { query, ...options });
-  }
-  /**
-   * Delete a file and remove it from all vector stores.
-   */
-  delete(fileID, options) {
-    return this._client.delete(path2`/files/${fileID}`, options);
-  }
-  /**
-   * Returns the contents of the specified file.
-   */
-  content(fileID, options) {
-    return this._client.get(path2`/files/${fileID}/content`, {
-      ...options,
-      headers: buildHeaders2([{ Accept: "application/binary" }, options?.headers]),
-      __binaryResponse: true
-    });
-  }
-  /**
-   * Waits for the given file to be processed, default timeout is 30 mins.
-   */
-  async waitForProcessing(id, { pollInterval = 5e3, maxWait = 30 * 60 * 1e3 } = {}) {
-    const TERMINAL_STATES = /* @__PURE__ */ new Set(["processed", "error", "deleted"]);
-    const start = Date.now();
-    let file = await this.retrieve(id);
-    while (!file.status || !TERMINAL_STATES.has(file.status)) {
-      await sleep2(pollInterval);
-      file = await this.retrieve(id);
-      if (Date.now() - start > maxWait) {
-        throw new APIConnectionTimeoutError2({
-          message: `Giving up on waiting for file ${id} to finish processing after ${maxWait} milliseconds.`
-        });
-      }
-    }
-    return file;
-  }
-};
-
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/fine-tuning/methods.mjs
-var Methods = class extends APIResource2 {
-};
-
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/fine-tuning/alpha/graders.mjs
-var Graders = class extends APIResource2 {
-  /**
-   * Run a grader.
-   *
-   * @example
-   * ```ts
-   * const response = await client.fineTuning.alpha.graders.run({
-   *   grader: {
-   *     input: 'input',
-   *     name: 'name',
-   *     operation: 'eq',
-   *     reference: 'reference',
-   *     type: 'string_check',
-   *   },
-   *   model_sample: 'model_sample',
-   * });
-   * ```
-   */
-  run(body, options) {
-    return this._client.post("/fine_tuning/alpha/graders/run", { body, ...options });
-  }
-  /**
-   * Validate a grader.
-   *
-   * @example
-   * ```ts
-   * const response =
-   *   await client.fineTuning.alpha.graders.validate({
-   *     grader: {
-   *       input: 'input',
-   *       name: 'name',
-   *       operation: 'eq',
-   *       reference: 'reference',
-   *       type: 'string_check',
-   *     },
-   *   });
-   * ```
-   */
-  validate(body, options) {
-    return this._client.post("/fine_tuning/alpha/graders/validate", { body, ...options });
-  }
-};
-
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/fine-tuning/alpha/alpha.mjs
-var Alpha = class extends APIResource2 {
+var S9 = class {
   constructor() {
-    super(...arguments);
-    this.graders = new Graders(this._client);
   }
 };
-Alpha.Graders = Graders;
-
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/fine-tuning/checkpoints/permissions.mjs
-var Permissions = class extends APIResource2 {
-  /**
-   * **NOTE:** Calling this endpoint requires an [admin API key](../admin-api-keys).
-   *
-   * This enables organization owners to share fine-tuned models with other projects
-   * in their organization.
-   *
-   * @example
-   * ```ts
-   * // Automatically fetches more pages as needed.
-   * for await (const permissionCreateResponse of client.fineTuning.checkpoints.permissions.create(
-   *   'ft:gpt-4o-mini-2024-07-18:org:weather:B7R9VjQd',
-   *   { project_ids: ['string'] },
-   * )) {
-   *   // ...
-   * }
-   * ```
-   */
-  create(fineTunedModelCheckpoint, body, options) {
-    return this._client.getAPIList(path2`/fine_tuning/checkpoints/${fineTunedModelCheckpoint}/permissions`, Page2, { body, method: "post", ...options });
-  }
-  /**
-   * **NOTE:** This endpoint requires an [admin API key](../admin-api-keys).
-   *
-   * Organization owners can use this endpoint to view all permissions for a
-   * fine-tuned model checkpoint.
-   *
-   * @example
-   * ```ts
-   * const permission =
-   *   await client.fineTuning.checkpoints.permissions.retrieve(
-   *     'ft-AF1WoRqd3aJAHsqc9NY7iL8F',
-   *   );
-   * ```
-   */
-  retrieve(fineTunedModelCheckpoint, query = {}, options) {
-    return this._client.get(path2`/fine_tuning/checkpoints/${fineTunedModelCheckpoint}/permissions`, {
-      query,
-      ...options
-    });
-  }
-  /**
-   * **NOTE:** This endpoint requires an [admin API key](../admin-api-keys).
-   *
-   * Organization owners can use this endpoint to delete a permission for a
-   * fine-tuned model checkpoint.
-   *
-   * @example
-   * ```ts
-   * const permission =
-   *   await client.fineTuning.checkpoints.permissions.delete(
-   *     'cp_zc4Q7MP6XxulcVzj4MZdwsAB',
-   *     {
-   *       fine_tuned_model_checkpoint:
-   *         'ft:gpt-4o-mini-2024-07-18:org:weather:B7R9VjQd',
-   *     },
-   *   );
-   * ```
-   */
-  delete(permissionID, params, options) {
-    const { fine_tuned_model_checkpoint } = params;
-    return this._client.delete(path2`/fine_tuning/checkpoints/${fine_tuned_model_checkpoint}/permissions/${permissionID}`, options);
-  }
-};
-
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/fine-tuning/checkpoints/checkpoints.mjs
-var Checkpoints = class extends APIResource2 {
-  constructor() {
-    super(...arguments);
-    this.permissions = new Permissions(this._client);
-  }
-};
-Checkpoints.Permissions = Permissions;
-
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/fine-tuning/jobs/checkpoints.mjs
-var Checkpoints2 = class extends APIResource2 {
-  /**
-   * List checkpoints for a fine-tuning job.
-   *
-   * @example
-   * ```ts
-   * // Automatically fetches more pages as needed.
-   * for await (const fineTuningJobCheckpoint of client.fineTuning.jobs.checkpoints.list(
-   *   'ft-AF1WoRqd3aJAHsqc9NY7iL8F',
-   * )) {
-   *   // ...
-   * }
-   * ```
-   */
-  list(fineTuningJobID, query = {}, options) {
-    return this._client.getAPIList(path2`/fine_tuning/jobs/${fineTuningJobID}/checkpoints`, CursorPage, { query, ...options });
-  }
-};
-
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/fine-tuning/jobs/jobs.mjs
-var Jobs = class extends APIResource2 {
-  constructor() {
-    super(...arguments);
-    this.checkpoints = new Checkpoints2(this._client);
-  }
-  /**
-   * Creates a fine-tuning job which begins the process of creating a new model from
-   * a given dataset.
-   *
-   * Response includes details of the enqueued job including job status and the name
-   * of the fine-tuned models once complete.
-   *
-   * [Learn more about fine-tuning](https://platform.openai.com/docs/guides/model-optimization)
-   *
-   * @example
-   * ```ts
-   * const fineTuningJob = await client.fineTuning.jobs.create({
-   *   model: 'gpt-4o-mini',
-   *   training_file: 'file-abc123',
-   * });
-   * ```
-   */
-  create(body, options) {
-    return this._client.post("/fine_tuning/jobs", { body, ...options });
-  }
-  /**
-   * Get info about a fine-tuning job.
-   *
-   * [Learn more about fine-tuning](https://platform.openai.com/docs/guides/model-optimization)
-   *
-   * @example
-   * ```ts
-   * const fineTuningJob = await client.fineTuning.jobs.retrieve(
-   *   'ft-AF1WoRqd3aJAHsqc9NY7iL8F',
-   * );
-   * ```
-   */
-  retrieve(fineTuningJobID, options) {
-    return this._client.get(path2`/fine_tuning/jobs/${fineTuningJobID}`, options);
-  }
-  /**
-   * List your organization's fine-tuning jobs
-   *
-   * @example
-   * ```ts
-   * // Automatically fetches more pages as needed.
-   * for await (const fineTuningJob of client.fineTuning.jobs.list()) {
-   *   // ...
-   * }
-   * ```
-   */
-  list(query = {}, options) {
-    return this._client.getAPIList("/fine_tuning/jobs", CursorPage, { query, ...options });
-  }
-  /**
-   * Immediately cancel a fine-tune job.
-   *
-   * @example
-   * ```ts
-   * const fineTuningJob = await client.fineTuning.jobs.cancel(
-   *   'ft-AF1WoRqd3aJAHsqc9NY7iL8F',
-   * );
-   * ```
-   */
-  cancel(fineTuningJobID, options) {
-    return this._client.post(path2`/fine_tuning/jobs/${fineTuningJobID}/cancel`, options);
-  }
-  /**
-   * Get status updates for a fine-tuning job.
-   *
-   * @example
-   * ```ts
-   * // Automatically fetches more pages as needed.
-   * for await (const fineTuningJobEvent of client.fineTuning.jobs.listEvents(
-   *   'ft-AF1WoRqd3aJAHsqc9NY7iL8F',
-   * )) {
-   *   // ...
-   * }
-   * ```
-   */
-  listEvents(fineTuningJobID, query = {}, options) {
-    return this._client.getAPIList(path2`/fine_tuning/jobs/${fineTuningJobID}/events`, CursorPage, { query, ...options });
-  }
-  /**
-   * Pause a fine-tune job.
-   *
-   * @example
-   * ```ts
-   * const fineTuningJob = await client.fineTuning.jobs.pause(
-   *   'ft-AF1WoRqd3aJAHsqc9NY7iL8F',
-   * );
-   * ```
-   */
-  pause(fineTuningJobID, options) {
-    return this._client.post(path2`/fine_tuning/jobs/${fineTuningJobID}/pause`, options);
-  }
-  /**
-   * Resume a fine-tune job.
-   *
-   * @example
-   * ```ts
-   * const fineTuningJob = await client.fineTuning.jobs.resume(
-   *   'ft-AF1WoRqd3aJAHsqc9NY7iL8F',
-   * );
-   * ```
-   */
-  resume(fineTuningJobID, options) {
-    return this._client.post(path2`/fine_tuning/jobs/${fineTuningJobID}/resume`, options);
-  }
-};
-Jobs.Checkpoints = Checkpoints2;
+var Files2 = S9;
 
 // ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/fine-tuning/fine-tuning.mjs
-var FineTuning = class extends APIResource2 {
+var S10 = class {
   constructor() {
-    super(...arguments);
-    this.methods = new Methods(this._client);
-    this.jobs = new Jobs(this._client);
-    this.checkpoints = new Checkpoints(this._client);
-    this.alpha = new Alpha(this._client);
   }
 };
-FineTuning.Methods = Methods;
-FineTuning.Jobs = Jobs;
-FineTuning.Checkpoints = Checkpoints;
-FineTuning.Alpha = Alpha;
-
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/graders/grader-models.mjs
-var GraderModels = class extends APIResource2 {
-};
+var FineTuning = S10;
 
 // ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/graders/graders.mjs
-var Graders2 = class extends APIResource2 {
+var S11 = class {
   constructor() {
-    super(...arguments);
-    this.graderModels = new GraderModels(this._client);
   }
 };
-Graders2.GraderModels = GraderModels;
+var Graders = S11;
 
 // ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/images.mjs
-var Images = class extends APIResource2 {
-  /**
-   * Creates a variation of a given image. This endpoint only supports `dall-e-2`.
-   *
-   * @example
-   * ```ts
-   * const imagesResponse = await client.images.createVariation({
-   *   image: fs.createReadStream('otter.png'),
-   * });
-   * ```
-   */
-  createVariation(body, options) {
-    return this._client.post("/images/variations", multipartFormRequestOptions2({ body, ...options }, this._client));
-  }
-  edit(body, options) {
-    return this._client.post("/images/edits", multipartFormRequestOptions2({ body, ...options, stream: body.stream ?? false }, this._client));
-  }
-  generate(body, options) {
-    return this._client.post("/images/generations", { body, ...options, stream: body.stream ?? false });
+var S12 = class {
+  constructor() {
   }
 };
+var Images = S12;
 
 // ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/models.mjs
-var Models3 = class extends APIResource2 {
-  /**
-   * Retrieves a model instance, providing basic information about the model such as
-   * the owner and permissioning.
-   */
-  retrieve(model, options) {
-    return this._client.get(path2`/models/${model}`, options);
-  }
-  /**
-   * Lists the currently available models, and provides basic information about each
-   * one such as the owner and availability.
-   */
-  list(options) {
-    return this._client.getAPIList("/models", Page2, options);
-  }
-  /**
-   * Delete a fine-tuned model. You must have the Owner role in your organization to
-   * delete a model.
-   */
-  delete(model, options) {
-    return this._client.delete(path2`/models/${model}`, options);
+var S13 = class {
+  constructor() {
   }
 };
+var Models3 = S13;
 
 // ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/moderations.mjs
-var Moderations = class extends APIResource2 {
-  /**
-   * Classifies if text and/or image inputs are potentially harmful. Learn more in
-   * the [moderation guide](https://platform.openai.com/docs/guides/moderation).
-   */
-  create(body, options) {
-    return this._client.post("/moderations", { body, ...options });
+var S14 = class {
+  constructor() {
   }
 };
-
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/realtime/calls.mjs
-var Calls = class extends APIResource2 {
-  /**
-   * Accept an incoming SIP call and configure the realtime session that will handle
-   * it.
-   *
-   * @example
-   * ```ts
-   * await client.realtime.calls.accept('call_id', {
-   *   type: 'realtime',
-   * });
-   * ```
-   */
-  accept(callID, body, options) {
-    return this._client.post(path2`/realtime/calls/${callID}/accept`, {
-      body,
-      ...options,
-      headers: buildHeaders2([{ Accept: "*/*" }, options?.headers])
-    });
-  }
-  /**
-   * End an active Realtime API call, whether it was initiated over SIP or WebRTC.
-   *
-   * @example
-   * ```ts
-   * await client.realtime.calls.hangup('call_id');
-   * ```
-   */
-  hangup(callID, options) {
-    return this._client.post(path2`/realtime/calls/${callID}/hangup`, {
-      ...options,
-      headers: buildHeaders2([{ Accept: "*/*" }, options?.headers])
-    });
-  }
-  /**
-   * Transfer an active SIP call to a new destination using the SIP REFER verb.
-   *
-   * @example
-   * ```ts
-   * await client.realtime.calls.refer('call_id', {
-   *   target_uri: 'tel:+14155550123',
-   * });
-   * ```
-   */
-  refer(callID, body, options) {
-    return this._client.post(path2`/realtime/calls/${callID}/refer`, {
-      body,
-      ...options,
-      headers: buildHeaders2([{ Accept: "*/*" }, options?.headers])
-    });
-  }
-  /**
-   * Decline an incoming SIP call by returning a SIP status code to the caller.
-   *
-   * @example
-   * ```ts
-   * await client.realtime.calls.reject('call_id');
-   * ```
-   */
-  reject(callID, body = {}, options) {
-    return this._client.post(path2`/realtime/calls/${callID}/reject`, {
-      body,
-      ...options,
-      headers: buildHeaders2([{ Accept: "*/*" }, options?.headers])
-    });
-  }
-};
-
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/realtime/client-secrets.mjs
-var ClientSecrets = class extends APIResource2 {
-  /**
-   * Create a Realtime client secret with an associated session configuration.
-   *
-   * @example
-   * ```ts
-   * const clientSecret =
-   *   await client.realtime.clientSecrets.create();
-   * ```
-   */
-  create(body, options) {
-    return this._client.post("/realtime/client_secrets", { body, ...options });
-  }
-};
+var Moderations = S14;
 
 // ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/realtime/realtime.mjs
-var Realtime2 = class extends APIResource2 {
+var S15 = class {
   constructor() {
-    super(...arguments);
-    this.clientSecrets = new ClientSecrets(this._client);
-    this.calls = new Calls(this._client);
   }
 };
-Realtime2.ClientSecrets = ClientSecrets;
-Realtime2.Calls = Calls;
+var Realtime = S15;
 
 // ../../StrandsAgentsSDKTypescript/node_modules/openai/lib/ResponsesParser.mjs
 function maybeParseResponse(response, params) {
@@ -19555,6 +17380,69 @@ var InputTokens = class extends APIResource2 {
   }
 };
 
+// ../../StrandsAgentsSDKTypescript/node_modules/openai/internal/headers.mjs
+var brand_privateNullableHeaders2 = /* @__PURE__ */ Symbol("brand.privateNullableHeaders");
+function* iterateHeaders2(headers) {
+  if (!headers)
+    return;
+  if (brand_privateNullableHeaders2 in headers) {
+    const { values, nulls } = headers;
+    yield* values.entries();
+    for (const name of nulls) {
+      yield [name, null];
+    }
+    return;
+  }
+  let shouldClear = false;
+  let iter;
+  if (headers instanceof Headers) {
+    iter = headers.entries();
+  } else if (isReadonlyArray2(headers)) {
+    iter = headers;
+  } else {
+    shouldClear = true;
+    iter = Object.entries(headers ?? {});
+  }
+  for (let row of iter) {
+    const name = row[0];
+    if (typeof name !== "string")
+      throw new TypeError("expected header name to be a string");
+    const values = isReadonlyArray2(row[1]) ? row[1] : [row[1]];
+    let didClear = false;
+    for (const value of values) {
+      if (value === void 0)
+        continue;
+      if (shouldClear && !didClear) {
+        didClear = true;
+        yield [name, null];
+      }
+      yield [name, value];
+    }
+  }
+}
+var buildHeaders2 = (newHeaders) => {
+  const targetHeaders = new Headers();
+  const nullHeaders = /* @__PURE__ */ new Set();
+  for (const headers of newHeaders) {
+    const seenHeaders = /* @__PURE__ */ new Set();
+    for (const [name, value] of iterateHeaders2(headers)) {
+      const lowerName = name.toLowerCase();
+      if (!seenHeaders.has(lowerName)) {
+        targetHeaders.delete(name);
+        seenHeaders.add(lowerName);
+      }
+      if (value === null) {
+        targetHeaders.delete(name);
+        nullHeaders.add(lowerName);
+      } else {
+        targetHeaders.append(name, value);
+        nullHeaders.delete(lowerName);
+      }
+    }
+  }
+  return { [brand_privateNullableHeaders2]: true, values: targetHeaders, nulls: nullHeaders };
+};
+
 // ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/responses/responses.mjs
 var Responses = class extends APIResource2 {
   constructor() {
@@ -19639,549 +17527,48 @@ var Responses = class extends APIResource2 {
 Responses.InputItems = InputItems;
 Responses.InputTokens = InputTokens;
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/uploads/parts.mjs
-var Parts = class extends APIResource2 {
-  /**
-   * Adds a
-   * [Part](https://platform.openai.com/docs/api-reference/uploads/part-object) to an
-   * [Upload](https://platform.openai.com/docs/api-reference/uploads/object) object.
-   * A Part represents a chunk of bytes from the file you are trying to upload.
-   *
-   * Each Part can be at most 64 MB, and you can add Parts until you hit the Upload
-   * maximum of 8 GB.
-   *
-   * It is possible to add multiple Parts in parallel. You can decide the intended
-   * order of the Parts when you
-   * [complete the Upload](https://platform.openai.com/docs/api-reference/uploads/complete).
-   */
-  create(uploadID, body, options) {
-    return this._client.post(path2`/uploads/${uploadID}/parts`, multipartFormRequestOptions2({ body, ...options }, this._client));
-  }
-};
-
 // ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/uploads/uploads.mjs
-var Uploads = class extends APIResource2 {
+var S16 = class {
   constructor() {
-    super(...arguments);
-    this.parts = new Parts(this._client);
-  }
-  /**
-   * Creates an intermediate
-   * [Upload](https://platform.openai.com/docs/api-reference/uploads/object) object
-   * that you can add
-   * [Parts](https://platform.openai.com/docs/api-reference/uploads/part-object) to.
-   * Currently, an Upload can accept at most 8 GB in total and expires after an hour
-   * after you create it.
-   *
-   * Once you complete the Upload, we will create a
-   * [File](https://platform.openai.com/docs/api-reference/files/object) object that
-   * contains all the parts you uploaded. This File is usable in the rest of our
-   * platform as a regular File object.
-   *
-   * For certain `purpose` values, the correct `mime_type` must be specified. Please
-   * refer to documentation for the
-   * [supported MIME types for your use case](https://platform.openai.com/docs/assistants/tools/file-search#supported-files).
-   *
-   * For guidance on the proper filename extensions for each purpose, please follow
-   * the documentation on
-   * [creating a File](https://platform.openai.com/docs/api-reference/files/create).
-   */
-  create(body, options) {
-    return this._client.post("/uploads", { body, ...options });
-  }
-  /**
-   * Cancels the Upload. No Parts may be added after an Upload is cancelled.
-   */
-  cancel(uploadID, options) {
-    return this._client.post(path2`/uploads/${uploadID}/cancel`, options);
-  }
-  /**
-   * Completes the
-   * [Upload](https://platform.openai.com/docs/api-reference/uploads/object).
-   *
-   * Within the returned Upload object, there is a nested
-   * [File](https://platform.openai.com/docs/api-reference/files/object) object that
-   * is ready to use in the rest of the platform.
-   *
-   * You can specify the order of the Parts by passing in an ordered list of the Part
-   * IDs.
-   *
-   * The number of bytes uploaded upon completion must match the number of bytes
-   * initially specified when creating the Upload object. No Parts may be added after
-   * an Upload is completed.
-   */
-  complete(uploadID, body, options) {
-    return this._client.post(path2`/uploads/${uploadID}/complete`, { body, ...options });
   }
 };
-Uploads.Parts = Parts;
-
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/lib/Util.mjs
-var allSettledWithThrow = async (promises) => {
-  const results = await Promise.allSettled(promises);
-  const rejected = results.filter((result) => result.status === "rejected");
-  if (rejected.length) {
-    for (const result of rejected) {
-      console.error(result.reason);
-    }
-    throw new Error(`${rejected.length} promise(s) failed - see the above errors`);
-  }
-  const values = [];
-  for (const result of results) {
-    if (result.status === "fulfilled") {
-      values.push(result.value);
-    }
-  }
-  return values;
-};
-
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/vector-stores/file-batches.mjs
-var FileBatches = class extends APIResource2 {
-  /**
-   * Create a vector store file batch.
-   */
-  create(vectorStoreID, body, options) {
-    return this._client.post(path2`/vector_stores/${vectorStoreID}/file_batches`, {
-      body,
-      ...options,
-      headers: buildHeaders2([{ "OpenAI-Beta": "assistants=v2" }, options?.headers])
-    });
-  }
-  /**
-   * Retrieves a vector store file batch.
-   */
-  retrieve(batchID, params, options) {
-    const { vector_store_id } = params;
-    return this._client.get(path2`/vector_stores/${vector_store_id}/file_batches/${batchID}`, {
-      ...options,
-      headers: buildHeaders2([{ "OpenAI-Beta": "assistants=v2" }, options?.headers])
-    });
-  }
-  /**
-   * Cancel a vector store file batch. This attempts to cancel the processing of
-   * files in this batch as soon as possible.
-   */
-  cancel(batchID, params, options) {
-    const { vector_store_id } = params;
-    return this._client.post(path2`/vector_stores/${vector_store_id}/file_batches/${batchID}/cancel`, {
-      ...options,
-      headers: buildHeaders2([{ "OpenAI-Beta": "assistants=v2" }, options?.headers])
-    });
-  }
-  /**
-   * Create a vector store batch and poll until all files have been processed.
-   */
-  async createAndPoll(vectorStoreId, body, options) {
-    const batch = await this.create(vectorStoreId, body);
-    return await this.poll(vectorStoreId, batch.id, options);
-  }
-  /**
-   * Returns a list of vector store files in a batch.
-   */
-  listFiles(batchID, params, options) {
-    const { vector_store_id, ...query } = params;
-    return this._client.getAPIList(path2`/vector_stores/${vector_store_id}/file_batches/${batchID}/files`, CursorPage, { query, ...options, headers: buildHeaders2([{ "OpenAI-Beta": "assistants=v2" }, options?.headers]) });
-  }
-  /**
-   * Wait for the given file batch to be processed.
-   *
-   * Note: this will return even if one of the files failed to process, you need to
-   * check batch.file_counts.failed_count to handle this case.
-   */
-  async poll(vectorStoreID, batchID, options) {
-    const headers = buildHeaders2([
-      options?.headers,
-      {
-        "X-Stainless-Poll-Helper": "true",
-        "X-Stainless-Custom-Poll-Interval": options?.pollIntervalMs?.toString() ?? void 0
-      }
-    ]);
-    while (true) {
-      const { data: batch, response } = await this.retrieve(batchID, { vector_store_id: vectorStoreID }, {
-        ...options,
-        headers
-      }).withResponse();
-      switch (batch.status) {
-        case "in_progress":
-          let sleepInterval = 5e3;
-          if (options?.pollIntervalMs) {
-            sleepInterval = options.pollIntervalMs;
-          } else {
-            const headerInterval = response.headers.get("openai-poll-after-ms");
-            if (headerInterval) {
-              const headerIntervalMs = parseInt(headerInterval);
-              if (!isNaN(headerIntervalMs)) {
-                sleepInterval = headerIntervalMs;
-              }
-            }
-          }
-          await sleep2(sleepInterval);
-          break;
-        case "failed":
-        case "cancelled":
-        case "completed":
-          return batch;
-      }
-    }
-  }
-  /**
-   * Uploads the given files concurrently and then creates a vector store file batch.
-   *
-   * The concurrency limit is configurable using the `maxConcurrency` parameter.
-   */
-  async uploadAndPoll(vectorStoreId, { files, fileIds = [] }, options) {
-    if (files == null || files.length == 0) {
-      throw new Error(`No \`files\` provided to process. If you've already uploaded files you should use \`.createAndPoll()\` instead`);
-    }
-    const configuredConcurrency = options?.maxConcurrency ?? 5;
-    const concurrencyLimit = Math.min(configuredConcurrency, files.length);
-    const client = this._client;
-    const fileIterator = files.values();
-    const allFileIds = [...fileIds];
-    async function processFiles(iterator) {
-      for (let item of iterator) {
-        const fileObj = await client.files.create({ file: item, purpose: "assistants" }, options);
-        allFileIds.push(fileObj.id);
-      }
-    }
-    const workers = Array(concurrencyLimit).fill(fileIterator).map(processFiles);
-    await allSettledWithThrow(workers);
-    return await this.createAndPoll(vectorStoreId, {
-      file_ids: allFileIds
-    });
-  }
-};
-
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/vector-stores/files.mjs
-var Files4 = class extends APIResource2 {
-  /**
-   * Create a vector store file by attaching a
-   * [File](https://platform.openai.com/docs/api-reference/files) to a
-   * [vector store](https://platform.openai.com/docs/api-reference/vector-stores/object).
-   */
-  create(vectorStoreID, body, options) {
-    return this._client.post(path2`/vector_stores/${vectorStoreID}/files`, {
-      body,
-      ...options,
-      headers: buildHeaders2([{ "OpenAI-Beta": "assistants=v2" }, options?.headers])
-    });
-  }
-  /**
-   * Retrieves a vector store file.
-   */
-  retrieve(fileID, params, options) {
-    const { vector_store_id } = params;
-    return this._client.get(path2`/vector_stores/${vector_store_id}/files/${fileID}`, {
-      ...options,
-      headers: buildHeaders2([{ "OpenAI-Beta": "assistants=v2" }, options?.headers])
-    });
-  }
-  /**
-   * Update attributes on a vector store file.
-   */
-  update(fileID, params, options) {
-    const { vector_store_id, ...body } = params;
-    return this._client.post(path2`/vector_stores/${vector_store_id}/files/${fileID}`, {
-      body,
-      ...options,
-      headers: buildHeaders2([{ "OpenAI-Beta": "assistants=v2" }, options?.headers])
-    });
-  }
-  /**
-   * Returns a list of vector store files.
-   */
-  list(vectorStoreID, query = {}, options) {
-    return this._client.getAPIList(path2`/vector_stores/${vectorStoreID}/files`, CursorPage, {
-      query,
-      ...options,
-      headers: buildHeaders2([{ "OpenAI-Beta": "assistants=v2" }, options?.headers])
-    });
-  }
-  /**
-   * Delete a vector store file. This will remove the file from the vector store but
-   * the file itself will not be deleted. To delete the file, use the
-   * [delete file](https://platform.openai.com/docs/api-reference/files/delete)
-   * endpoint.
-   */
-  delete(fileID, params, options) {
-    const { vector_store_id } = params;
-    return this._client.delete(path2`/vector_stores/${vector_store_id}/files/${fileID}`, {
-      ...options,
-      headers: buildHeaders2([{ "OpenAI-Beta": "assistants=v2" }, options?.headers])
-    });
-  }
-  /**
-   * Attach a file to the given vector store and wait for it to be processed.
-   */
-  async createAndPoll(vectorStoreId, body, options) {
-    const file = await this.create(vectorStoreId, body, options);
-    return await this.poll(vectorStoreId, file.id, options);
-  }
-  /**
-   * Wait for the vector store file to finish processing.
-   *
-   * Note: this will return even if the file failed to process, you need to check
-   * file.last_error and file.status to handle these cases
-   */
-  async poll(vectorStoreID, fileID, options) {
-    const headers = buildHeaders2([
-      options?.headers,
-      {
-        "X-Stainless-Poll-Helper": "true",
-        "X-Stainless-Custom-Poll-Interval": options?.pollIntervalMs?.toString() ?? void 0
-      }
-    ]);
-    while (true) {
-      const fileResponse = await this.retrieve(fileID, {
-        vector_store_id: vectorStoreID
-      }, { ...options, headers }).withResponse();
-      const file = fileResponse.data;
-      switch (file.status) {
-        case "in_progress":
-          let sleepInterval = 5e3;
-          if (options?.pollIntervalMs) {
-            sleepInterval = options.pollIntervalMs;
-          } else {
-            const headerInterval = fileResponse.response.headers.get("openai-poll-after-ms");
-            if (headerInterval) {
-              const headerIntervalMs = parseInt(headerInterval);
-              if (!isNaN(headerIntervalMs)) {
-                sleepInterval = headerIntervalMs;
-              }
-            }
-          }
-          await sleep2(sleepInterval);
-          break;
-        case "failed":
-        case "completed":
-          return file;
-      }
-    }
-  }
-  /**
-   * Upload a file to the `files` API and then attach it to the given vector store.
-   *
-   * Note the file will be asynchronously processed (you can use the alternative
-   * polling helper method to wait for processing to complete).
-   */
-  async upload(vectorStoreId, file, options) {
-    const fileInfo = await this._client.files.create({ file, purpose: "assistants" }, options);
-    return this.create(vectorStoreId, { file_id: fileInfo.id }, options);
-  }
-  /**
-   * Add a file to a vector store and poll until processing is complete.
-   */
-  async uploadAndPoll(vectorStoreId, file, options) {
-    const fileInfo = await this.upload(vectorStoreId, file, options);
-    return await this.poll(vectorStoreId, fileInfo.id, options);
-  }
-  /**
-   * Retrieve the parsed contents of a vector store file.
-   */
-  content(fileID, params, options) {
-    const { vector_store_id } = params;
-    return this._client.getAPIList(path2`/vector_stores/${vector_store_id}/files/${fileID}/content`, Page2, { ...options, headers: buildHeaders2([{ "OpenAI-Beta": "assistants=v2" }, options?.headers]) });
-  }
-};
+var Uploads = S16;
 
 // ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/vector-stores/vector-stores.mjs
-var VectorStores = class extends APIResource2 {
+var S17 = class {
   constructor() {
-    super(...arguments);
-    this.files = new Files4(this._client);
-    this.fileBatches = new FileBatches(this._client);
-  }
-  /**
-   * Create a vector store.
-   */
-  create(body, options) {
-    return this._client.post("/vector_stores", {
-      body,
-      ...options,
-      headers: buildHeaders2([{ "OpenAI-Beta": "assistants=v2" }, options?.headers])
-    });
-  }
-  /**
-   * Retrieves a vector store.
-   */
-  retrieve(vectorStoreID, options) {
-    return this._client.get(path2`/vector_stores/${vectorStoreID}`, {
-      ...options,
-      headers: buildHeaders2([{ "OpenAI-Beta": "assistants=v2" }, options?.headers])
-    });
-  }
-  /**
-   * Modifies a vector store.
-   */
-  update(vectorStoreID, body, options) {
-    return this._client.post(path2`/vector_stores/${vectorStoreID}`, {
-      body,
-      ...options,
-      headers: buildHeaders2([{ "OpenAI-Beta": "assistants=v2" }, options?.headers])
-    });
-  }
-  /**
-   * Returns a list of vector stores.
-   */
-  list(query = {}, options) {
-    return this._client.getAPIList("/vector_stores", CursorPage, {
-      query,
-      ...options,
-      headers: buildHeaders2([{ "OpenAI-Beta": "assistants=v2" }, options?.headers])
-    });
-  }
-  /**
-   * Delete a vector store.
-   */
-  delete(vectorStoreID, options) {
-    return this._client.delete(path2`/vector_stores/${vectorStoreID}`, {
-      ...options,
-      headers: buildHeaders2([{ "OpenAI-Beta": "assistants=v2" }, options?.headers])
-    });
-  }
-  /**
-   * Search a vector store for relevant chunks based on a query and file attributes
-   * filter.
-   */
-  search(vectorStoreID, body, options) {
-    return this._client.getAPIList(path2`/vector_stores/${vectorStoreID}/search`, Page2, {
-      body,
-      method: "post",
-      ...options,
-      headers: buildHeaders2([{ "OpenAI-Beta": "assistants=v2" }, options?.headers])
-    });
   }
 };
-VectorStores.Files = Files4;
-VectorStores.FileBatches = FileBatches;
+var VectorStores = S17;
 
 // ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/videos.mjs
-var Videos = class extends APIResource2 {
-  /**
-   * Create a video
-   */
-  create(body, options) {
-    return this._client.post("/videos", maybeMultipartFormRequestOptions({ body, ...options }, this._client));
-  }
-  /**
-   * Retrieve a video
-   */
-  retrieve(videoID, options) {
-    return this._client.get(path2`/videos/${videoID}`, options);
-  }
-  /**
-   * List videos
-   */
-  list(query = {}, options) {
-    return this._client.getAPIList("/videos", ConversationCursorPage, { query, ...options });
-  }
-  /**
-   * Delete a video
-   */
-  delete(videoID, options) {
-    return this._client.delete(path2`/videos/${videoID}`, options);
-  }
-  /**
-   * Download video content
-   */
-  downloadContent(videoID, query = {}, options) {
-    return this._client.get(path2`/videos/${videoID}/content`, {
-      query,
-      ...options,
-      headers: buildHeaders2([{ Accept: "application/binary" }, options?.headers]),
-      __binaryResponse: true
-    });
-  }
-  /**
-   * Create a video remix
-   */
-  remix(videoID, body, options) {
-    return this._client.post(path2`/videos/${videoID}/remix`, maybeMultipartFormRequestOptions({ body, ...options }, this._client));
+var S18 = class {
+  constructor() {
   }
 };
+var Videos = S18;
 
 // ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/webhooks.mjs
-var _Webhooks_instances;
-var _Webhooks_validateSecret;
-var _Webhooks_getRequiredHeader;
-var Webhooks = class extends APIResource2 {
+var S19 = class {
   constructor() {
-    super(...arguments);
-    _Webhooks_instances.add(this);
-  }
-  /**
-   * Validates that the given payload was sent by OpenAI and parses the payload.
-   */
-  async unwrap(payload, headers, secret = this._client.webhookSecret, tolerance = 300) {
-    await this.verifySignature(payload, headers, secret, tolerance);
-    return JSON.parse(payload);
-  }
-  /**
-   * Validates whether or not the webhook payload was sent by OpenAI.
-   *
-   * An error will be raised if the webhook payload was not sent by OpenAI.
-   *
-   * @param payload - The webhook payload
-   * @param headers - The webhook headers
-   * @param secret - The webhook secret (optional, will use client secret if not provided)
-   * @param tolerance - Maximum age of the webhook in seconds (default: 300 = 5 minutes)
-   */
-  async verifySignature(payload, headers, secret = this._client.webhookSecret, tolerance = 300) {
-    if (typeof crypto === "undefined" || typeof crypto.subtle.importKey !== "function" || typeof crypto.subtle.verify !== "function") {
-      throw new Error("Webhook signature verification is only supported when the `crypto` global is defined");
-    }
-    __classPrivateFieldGet2(this, _Webhooks_instances, "m", _Webhooks_validateSecret).call(this, secret);
-    const headersObj = buildHeaders2([headers]).values;
-    const signatureHeader = __classPrivateFieldGet2(this, _Webhooks_instances, "m", _Webhooks_getRequiredHeader).call(this, headersObj, "webhook-signature");
-    const timestamp = __classPrivateFieldGet2(this, _Webhooks_instances, "m", _Webhooks_getRequiredHeader).call(this, headersObj, "webhook-timestamp");
-    const webhookId = __classPrivateFieldGet2(this, _Webhooks_instances, "m", _Webhooks_getRequiredHeader).call(this, headersObj, "webhook-id");
-    const timestampSeconds = parseInt(timestamp, 10);
-    if (isNaN(timestampSeconds)) {
-      throw new InvalidWebhookSignatureError("Invalid webhook timestamp format");
-    }
-    const nowSeconds = Math.floor(Date.now() / 1e3);
-    if (nowSeconds - timestampSeconds > tolerance) {
-      throw new InvalidWebhookSignatureError("Webhook timestamp is too old");
-    }
-    if (timestampSeconds > nowSeconds + tolerance) {
-      throw new InvalidWebhookSignatureError("Webhook timestamp is too new");
-    }
-    const signatures = signatureHeader.split(" ").map((part) => part.startsWith("v1,") ? part.substring(3) : part);
-    const decodedSecret = secret.startsWith("whsec_") ? Buffer.from(secret.replace("whsec_", ""), "base64") : Buffer.from(secret, "utf-8");
-    const signedPayload = webhookId ? `${webhookId}.${timestamp}.${payload}` : `${timestamp}.${payload}`;
-    const key = await crypto.subtle.importKey("raw", decodedSecret, { name: "HMAC", hash: "SHA-256" }, false, ["verify"]);
-    for (const signature of signatures) {
-      try {
-        const signatureBytes = Buffer.from(signature, "base64");
-        const isValid = await crypto.subtle.verify("HMAC", key, signatureBytes, new TextEncoder().encode(signedPayload));
-        if (isValid) {
-          return;
-        }
-      } catch {
-        continue;
-      }
-    }
-    throw new InvalidWebhookSignatureError("The given webhook signature does not match the expected signature");
   }
 };
-_Webhooks_instances = /* @__PURE__ */ new WeakSet(), _Webhooks_validateSecret = function _Webhooks_validateSecret2(secret) {
-  if (typeof secret !== "string" || secret.length === 0) {
-    throw new Error(`The webhook secret must either be set using the env var, OPENAI_WEBHOOK_SECRET, on the client class, OpenAI({ webhookSecret: '123' }), or passed to this function`);
+var Webhooks = S19;
+
+// ../../StrandsAgentsSDKTypescript/node_modules/openai/internal/utils/env.mjs
+var readEnv2 = (env) => {
+  if (typeof globalThis.process !== "undefined") {
+    return globalThis.process.env?.[env]?.trim() ?? void 0;
   }
-}, _Webhooks_getRequiredHeader = function _Webhooks_getRequiredHeader2(headers, name) {
-  if (!headers) {
-    throw new Error(`Headers are required`);
+  if (typeof globalThis.Deno !== "undefined") {
+    return globalThis.Deno.env?.get?.(env)?.trim();
   }
-  const value = headers.get(name);
-  if (value === null || value === void 0) {
-    throw new Error(`Missing required header: ${name}`);
-  }
-  return value;
+  return void 0;
 };
 
 // ../../StrandsAgentsSDKTypescript/node_modules/openai/client.mjs
 var _OpenAI_instances;
-var _a3;
+var _a2;
 var _OpenAI_encoder;
 var _OpenAI_baseURLOverridden;
 var OpenAI = class {
@@ -20207,20 +17594,20 @@ var OpenAI = class {
     this.completions = new Completions3(this);
     this.chat = new Chat(this);
     this.embeddings = new Embeddings(this);
-    this.files = new Files3(this);
+    this.files = new Files2(this);
     this.images = new Images(this);
     this.audio = new Audio(this);
     this.moderations = new Moderations(this);
     this.models = new Models3(this);
     this.fineTuning = new FineTuning(this);
-    this.graders = new Graders2(this);
+    this.graders = new Graders(this);
     this.vectorStores = new VectorStores(this);
     this.webhooks = new Webhooks(this);
     this.beta = new Beta2(this);
     this.batches = new Batches3(this);
     this.uploads = new Uploads(this);
     this.responses = new Responses(this);
-    this.realtime = new Realtime2(this);
+    this.realtime = new Realtime(this);
     this.conversations = new Conversations(this);
     this.evals = new Evals(this);
     this.containers = new Containers(this);
@@ -20240,7 +17627,7 @@ var OpenAI = class {
       throw new OpenAIError("It looks like you're running in a browser-like environment.\n\nThis is disabled by default, as it risks exposing your secret API credentials to attackers.\nIf you understand the risks and have appropriate mitigations in place,\nyou can set the `dangerouslyAllowBrowser` option to `true`, e.g.,\n\nnew OpenAI({ apiKey, dangerouslyAllowBrowser: true });\n\nhttps://help.openai.com/en/articles/5112595-best-practices-for-api-key-safety\n");
     }
     this.baseURL = options.baseURL;
-    this.timeout = options.timeout ?? _a3.DEFAULT_TIMEOUT;
+    this.timeout = options.timeout ?? _a2.DEFAULT_TIMEOUT;
     this.logger = options.logger ?? console;
     const defaultLogLevel = "warn";
     this.logLevel = defaultLogLevel;
@@ -20466,12 +17853,12 @@ var OpenAI = class {
     }));
     return { response, options, controller, requestLogID, retryOfRequestLogID, startTime };
   }
-  getAPIList(path3, Page3, opts) {
-    return this.requestAPIList(Page3, opts && "then" in opts ? opts.then((opts2) => ({ method: "get", path: path3, ...opts2 })) : { method: "get", path: path3, ...opts });
+  getAPIList(path3, Page2, opts) {
+    return this.requestAPIList(Page2, opts && "then" in opts ? opts.then((opts2) => ({ method: "get", path: path3, ...opts2 })) : { method: "get", path: path3, ...opts });
   }
-  requestAPIList(Page3, options) {
+  requestAPIList(Page2, options) {
     const request = this.makeRequest(options, null, void 0);
-    return new PagePromise2(this, request, Page3);
+    return new PagePromise2(this, request, Page2);
   }
   async fetchWithTimeout(url2, init, ms, controller) {
     const { signal, method, ...options } = init || {};
@@ -20615,10 +18002,10 @@ var OpenAI = class {
     }
   }
 };
-_a3 = OpenAI, _OpenAI_encoder = /* @__PURE__ */ new WeakMap(), _OpenAI_instances = /* @__PURE__ */ new WeakSet(), _OpenAI_baseURLOverridden = function _OpenAI_baseURLOverridden2() {
+_a2 = OpenAI, _OpenAI_encoder = /* @__PURE__ */ new WeakMap(), _OpenAI_instances = /* @__PURE__ */ new WeakSet(), _OpenAI_baseURLOverridden = function _OpenAI_baseURLOverridden2() {
   return this.baseURL !== "https://api.openai.com/v1";
 };
-OpenAI.OpenAI = _a3;
+OpenAI.OpenAI = _a2;
 OpenAI.DEFAULT_TIMEOUT = 6e5;
 OpenAI.OpenAIError = OpenAIError;
 OpenAI.APIError = APIError2;
@@ -20638,20 +18025,20 @@ OpenAI.toFile = toFile2;
 OpenAI.Completions = Completions3;
 OpenAI.Chat = Chat;
 OpenAI.Embeddings = Embeddings;
-OpenAI.Files = Files3;
+OpenAI.Files = Files2;
 OpenAI.Images = Images;
 OpenAI.Audio = Audio;
 OpenAI.Moderations = Moderations;
 OpenAI.Models = Models3;
 OpenAI.FineTuning = FineTuning;
-OpenAI.Graders = Graders2;
+OpenAI.Graders = Graders;
 OpenAI.VectorStores = VectorStores;
 OpenAI.Webhooks = Webhooks;
 OpenAI.Beta = Beta2;
 OpenAI.Batches = Batches3;
 OpenAI.Uploads = Uploads;
 OpenAI.Responses = Responses;
-OpenAI.Realtime = Realtime2;
+OpenAI.Realtime = Realtime;
 OpenAI.Conversations = Conversations;
 OpenAI.Evals = Evals;
 OpenAI.Containers = Containers;
@@ -21280,10 +18667,10 @@ function createFetchWithInit(baseFetch = fetch, baseInit) {
 }
 
 // ../../StrandsAgentsSDKTypescript/node_modules/pkce-challenge/dist/index.browser.js
-var crypto2;
-crypto2 = globalThis.crypto;
+var crypto;
+crypto = globalThis.crypto;
 async function getRandomValues(size) {
-  return (await crypto2).getRandomValues(new Uint8Array(size));
+  return (await crypto).getRandomValues(new Uint8Array(size));
 }
 async function random(size) {
   const mask = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._~";
@@ -21303,7 +18690,7 @@ async function generateVerifier(length) {
   return await random(length);
 }
 async function generateChallenge(code_verifier) {
-  const buffer = await (await crypto2).subtle.digest("SHA-256", new TextEncoder().encode(code_verifier));
+  const buffer = await (await crypto).subtle.digest("SHA-256", new TextEncoder().encode(code_verifier));
   return btoa(String.fromCharCode(...new Uint8Array(buffer))).replace(/\//g, "_").replace(/\+/g, "-").replace(/=/g, "");
 }
 async function pkceChallenge(length) {
