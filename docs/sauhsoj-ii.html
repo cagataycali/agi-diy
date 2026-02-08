@@ -2499,7 +2499,7 @@
                     else if (event?.type === 'afterToolCallEvent') {
                         transcript.push({ type: 'tool_result', name: event.toolUse?.name, toolId: event.toolUse?.toolUseId, status: event.result?.status || 'success', output: event.result });
                         const last = activityLog.findLast(e => e.type === 'tool' && e.agentId === agentId);
-                        if (last && event.result) { last.extra = { ...last.extra, output: event.result }; appendToolOutput(last); }
+                        if (last && event.result) { last.extra = { ...last.extra, output: event.result }; const feed = document.getElementById('activityFeed'); if (feed) renderActivityEntry(feed, last); }
                     }
                 }
                 
@@ -4077,7 +4077,8 @@ ${getRingContext()}`;
                     const last = activityLog.findLast(e => e.type === 'tool' && e.agentId === agentId);
                     if (last && event.result) {
                         last.extra = { ...last.extra, output: event.result };
-                        appendToolOutput(last);
+                        const feed = document.getElementById('activityFeed');
+                        if (feed) renderActivityEntry(feed, last);
                     }
                 }
             }
@@ -4325,18 +4326,10 @@ ${getRingContext()}`;
         } else {
             line.textContent = entry.text.length > 500 ? entry.text.substring(0, 500) + '…' : entry.text;
         }
-        feed.appendChild(line);
-    }
-
-    function appendToolOutput(entry) {
-        const idx = activityLog.indexOf(entry);
-        const el = idx >= 0 ? document.getElementById('af-' + idx) : null;
-        if (!el) { if (entry.extra?.output) console.warn('appendToolOutput: DOM element not found for af-' + idx); return; }
-        if (!entry.extra?.output) return;
-        const d = document.createElement('details');
-        const out = typeof entry.extra.output === 'string' ? entry.extra.output : JSON.stringify(entry.extra.output, null, 2);
-        d.innerHTML = `<summary style="cursor:pointer;color:var(--text-tertiary);font-size:10px;margin-top:4px">output</summary><div class="tool-input">${escapeHtml(out.substring(0, 2000))}</div>`;
-        el.appendChild(d);
+        // Replace existing or append
+        const existing = idx >= 0 ? document.getElementById('af-' + idx) : null;
+        if (existing) existing.replaceWith(line);
+        else feed.appendChild(line);
     }
 
     function filterActivityFeed() {
