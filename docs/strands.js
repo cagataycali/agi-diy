@@ -1379,15 +1379,15 @@ var Int64 = class _Int64 {
       throw new Error("Int64 buffers must be exactly 8 bytes");
     }
   }
-  static fromNumber(number3) {
-    if (number3 > 9223372036854776e3 || number3 < -9223372036854776e3) {
-      throw new Error(`${number3} is too large (or, if negative, too small) to represent as an Int64`);
+  static fromNumber(number2) {
+    if (number2 > 9223372036854776e3 || number2 < -9223372036854776e3) {
+      throw new Error(`${number2} is too large (or, if negative, too small) to represent as an Int64`);
     }
     const bytes = new Uint8Array(8);
-    for (let i = 7, remaining = Math.abs(Math.round(number3)); i > -1 && remaining > 0; i--, remaining /= 256) {
+    for (let i = 7, remaining = Math.abs(Math.round(number2)); i > -1 && remaining > 0; i--, remaining /= 256) {
       bytes[i] = remaining;
     }
-    if (number3 < 0) {
+    if (number2 < 0) {
       negate(bytes);
     }
     return new _Int64(bytes);
@@ -1847,7 +1847,7 @@ function __generator(thisArg, body) {
   }
 }
 function __values(o) {
-  var s = typeof Symbol === "function" && Symbol.iterator, m = s && o[s], i = 0;
+  var s2 = typeof Symbol === "function" && Symbol.iterator, m = s2 && o[s2], i = 0;
   if (m) return m.call(o);
   if (o && typeof o.length === "number") return {
     next: function() {
@@ -1855,7 +1855,7 @@ function __values(o) {
       return { value: o && o[i++], done: !o };
     }
   };
-  throw new TypeError(s ? "Object is not iterable." : "Symbol.iterator is not defined.");
+  throw new TypeError(s2 ? "Object is not iterable." : "Symbol.iterator is not defined.");
 }
 
 // ../../StrandsAgentsSDKTypescript/node_modules/@aws-crypto/sha256-js/build/module/constants.js
@@ -2485,15 +2485,15 @@ var Int642 = class _Int64 {
       throw new Error("Int64 buffers must be exactly 8 bytes");
     }
   }
-  static fromNumber(number3) {
-    if (number3 > 9223372036854776e3 || number3 < -9223372036854776e3) {
-      throw new Error(`${number3} is too large (or, if negative, too small) to represent as an Int64`);
+  static fromNumber(number2) {
+    if (number2 > 9223372036854776e3 || number2 < -9223372036854776e3) {
+      throw new Error(`${number2} is too large (or, if negative, too small) to represent as an Int64`);
     }
     const bytes = new Uint8Array(8);
-    for (let i = 7, remaining = Math.abs(Math.round(number3)); i > -1 && remaining > 0; i--, remaining /= 256) {
+    for (let i = 7, remaining = Math.abs(Math.round(number2)); i > -1 && remaining > 0; i--, remaining /= 256) {
       bytes[i] = remaining;
     }
-    if (number3 < 0) {
+    if (number2 < 0) {
       negate2(bytes);
     }
     return new _Int64(bytes);
@@ -4194,8 +4194,8 @@ var ZodIssueCode3 = new Proxy({}, { get: (_, p) => p });
 var ZodParsedType3 = new Proxy({}, { get: (_, p) => p });
 
 // ../../StrandsAgentsSDKTypescript/node_modules/@modelcontextprotocol/sdk/dist/esm/server/zod-compat.js
-function isZ4Schema(s) {
-  const schema5 = s;
+function isZ4Schema(s2) {
+  const schema5 = s2;
   return !!schema5._zod;
 }
 function safeParse2(schema5, data) {
@@ -4256,1586 +4256,66 @@ function getLiteralValue(schema5) {
   return void 0;
 }
 
-// stubs/zod/v4.js
-var identity4 = (v) => v;
-var schema4 = () => ({
-  parse: identity4,
-  safeParse: (v) => ({ success: true, data: v }),
-  optional: schema4,
-  nullable: schema4,
-  array: schema4,
-  object: schema4,
-  string: schema4,
-  number: schema4,
-  boolean: schema4,
-  enum: schema4,
-  union: schema4,
-  literal: schema4,
-  record: schema4,
-  tuple: schema4,
-  intersection: schema4,
-  lazy: schema4,
-  any: schema4,
-  unknown: schema4,
-  void: schema4,
-  never: schema4,
-  undefined: schema4,
-  null: schema4,
-  default: schema4,
-  transform: schema4,
-  refine: schema4,
-  pipe: schema4,
-  describe: schema4,
-  brand: schema4,
-  catch: schema4,
-  readonly: schema4,
-  extend: schema4,
-  merge: schema4,
-  pick: schema4,
-  omit: schema4,
-  partial: schema4,
-  required: schema4,
-  passthrough: schema4,
-  strict: schema4,
-  strip: schema4,
-  keyof: schema4,
-  shape: {},
-  _def: { typeName: "ZodObject" },
-  _type: void 0,
-  _output: void 0,
-  _input: void 0,
-  and: schema4,
-  or: schema4,
-  isOptional: () => false,
-  isNullable: () => false
-});
-var z4 = new Proxy(schema4(), {
-  get(target, prop) {
-    if (prop === "ZodType" || prop === "ZodObject" || prop === "ZodString" || prop === "ZodNumber" || prop === "ZodBoolean" || prop === "ZodArray" || prop === "ZodEnum" || prop === "ZodUnion" || prop === "ZodLiteral" || prop === "ZodRecord" || prop === "ZodTuple" || prop === "ZodIntersection" || prop === "ZodLazy" || prop === "ZodAny" || prop === "ZodUnknown" || prop === "ZodVoid" || prop === "ZodNever" || prop === "ZodUndefined" || prop === "ZodNull" || prop === "ZodDefault" || prop === "ZodOptional" || prop === "ZodNullable") {
-      return class {
-        static create = schema4;
-        constructor() {
-          return schema4();
-        }
-      };
-    }
-    if (prop === "instanceof") return () => schema4();
-    if (prop === "custom") return () => schema4();
-    if (prop === "coerce") return z4;
-    if (prop === "NEVER") return /* @__PURE__ */ Symbol("NEVER");
-    return target[prop] ?? schema4;
-  }
-});
-var ZodFirstPartyTypeKind4 = new Proxy({}, { get: (_, p) => p });
-var ZodIssueCode4 = new Proxy({}, { get: (_, p) => p });
-var ZodParsedType4 = new Proxy({}, { get: (_, p) => p });
-
-// ../../StrandsAgentsSDKTypescript/node_modules/@modelcontextprotocol/sdk/dist/esm/types.js
+// stubs/mcp-types.js
 var LATEST_PROTOCOL_VERSION = "2025-11-25";
 var SUPPORTED_PROTOCOL_VERSIONS = [LATEST_PROTOCOL_VERSION, "2025-06-18", "2025-03-26", "2024-11-05", "2024-10-07"];
 var RELATED_TASK_META_KEY = "io.modelcontextprotocol/related-task";
-var JSONRPC_VERSION = "2.0";
-var AssertObjectSchema = (void 0)((v) => v !== null && (typeof v === "object" || typeof v === "function"));
-var ProgressTokenSchema = (void 0)([(void 0)(), (void 0)().int()]);
-var CursorSchema = (void 0)();
-var TaskCreationParamsSchema = (void 0)({
-  /**
-   * Time in milliseconds to keep task results available after completion.
-   * If null, the task has unlimited lifetime until manually cleaned up.
-   */
-  ttl: (void 0)([(void 0)(), (void 0)()]).optional(),
-  /**
-   * Time in milliseconds to wait between task status requests.
-   */
-  pollInterval: (void 0)().optional()
-});
-var TaskMetadataSchema = (void 0)({
-  ttl: (void 0)().optional()
-});
-var RelatedTaskMetadataSchema = (void 0)({
-  taskId: (void 0)()
-});
-var RequestMetaSchema = (void 0)({
-  /**
-   * If specified, the caller is requesting out-of-band progress notifications for this request (as represented by notifications/progress). The value of this parameter is an opaque token that will be attached to any subsequent notifications. The receiver is not obligated to provide these notifications.
-   */
-  progressToken: ProgressTokenSchema.optional(),
-  /**
-   * If specified, this request is related to the provided task.
-   */
-  [RELATED_TASK_META_KEY]: RelatedTaskMetadataSchema.optional()
-});
-var BaseRequestParamsSchema = (void 0)({
-  /**
-   * See [General fields: `_meta`](/specification/draft/basic/index#meta) for notes on `_meta` usage.
-   */
-  _meta: RequestMetaSchema.optional()
-});
-var TaskAugmentedRequestParamsSchema = BaseRequestParamsSchema.extend({
-  /**
-   * If specified, the caller is requesting task-augmented execution for this request.
-   * The request will return a CreateTaskResult immediately, and the actual result can be
-   * retrieved later via tasks/result.
-   *
-   * Task augmentation is subject to capability negotiation - receivers MUST declare support
-   * for task augmentation of specific request types in their capabilities.
-   */
-  task: TaskMetadataSchema.optional()
-});
-var isTaskAugmentedRequestParams = (value) => TaskAugmentedRequestParamsSchema.safeParse(value).success;
-var RequestSchema = (void 0)({
-  method: (void 0)(),
-  params: BaseRequestParamsSchema.loose().optional()
-});
-var NotificationsParamsSchema = (void 0)({
-  /**
-   * See [MCP specification](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/47339c03c143bb4ec01a26e721a1b8fe66634ebe/docs/specification/draft/basic/index.mdx#general-fields)
-   * for notes on _meta usage.
-   */
-  _meta: RequestMetaSchema.optional()
-});
-var NotificationSchema = (void 0)({
-  method: (void 0)(),
-  params: NotificationsParamsSchema.loose().optional()
-});
-var ResultSchema = (void 0)({
-  /**
-   * See [MCP specification](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/47339c03c143bb4ec01a26e721a1b8fe66634ebe/docs/specification/draft/basic/index.mdx#general-fields)
-   * for notes on _meta usage.
-   */
-  _meta: RequestMetaSchema.optional()
-});
-var RequestIdSchema = (void 0)([(void 0)(), (void 0)().int()]);
-var JSONRPCRequestSchema = (void 0)({
-  jsonrpc: (void 0)(JSONRPC_VERSION),
-  id: RequestIdSchema,
-  ...RequestSchema.shape
-}).strict();
-var isJSONRPCRequest = (value) => JSONRPCRequestSchema.safeParse(value).success;
-var JSONRPCNotificationSchema = (void 0)({
-  jsonrpc: (void 0)(JSONRPC_VERSION),
-  ...NotificationSchema.shape
-}).strict();
-var isJSONRPCNotification = (value) => JSONRPCNotificationSchema.safeParse(value).success;
-var JSONRPCResultResponseSchema = (void 0)({
-  jsonrpc: (void 0)(JSONRPC_VERSION),
-  id: RequestIdSchema,
-  result: ResultSchema
-}).strict();
-var isJSONRPCResultResponse = (value) => JSONRPCResultResponseSchema.safeParse(value).success;
 var ErrorCode;
-(function(ErrorCode2) {
-  ErrorCode2[ErrorCode2["ConnectionClosed"] = -32e3] = "ConnectionClosed";
-  ErrorCode2[ErrorCode2["RequestTimeout"] = -32001] = "RequestTimeout";
-  ErrorCode2[ErrorCode2["ParseError"] = -32700] = "ParseError";
-  ErrorCode2[ErrorCode2["InvalidRequest"] = -32600] = "InvalidRequest";
-  ErrorCode2[ErrorCode2["MethodNotFound"] = -32601] = "MethodNotFound";
-  ErrorCode2[ErrorCode2["InvalidParams"] = -32602] = "InvalidParams";
-  ErrorCode2[ErrorCode2["InternalError"] = -32603] = "InternalError";
-  ErrorCode2[ErrorCode2["UrlElicitationRequired"] = -32042] = "UrlElicitationRequired";
+(function(E) {
+  E[E["ConnectionClosed"] = -1] = "ConnectionClosed";
+  E[E["RequestTimeout"] = -2] = "RequestTimeout";
+  E[E["ParseError"] = -32700] = "ParseError";
+  E[E["InvalidRequest"] = -32600] = "InvalidRequest";
+  E[E["MethodNotFound"] = -32601] = "MethodNotFound";
+  E[E["InvalidParams"] = -32602] = "InvalidParams";
+  E[E["InternalError"] = -32603] = "InternalError";
 })(ErrorCode || (ErrorCode = {}));
-var JSONRPCErrorResponseSchema = (void 0)({
-  jsonrpc: (void 0)(JSONRPC_VERSION),
-  id: RequestIdSchema.optional(),
-  error: (void 0)({
-    /**
-     * The error type that occurred.
-     */
-    code: (void 0)().int(),
-    /**
-     * A short description of the error. The message SHOULD be limited to a concise single sentence.
-     */
-    message: (void 0)(),
-    /**
-     * Additional information about the error. The value of this member is defined by the sender (e.g. detailed error information, nested errors etc.).
-     */
-    data: (void 0)().optional()
-  })
-}).strict();
-var isJSONRPCErrorResponse = (value) => JSONRPCErrorResponseSchema.safeParse(value).success;
-var JSONRPCMessageSchema = (void 0)([
-  JSONRPCRequestSchema,
-  JSONRPCNotificationSchema,
-  JSONRPCResultResponseSchema,
-  JSONRPCErrorResponseSchema
-]);
-var JSONRPCResponseSchema = (void 0)([JSONRPCResultResponseSchema, JSONRPCErrorResponseSchema]);
-var EmptyResultSchema = ResultSchema.strict();
-var CancelledNotificationParamsSchema = NotificationsParamsSchema.extend({
-  /**
-   * The ID of the request to cancel.
-   *
-   * This MUST correspond to the ID of a request previously issued in the same direction.
-   */
-  requestId: RequestIdSchema.optional(),
-  /**
-   * An optional string describing the reason for the cancellation. This MAY be logged or presented to the user.
-   */
-  reason: (void 0)().optional()
-});
-var CancelledNotificationSchema = NotificationSchema.extend({
-  method: (void 0)("notifications/cancelled"),
-  params: CancelledNotificationParamsSchema
-});
-var IconSchema = (void 0)({
-  /**
-   * URL or data URI for the icon.
-   */
-  src: (void 0)(),
-  /**
-   * Optional MIME type for the icon.
-   */
-  mimeType: (void 0)().optional(),
-  /**
-   * Optional array of strings that specify sizes at which the icon can be used.
-   * Each string should be in WxH format (e.g., `"48x48"`, `"96x96"`) or `"any"` for scalable formats like SVG.
-   *
-   * If not provided, the client should assume that the icon can be used at any size.
-   */
-  sizes: (void 0)((void 0)()).optional(),
-  /**
-   * Optional specifier for the theme this icon is designed for. `light` indicates
-   * the icon is designed to be used with a light background, and `dark` indicates
-   * the icon is designed to be used with a dark background.
-   *
-   * If not provided, the client should assume the icon can be used with any theme.
-   */
-  theme: (void 0)(["light", "dark"]).optional()
-});
-var IconsSchema = (void 0)({
-  /**
-   * Optional set of sized icons that the client can display in a user interface.
-   *
-   * Clients that support rendering icons MUST support at least the following MIME types:
-   * - `image/png` - PNG images (safe, universal compatibility)
-   * - `image/jpeg` (and `image/jpg`) - JPEG images (safe, universal compatibility)
-   *
-   * Clients that support rendering icons SHOULD also support:
-   * - `image/svg+xml` - SVG images (scalable but requires security precautions)
-   * - `image/webp` - WebP images (modern, efficient format)
-   */
-  icons: (void 0)(IconSchema).optional()
-});
-var BaseMetadataSchema = (void 0)({
-  /** Intended for programmatic or logical use, but used as a display name in past specs or fallback */
-  name: (void 0)(),
-  /**
-   * Intended for UI and end-user contexts — optimized to be human-readable and easily understood,
-   * even by those unfamiliar with domain-specific terminology.
-   *
-   * If not provided, the name should be used for display (except for Tool,
-   * where `annotations.title` should be given precedence over using `name`,
-   * if present).
-   */
-  title: (void 0)().optional()
-});
-var ImplementationSchema = BaseMetadataSchema.extend({
-  ...BaseMetadataSchema.shape,
-  ...IconsSchema.shape,
-  version: (void 0)(),
-  /**
-   * An optional URL of the website for this implementation.
-   */
-  websiteUrl: (void 0)().optional(),
-  /**
-   * An optional human-readable description of what this implementation does.
-   *
-   * This can be used by clients or servers to provide context about their purpose
-   * and capabilities. For example, a server might describe the types of resources
-   * or tools it provides, while a client might describe its intended use case.
-   */
-  description: (void 0)().optional()
-});
-var FormElicitationCapabilitySchema = (void 0)((void 0)({
-  applyDefaults: (void 0)().optional()
-}), (void 0)((void 0)(), (void 0)()));
-var ElicitationCapabilitySchema = (void 0)((value) => {
-  if (value && typeof value === "object" && !Array.isArray(value)) {
-    if (Object.keys(value).length === 0) {
-      return { form: {} };
-    }
-  }
-  return value;
-}, (void 0)((void 0)({
-  form: FormElicitationCapabilitySchema.optional(),
-  url: AssertObjectSchema.optional()
-}), (void 0)((void 0)(), (void 0)()).optional()));
-var ClientTasksCapabilitySchema = (void 0)({
-  /**
-   * Present if the client supports listing tasks.
-   */
-  list: AssertObjectSchema.optional(),
-  /**
-   * Present if the client supports cancelling tasks.
-   */
-  cancel: AssertObjectSchema.optional(),
-  /**
-   * Capabilities for task creation on specific request types.
-   */
-  requests: (void 0)({
-    /**
-     * Task support for sampling requests.
-     */
-    sampling: (void 0)({
-      createMessage: AssertObjectSchema.optional()
-    }).optional(),
-    /**
-     * Task support for elicitation requests.
-     */
-    elicitation: (void 0)({
-      create: AssertObjectSchema.optional()
-    }).optional()
-  }).optional()
-});
-var ServerTasksCapabilitySchema = (void 0)({
-  /**
-   * Present if the server supports listing tasks.
-   */
-  list: AssertObjectSchema.optional(),
-  /**
-   * Present if the server supports cancelling tasks.
-   */
-  cancel: AssertObjectSchema.optional(),
-  /**
-   * Capabilities for task creation on specific request types.
-   */
-  requests: (void 0)({
-    /**
-     * Task support for tool requests.
-     */
-    tools: (void 0)({
-      call: AssertObjectSchema.optional()
-    }).optional()
-  }).optional()
-});
-var ClientCapabilitiesSchema = (void 0)({
-  /**
-   * Experimental, non-standard capabilities that the client supports.
-   */
-  experimental: (void 0)((void 0)(), AssertObjectSchema).optional(),
-  /**
-   * Present if the client supports sampling from an LLM.
-   */
-  sampling: (void 0)({
-    /**
-     * Present if the client supports context inclusion via includeContext parameter.
-     * If not declared, servers SHOULD only use `includeContext: "none"` (or omit it).
-     */
-    context: AssertObjectSchema.optional(),
-    /**
-     * Present if the client supports tool use via tools and toolChoice parameters.
-     */
-    tools: AssertObjectSchema.optional()
-  }).optional(),
-  /**
-   * Present if the client supports eliciting user input.
-   */
-  elicitation: ElicitationCapabilitySchema.optional(),
-  /**
-   * Present if the client supports listing roots.
-   */
-  roots: (void 0)({
-    /**
-     * Whether the client supports issuing notifications for changes to the roots list.
-     */
-    listChanged: (void 0)().optional()
-  }).optional(),
-  /**
-   * Present if the client supports task creation.
-   */
-  tasks: ClientTasksCapabilitySchema.optional()
-});
-var InitializeRequestParamsSchema = BaseRequestParamsSchema.extend({
-  /**
-   * The latest version of the Model Context Protocol that the client supports. The client MAY decide to support older versions as well.
-   */
-  protocolVersion: (void 0)(),
-  capabilities: ClientCapabilitiesSchema,
-  clientInfo: ImplementationSchema
-});
-var InitializeRequestSchema = RequestSchema.extend({
-  method: (void 0)("initialize"),
-  params: InitializeRequestParamsSchema
-});
-var ServerCapabilitiesSchema = (void 0)({
-  /**
-   * Experimental, non-standard capabilities that the server supports.
-   */
-  experimental: (void 0)((void 0)(), AssertObjectSchema).optional(),
-  /**
-   * Present if the server supports sending log messages to the client.
-   */
-  logging: AssertObjectSchema.optional(),
-  /**
-   * Present if the server supports sending completions to the client.
-   */
-  completions: AssertObjectSchema.optional(),
-  /**
-   * Present if the server offers any prompt templates.
-   */
-  prompts: (void 0)({
-    /**
-     * Whether this server supports issuing notifications for changes to the prompt list.
-     */
-    listChanged: (void 0)().optional()
-  }).optional(),
-  /**
-   * Present if the server offers any resources to read.
-   */
-  resources: (void 0)({
-    /**
-     * Whether this server supports clients subscribing to resource updates.
-     */
-    subscribe: (void 0)().optional(),
-    /**
-     * Whether this server supports issuing notifications for changes to the resource list.
-     */
-    listChanged: (void 0)().optional()
-  }).optional(),
-  /**
-   * Present if the server offers any tools to call.
-   */
-  tools: (void 0)({
-    /**
-     * Whether this server supports issuing notifications for changes to the tool list.
-     */
-    listChanged: (void 0)().optional()
-  }).optional(),
-  /**
-   * Present if the server supports task creation.
-   */
-  tasks: ServerTasksCapabilitySchema.optional()
-});
-var InitializeResultSchema = ResultSchema.extend({
-  /**
-   * The version of the Model Context Protocol that the server wants to use. This may not match the version that the client requested. If the client cannot support this version, it MUST disconnect.
-   */
-  protocolVersion: (void 0)(),
-  capabilities: ServerCapabilitiesSchema,
-  serverInfo: ImplementationSchema,
-  /**
-   * Instructions describing how to use the server and its features.
-   *
-   * This can be used by clients to improve the LLM's understanding of available tools, resources, etc. It can be thought of like a "hint" to the model. For example, this information MAY be added to the system prompt.
-   */
-  instructions: (void 0)().optional()
-});
-var InitializedNotificationSchema = NotificationSchema.extend({
-  method: (void 0)("notifications/initialized"),
-  params: NotificationsParamsSchema.optional()
-});
-var isInitializedNotification = (value) => InitializedNotificationSchema.safeParse(value).success;
-var PingRequestSchema = RequestSchema.extend({
-  method: (void 0)("ping"),
-  params: BaseRequestParamsSchema.optional()
-});
-var ProgressSchema = (void 0)({
-  /**
-   * The progress thus far. This should increase every time progress is made, even if the total is unknown.
-   */
-  progress: (void 0)(),
-  /**
-   * Total number of items to process (or total progress required), if known.
-   */
-  total: (void 0)((void 0)()),
-  /**
-   * An optional message describing the current progress.
-   */
-  message: (void 0)((void 0)())
-});
-var ProgressNotificationParamsSchema = (void 0)({
-  ...NotificationsParamsSchema.shape,
-  ...ProgressSchema.shape,
-  /**
-   * The progress token which was given in the initial request, used to associate this notification with the request that is proceeding.
-   */
-  progressToken: ProgressTokenSchema
-});
-var ProgressNotificationSchema = NotificationSchema.extend({
-  method: (void 0)("notifications/progress"),
-  params: ProgressNotificationParamsSchema
-});
-var PaginatedRequestParamsSchema = BaseRequestParamsSchema.extend({
-  /**
-   * An opaque token representing the current pagination position.
-   * If provided, the server should return results starting after this cursor.
-   */
-  cursor: CursorSchema.optional()
-});
-var PaginatedRequestSchema = RequestSchema.extend({
-  params: PaginatedRequestParamsSchema.optional()
-});
-var PaginatedResultSchema = ResultSchema.extend({
-  /**
-   * An opaque token representing the pagination position after the last returned result.
-   * If present, there may be more results available.
-   */
-  nextCursor: CursorSchema.optional()
-});
-var TaskStatusSchema = (void 0)(["working", "input_required", "completed", "failed", "cancelled"]);
-var TaskSchema = (void 0)({
-  taskId: (void 0)(),
-  status: TaskStatusSchema,
-  /**
-   * Time in milliseconds to keep task results available after completion.
-   * If null, the task has unlimited lifetime until manually cleaned up.
-   */
-  ttl: (void 0)([(void 0)(), (void 0)()]),
-  /**
-   * ISO 8601 timestamp when the task was created.
-   */
-  createdAt: (void 0)(),
-  /**
-   * ISO 8601 timestamp when the task was last updated.
-   */
-  lastUpdatedAt: (void 0)(),
-  pollInterval: (void 0)((void 0)()),
-  /**
-   * Optional diagnostic message for failed tasks or other status information.
-   */
-  statusMessage: (void 0)((void 0)())
-});
-var CreateTaskResultSchema = ResultSchema.extend({
-  task: TaskSchema
-});
-var TaskStatusNotificationParamsSchema = NotificationsParamsSchema.merge(TaskSchema);
-var TaskStatusNotificationSchema = NotificationSchema.extend({
-  method: (void 0)("notifications/tasks/status"),
-  params: TaskStatusNotificationParamsSchema
-});
-var GetTaskRequestSchema = RequestSchema.extend({
-  method: (void 0)("tasks/get"),
-  params: BaseRequestParamsSchema.extend({
-    taskId: (void 0)()
-  })
-});
-var GetTaskResultSchema = ResultSchema.merge(TaskSchema);
-var GetTaskPayloadRequestSchema = RequestSchema.extend({
-  method: (void 0)("tasks/result"),
-  params: BaseRequestParamsSchema.extend({
-    taskId: (void 0)()
-  })
-});
-var GetTaskPayloadResultSchema = ResultSchema.loose();
-var ListTasksRequestSchema = PaginatedRequestSchema.extend({
-  method: (void 0)("tasks/list")
-});
-var ListTasksResultSchema = PaginatedResultSchema.extend({
-  tasks: (void 0)(TaskSchema)
-});
-var CancelTaskRequestSchema = RequestSchema.extend({
-  method: (void 0)("tasks/cancel"),
-  params: BaseRequestParamsSchema.extend({
-    taskId: (void 0)()
-  })
-});
-var CancelTaskResultSchema = ResultSchema.merge(TaskSchema);
-var ResourceContentsSchema = (void 0)({
-  /**
-   * The URI of this resource.
-   */
-  uri: (void 0)(),
-  /**
-   * The MIME type of this resource, if known.
-   */
-  mimeType: (void 0)((void 0)()),
-  /**
-   * See [MCP specification](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/47339c03c143bb4ec01a26e721a1b8fe66634ebe/docs/specification/draft/basic/index.mdx#general-fields)
-   * for notes on _meta usage.
-   */
-  _meta: (void 0)((void 0)(), (void 0)()).optional()
-});
-var TextResourceContentsSchema = ResourceContentsSchema.extend({
-  /**
-   * The text of the item. This must only be set if the item can actually be represented as text (not binary data).
-   */
-  text: (void 0)()
-});
-var Base64Schema = (void 0)().refine((val) => {
-  try {
-    atob(val);
-    return true;
-  } catch {
-    return false;
-  }
-}, { message: "Invalid Base64 string" });
-var BlobResourceContentsSchema = ResourceContentsSchema.extend({
-  /**
-   * A base64-encoded string representing the binary data of the item.
-   */
-  blob: Base64Schema
-});
-var RoleSchema = (void 0)(["user", "assistant"]);
-var AnnotationsSchema = (void 0)({
-  /**
-   * Intended audience(s) for the resource.
-   */
-  audience: (void 0)(RoleSchema).optional(),
-  /**
-   * Importance hint for the resource, from 0 (least) to 1 (most).
-   */
-  priority: (void 0)().min(0).max(1).optional(),
-  /**
-   * ISO 8601 timestamp for the most recent modification.
-   */
-  lastModified: (void 0).datetime({ offset: true }).optional()
-});
-var ResourceSchema = (void 0)({
-  ...BaseMetadataSchema.shape,
-  ...IconsSchema.shape,
-  /**
-   * The URI of this resource.
-   */
-  uri: (void 0)(),
-  /**
-   * A description of what this resource represents.
-   *
-   * This can be used by clients to improve the LLM's understanding of available resources. It can be thought of like a "hint" to the model.
-   */
-  description: (void 0)((void 0)()),
-  /**
-   * The MIME type of this resource, if known.
-   */
-  mimeType: (void 0)((void 0)()),
-  /**
-   * Optional annotations for the client.
-   */
-  annotations: AnnotationsSchema.optional(),
-  /**
-   * See [MCP specification](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/47339c03c143bb4ec01a26e721a1b8fe66634ebe/docs/specification/draft/basic/index.mdx#general-fields)
-   * for notes on _meta usage.
-   */
-  _meta: (void 0)((void 0)({}))
-});
-var ResourceTemplateSchema = (void 0)({
-  ...BaseMetadataSchema.shape,
-  ...IconsSchema.shape,
-  /**
-   * A URI template (according to RFC 6570) that can be used to construct resource URIs.
-   */
-  uriTemplate: (void 0)(),
-  /**
-   * A description of what this template is for.
-   *
-   * This can be used by clients to improve the LLM's understanding of available resources. It can be thought of like a "hint" to the model.
-   */
-  description: (void 0)((void 0)()),
-  /**
-   * The MIME type for all resources that match this template. This should only be included if all resources matching this template have the same type.
-   */
-  mimeType: (void 0)((void 0)()),
-  /**
-   * Optional annotations for the client.
-   */
-  annotations: AnnotationsSchema.optional(),
-  /**
-   * See [MCP specification](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/47339c03c143bb4ec01a26e721a1b8fe66634ebe/docs/specification/draft/basic/index.mdx#general-fields)
-   * for notes on _meta usage.
-   */
-  _meta: (void 0)((void 0)({}))
-});
-var ListResourcesRequestSchema = PaginatedRequestSchema.extend({
-  method: (void 0)("resources/list")
-});
-var ListResourcesResultSchema = PaginatedResultSchema.extend({
-  resources: (void 0)(ResourceSchema)
-});
-var ListResourceTemplatesRequestSchema = PaginatedRequestSchema.extend({
-  method: (void 0)("resources/templates/list")
-});
-var ListResourceTemplatesResultSchema = PaginatedResultSchema.extend({
-  resourceTemplates: (void 0)(ResourceTemplateSchema)
-});
-var ResourceRequestParamsSchema = BaseRequestParamsSchema.extend({
-  /**
-   * The URI of the resource to read. The URI can use any protocol; it is up to the server how to interpret it.
-   *
-   * @format uri
-   */
-  uri: (void 0)()
-});
-var ReadResourceRequestParamsSchema = ResourceRequestParamsSchema;
-var ReadResourceRequestSchema = RequestSchema.extend({
-  method: (void 0)("resources/read"),
-  params: ReadResourceRequestParamsSchema
-});
-var ReadResourceResultSchema = ResultSchema.extend({
-  contents: (void 0)((void 0)([TextResourceContentsSchema, BlobResourceContentsSchema]))
-});
-var ResourceListChangedNotificationSchema = NotificationSchema.extend({
-  method: (void 0)("notifications/resources/list_changed"),
-  params: NotificationsParamsSchema.optional()
-});
-var SubscribeRequestParamsSchema = ResourceRequestParamsSchema;
-var SubscribeRequestSchema = RequestSchema.extend({
-  method: (void 0)("resources/subscribe"),
-  params: SubscribeRequestParamsSchema
-});
-var UnsubscribeRequestParamsSchema = ResourceRequestParamsSchema;
-var UnsubscribeRequestSchema = RequestSchema.extend({
-  method: (void 0)("resources/unsubscribe"),
-  params: UnsubscribeRequestParamsSchema
-});
-var ResourceUpdatedNotificationParamsSchema = NotificationsParamsSchema.extend({
-  /**
-   * The URI of the resource that has been updated. This might be a sub-resource of the one that the client actually subscribed to.
-   */
-  uri: (void 0)()
-});
-var ResourceUpdatedNotificationSchema = NotificationSchema.extend({
-  method: (void 0)("notifications/resources/updated"),
-  params: ResourceUpdatedNotificationParamsSchema
-});
-var PromptArgumentSchema = (void 0)({
-  /**
-   * The name of the argument.
-   */
-  name: (void 0)(),
-  /**
-   * A human-readable description of the argument.
-   */
-  description: (void 0)((void 0)()),
-  /**
-   * Whether this argument must be provided.
-   */
-  required: (void 0)((void 0)())
-});
-var PromptSchema = (void 0)({
-  ...BaseMetadataSchema.shape,
-  ...IconsSchema.shape,
-  /**
-   * An optional description of what this prompt provides
-   */
-  description: (void 0)((void 0)()),
-  /**
-   * A list of arguments to use for templating the prompt.
-   */
-  arguments: (void 0)((void 0)(PromptArgumentSchema)),
-  /**
-   * See [MCP specification](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/47339c03c143bb4ec01a26e721a1b8fe66634ebe/docs/specification/draft/basic/index.mdx#general-fields)
-   * for notes on _meta usage.
-   */
-  _meta: (void 0)((void 0)({}))
-});
-var ListPromptsRequestSchema = PaginatedRequestSchema.extend({
-  method: (void 0)("prompts/list")
-});
-var ListPromptsResultSchema = PaginatedResultSchema.extend({
-  prompts: (void 0)(PromptSchema)
-});
-var GetPromptRequestParamsSchema = BaseRequestParamsSchema.extend({
-  /**
-   * The name of the prompt or prompt template.
-   */
-  name: (void 0)(),
-  /**
-   * Arguments to use for templating the prompt.
-   */
-  arguments: (void 0)((void 0)(), (void 0)()).optional()
-});
-var GetPromptRequestSchema = RequestSchema.extend({
-  method: (void 0)("prompts/get"),
-  params: GetPromptRequestParamsSchema
-});
-var TextContentSchema = (void 0)({
-  type: (void 0)("text"),
-  /**
-   * The text content of the message.
-   */
-  text: (void 0)(),
-  /**
-   * Optional annotations for the client.
-   */
-  annotations: AnnotationsSchema.optional(),
-  /**
-   * See [MCP specification](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/47339c03c143bb4ec01a26e721a1b8fe66634ebe/docs/specification/draft/basic/index.mdx#general-fields)
-   * for notes on _meta usage.
-   */
-  _meta: (void 0)((void 0)(), (void 0)()).optional()
-});
-var ImageContentSchema = (void 0)({
-  type: (void 0)("image"),
-  /**
-   * The base64-encoded image data.
-   */
-  data: Base64Schema,
-  /**
-   * The MIME type of the image. Different providers may support different image types.
-   */
-  mimeType: (void 0)(),
-  /**
-   * Optional annotations for the client.
-   */
-  annotations: AnnotationsSchema.optional(),
-  /**
-   * See [MCP specification](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/47339c03c143bb4ec01a26e721a1b8fe66634ebe/docs/specification/draft/basic/index.mdx#general-fields)
-   * for notes on _meta usage.
-   */
-  _meta: (void 0)((void 0)(), (void 0)()).optional()
-});
-var AudioContentSchema = (void 0)({
-  type: (void 0)("audio"),
-  /**
-   * The base64-encoded audio data.
-   */
-  data: Base64Schema,
-  /**
-   * The MIME type of the audio. Different providers may support different audio types.
-   */
-  mimeType: (void 0)(),
-  /**
-   * Optional annotations for the client.
-   */
-  annotations: AnnotationsSchema.optional(),
-  /**
-   * See [MCP specification](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/47339c03c143bb4ec01a26e721a1b8fe66634ebe/docs/specification/draft/basic/index.mdx#general-fields)
-   * for notes on _meta usage.
-   */
-  _meta: (void 0)((void 0)(), (void 0)()).optional()
-});
-var ToolUseContentSchema = (void 0)({
-  type: (void 0)("tool_use"),
-  /**
-   * The name of the tool to invoke.
-   * Must match a tool name from the request's tools array.
-   */
-  name: (void 0)(),
-  /**
-   * Unique identifier for this tool call.
-   * Used to correlate with ToolResultContent in subsequent messages.
-   */
-  id: (void 0)(),
-  /**
-   * Arguments to pass to the tool.
-   * Must conform to the tool's inputSchema.
-   */
-  input: (void 0)((void 0)(), (void 0)()),
-  /**
-   * See [MCP specification](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/47339c03c143bb4ec01a26e721a1b8fe66634ebe/docs/specification/draft/basic/index.mdx#general-fields)
-   * for notes on _meta usage.
-   */
-  _meta: (void 0)((void 0)(), (void 0)()).optional()
-});
-var EmbeddedResourceSchema = (void 0)({
-  type: (void 0)("resource"),
-  resource: (void 0)([TextResourceContentsSchema, BlobResourceContentsSchema]),
-  /**
-   * Optional annotations for the client.
-   */
-  annotations: AnnotationsSchema.optional(),
-  /**
-   * See [MCP specification](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/47339c03c143bb4ec01a26e721a1b8fe66634ebe/docs/specification/draft/basic/index.mdx#general-fields)
-   * for notes on _meta usage.
-   */
-  _meta: (void 0)((void 0)(), (void 0)()).optional()
-});
-var ResourceLinkSchema = ResourceSchema.extend({
-  type: (void 0)("resource_link")
-});
-var ContentBlockSchema = (void 0)([
-  TextContentSchema,
-  ImageContentSchema,
-  AudioContentSchema,
-  ResourceLinkSchema,
-  EmbeddedResourceSchema
-]);
-var PromptMessageSchema = (void 0)({
-  role: RoleSchema,
-  content: ContentBlockSchema
-});
-var GetPromptResultSchema = ResultSchema.extend({
-  /**
-   * An optional description for the prompt.
-   */
-  description: (void 0)().optional(),
-  messages: (void 0)(PromptMessageSchema)
-});
-var PromptListChangedNotificationSchema = NotificationSchema.extend({
-  method: (void 0)("notifications/prompts/list_changed"),
-  params: NotificationsParamsSchema.optional()
-});
-var ToolAnnotationsSchema = (void 0)({
-  /**
-   * A human-readable title for the tool.
-   */
-  title: (void 0)().optional(),
-  /**
-   * If true, the tool does not modify its environment.
-   *
-   * Default: false
-   */
-  readOnlyHint: (void 0)().optional(),
-  /**
-   * If true, the tool may perform destructive updates to its environment.
-   * If false, the tool performs only additive updates.
-   *
-   * (This property is meaningful only when `readOnlyHint == false`)
-   *
-   * Default: true
-   */
-  destructiveHint: (void 0)().optional(),
-  /**
-   * If true, calling the tool repeatedly with the same arguments
-   * will have no additional effect on the its environment.
-   *
-   * (This property is meaningful only when `readOnlyHint == false`)
-   *
-   * Default: false
-   */
-  idempotentHint: (void 0)().optional(),
-  /**
-   * If true, this tool may interact with an "open world" of external
-   * entities. If false, the tool's domain of interaction is closed.
-   * For example, the world of a web search tool is open, whereas that
-   * of a memory tool is not.
-   *
-   * Default: true
-   */
-  openWorldHint: (void 0)().optional()
-});
-var ToolExecutionSchema = (void 0)({
-  /**
-   * Indicates the tool's preference for task-augmented execution.
-   * - "required": Clients MUST invoke the tool as a task
-   * - "optional": Clients MAY invoke the tool as a task or normal request
-   * - "forbidden": Clients MUST NOT attempt to invoke the tool as a task
-   *
-   * If not present, defaults to "forbidden".
-   */
-  taskSupport: (void 0)(["required", "optional", "forbidden"]).optional()
-});
-var ToolSchema = (void 0)({
-  ...BaseMetadataSchema.shape,
-  ...IconsSchema.shape,
-  /**
-   * A human-readable description of the tool.
-   */
-  description: (void 0)().optional(),
-  /**
-   * A JSON Schema 2020-12 object defining the expected parameters for the tool.
-   * Must have type: 'object' at the root level per MCP spec.
-   */
-  inputSchema: (void 0)({
-    type: (void 0)("object"),
-    properties: (void 0)((void 0)(), AssertObjectSchema).optional(),
-    required: (void 0)((void 0)()).optional()
-  }).catchall((void 0)()),
-  /**
-   * An optional JSON Schema 2020-12 object defining the structure of the tool's output
-   * returned in the structuredContent field of a CallToolResult.
-   * Must have type: 'object' at the root level per MCP spec.
-   */
-  outputSchema: (void 0)({
-    type: (void 0)("object"),
-    properties: (void 0)((void 0)(), AssertObjectSchema).optional(),
-    required: (void 0)((void 0)()).optional()
-  }).catchall((void 0)()).optional(),
-  /**
-   * Optional additional tool information.
-   */
-  annotations: ToolAnnotationsSchema.optional(),
-  /**
-   * Execution-related properties for this tool.
-   */
-  execution: ToolExecutionSchema.optional(),
-  /**
-   * See [MCP specification](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/47339c03c143bb4ec01a26e721a1b8fe66634ebe/docs/specification/draft/basic/index.mdx#general-fields)
-   * for notes on _meta usage.
-   */
-  _meta: (void 0)((void 0)(), (void 0)()).optional()
-});
-var ListToolsRequestSchema = PaginatedRequestSchema.extend({
-  method: (void 0)("tools/list")
-});
-var ListToolsResultSchema = PaginatedResultSchema.extend({
-  tools: (void 0)(ToolSchema)
-});
-var CallToolResultSchema = ResultSchema.extend({
-  /**
-   * A list of content objects that represent the result of the tool call.
-   *
-   * If the Tool does not define an outputSchema, this field MUST be present in the result.
-   * For backwards compatibility, this field is always present, but it may be empty.
-   */
-  content: (void 0)(ContentBlockSchema).default([]),
-  /**
-   * An object containing structured tool output.
-   *
-   * If the Tool defines an outputSchema, this field MUST be present in the result, and contain a JSON object that matches the schema.
-   */
-  structuredContent: (void 0)((void 0)(), (void 0)()).optional(),
-  /**
-   * Whether the tool call ended in an error.
-   *
-   * If not set, this is assumed to be false (the call was successful).
-   *
-   * Any errors that originate from the tool SHOULD be reported inside the result
-   * object, with `isError` set to true, _not_ as an MCP protocol-level error
-   * response. Otherwise, the LLM would not be able to see that an error occurred
-   * and self-correct.
-   *
-   * However, any errors in _finding_ the tool, an error indicating that the
-   * server does not support tool calls, or any other exceptional conditions,
-   * should be reported as an MCP error response.
-   */
-  isError: (void 0)().optional()
-});
-var CompatibilityCallToolResultSchema = CallToolResultSchema.or(ResultSchema.extend({
-  toolResult: (void 0)()
-}));
-var CallToolRequestParamsSchema = TaskAugmentedRequestParamsSchema.extend({
-  /**
-   * The name of the tool to call.
-   */
-  name: (void 0)(),
-  /**
-   * Arguments to pass to the tool.
-   */
-  arguments: (void 0)((void 0)(), (void 0)()).optional()
-});
-var CallToolRequestSchema = RequestSchema.extend({
-  method: (void 0)("tools/call"),
-  params: CallToolRequestParamsSchema
-});
-var ToolListChangedNotificationSchema = NotificationSchema.extend({
-  method: (void 0)("notifications/tools/list_changed"),
-  params: NotificationsParamsSchema.optional()
-});
-var ListChangedOptionsBaseSchema = (void 0)({
-  /**
-   * If true, the list will be refreshed automatically when a list changed notification is received.
-   * The callback will be called with the updated list.
-   *
-   * If false, the callback will be called with null items, allowing manual refresh.
-   *
-   * @default true
-   */
-  autoRefresh: (void 0)().default(true),
-  /**
-   * Debounce time in milliseconds for list changed notification processing.
-   *
-   * Multiple notifications received within this timeframe will only trigger one refresh.
-   * Set to 0 to disable debouncing.
-   *
-   * @default 300
-   */
-  debounceMs: (void 0)().int().nonnegative().default(300)
-});
-var LoggingLevelSchema = (void 0)(["debug", "info", "notice", "warning", "error", "critical", "alert", "emergency"]);
-var SetLevelRequestParamsSchema = BaseRequestParamsSchema.extend({
-  /**
-   * The level of logging that the client wants to receive from the server. The server should send all logs at this level and higher (i.e., more severe) to the client as notifications/logging/message.
-   */
-  level: LoggingLevelSchema
-});
-var SetLevelRequestSchema = RequestSchema.extend({
-  method: (void 0)("logging/setLevel"),
-  params: SetLevelRequestParamsSchema
-});
-var LoggingMessageNotificationParamsSchema = NotificationsParamsSchema.extend({
-  /**
-   * The severity of this log message.
-   */
-  level: LoggingLevelSchema,
-  /**
-   * An optional name of the logger issuing this message.
-   */
-  logger: (void 0)().optional(),
-  /**
-   * The data to be logged, such as a string message or an object. Any JSON serializable type is allowed here.
-   */
-  data: (void 0)()
-});
-var LoggingMessageNotificationSchema = NotificationSchema.extend({
-  method: (void 0)("notifications/message"),
-  params: LoggingMessageNotificationParamsSchema
-});
-var ModelHintSchema = (void 0)({
-  /**
-   * A hint for a model name.
-   */
-  name: (void 0)().optional()
-});
-var ModelPreferencesSchema = (void 0)({
-  /**
-   * Optional hints to use for model selection.
-   */
-  hints: (void 0)(ModelHintSchema).optional(),
-  /**
-   * How much to prioritize cost when selecting a model.
-   */
-  costPriority: (void 0)().min(0).max(1).optional(),
-  /**
-   * How much to prioritize sampling speed (latency) when selecting a model.
-   */
-  speedPriority: (void 0)().min(0).max(1).optional(),
-  /**
-   * How much to prioritize intelligence and capabilities when selecting a model.
-   */
-  intelligencePriority: (void 0)().min(0).max(1).optional()
-});
-var ToolChoiceSchema = (void 0)({
-  /**
-   * Controls when tools are used:
-   * - "auto": Model decides whether to use tools (default)
-   * - "required": Model MUST use at least one tool before completing
-   * - "none": Model MUST NOT use any tools
-   */
-  mode: (void 0)(["auto", "required", "none"]).optional()
-});
-var ToolResultContentSchema = (void 0)({
-  type: (void 0)("tool_result"),
-  toolUseId: (void 0)().describe("The unique identifier for the corresponding tool call."),
-  content: (void 0)(ContentBlockSchema).default([]),
-  structuredContent: (void 0)({}).loose().optional(),
-  isError: (void 0)().optional(),
-  /**
-   * See [MCP specification](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/47339c03c143bb4ec01a26e721a1b8fe66634ebe/docs/specification/draft/basic/index.mdx#general-fields)
-   * for notes on _meta usage.
-   */
-  _meta: (void 0)((void 0)(), (void 0)()).optional()
-});
-var SamplingContentSchema = (void 0)("type", [TextContentSchema, ImageContentSchema, AudioContentSchema]);
-var SamplingMessageContentBlockSchema = (void 0)("type", [
-  TextContentSchema,
-  ImageContentSchema,
-  AudioContentSchema,
-  ToolUseContentSchema,
-  ToolResultContentSchema
-]);
-var SamplingMessageSchema = (void 0)({
-  role: RoleSchema,
-  content: (void 0)([SamplingMessageContentBlockSchema, (void 0)(SamplingMessageContentBlockSchema)]),
-  /**
-   * See [MCP specification](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/47339c03c143bb4ec01a26e721a1b8fe66634ebe/docs/specification/draft/basic/index.mdx#general-fields)
-   * for notes on _meta usage.
-   */
-  _meta: (void 0)((void 0)(), (void 0)()).optional()
-});
-var CreateMessageRequestParamsSchema = TaskAugmentedRequestParamsSchema.extend({
-  messages: (void 0)(SamplingMessageSchema),
-  /**
-   * The server's preferences for which model to select. The client MAY modify or omit this request.
-   */
-  modelPreferences: ModelPreferencesSchema.optional(),
-  /**
-   * An optional system prompt the server wants to use for sampling. The client MAY modify or omit this prompt.
-   */
-  systemPrompt: (void 0)().optional(),
-  /**
-   * A request to include context from one or more MCP servers (including the caller), to be attached to the prompt.
-   * The client MAY ignore this request.
-   *
-   * Default is "none". Values "thisServer" and "allServers" are soft-deprecated. Servers SHOULD only use these values if the client
-   * declares ClientCapabilities.sampling.context. These values may be removed in future spec releases.
-   */
-  includeContext: (void 0)(["none", "thisServer", "allServers"]).optional(),
-  temperature: (void 0)().optional(),
-  /**
-   * The requested maximum number of tokens to sample (to prevent runaway completions).
-   *
-   * The client MAY choose to sample fewer tokens than the requested maximum.
-   */
-  maxTokens: (void 0)().int(),
-  stopSequences: (void 0)((void 0)()).optional(),
-  /**
-   * Optional metadata to pass through to the LLM provider. The format of this metadata is provider-specific.
-   */
-  metadata: AssertObjectSchema.optional(),
-  /**
-   * Tools that the model may use during generation.
-   * The client MUST return an error if this field is provided but ClientCapabilities.sampling.tools is not declared.
-   */
-  tools: (void 0)(ToolSchema).optional(),
-  /**
-   * Controls how the model uses tools.
-   * The client MUST return an error if this field is provided but ClientCapabilities.sampling.tools is not declared.
-   * Default is `{ mode: "auto" }`.
-   */
-  toolChoice: ToolChoiceSchema.optional()
-});
-var CreateMessageRequestSchema = RequestSchema.extend({
-  method: (void 0)("sampling/createMessage"),
-  params: CreateMessageRequestParamsSchema
-});
-var CreateMessageResultSchema = ResultSchema.extend({
-  /**
-   * The name of the model that generated the message.
-   */
-  model: (void 0)(),
-  /**
-   * The reason why sampling stopped, if known.
-   *
-   * Standard values:
-   * - "endTurn": Natural end of the assistant's turn
-   * - "stopSequence": A stop sequence was encountered
-   * - "maxTokens": Maximum token limit was reached
-   *
-   * This field is an open string to allow for provider-specific stop reasons.
-   */
-  stopReason: (void 0)((void 0)(["endTurn", "stopSequence", "maxTokens"]).or((void 0)())),
-  role: RoleSchema,
-  /**
-   * Response content. Single content block (text, image, or audio).
-   */
-  content: SamplingContentSchema
-});
-var CreateMessageResultWithToolsSchema = ResultSchema.extend({
-  /**
-   * The name of the model that generated the message.
-   */
-  model: (void 0)(),
-  /**
-   * The reason why sampling stopped, if known.
-   *
-   * Standard values:
-   * - "endTurn": Natural end of the assistant's turn
-   * - "stopSequence": A stop sequence was encountered
-   * - "maxTokens": Maximum token limit was reached
-   * - "toolUse": The model wants to use one or more tools
-   *
-   * This field is an open string to allow for provider-specific stop reasons.
-   */
-  stopReason: (void 0)((void 0)(["endTurn", "stopSequence", "maxTokens", "toolUse"]).or((void 0)())),
-  role: RoleSchema,
-  /**
-   * Response content. May be a single block or array. May include ToolUseContent if stopReason is "toolUse".
-   */
-  content: (void 0)([SamplingMessageContentBlockSchema, (void 0)(SamplingMessageContentBlockSchema)])
-});
-var BooleanSchemaSchema = (void 0)({
-  type: (void 0)("boolean"),
-  title: (void 0)().optional(),
-  description: (void 0)().optional(),
-  default: (void 0)().optional()
-});
-var StringSchemaSchema = (void 0)({
-  type: (void 0)("string"),
-  title: (void 0)().optional(),
-  description: (void 0)().optional(),
-  minLength: (void 0)().optional(),
-  maxLength: (void 0)().optional(),
-  format: (void 0)(["email", "uri", "date", "date-time"]).optional(),
-  default: (void 0)().optional()
-});
-var NumberSchemaSchema = (void 0)({
-  type: (void 0)(["number", "integer"]),
-  title: (void 0)().optional(),
-  description: (void 0)().optional(),
-  minimum: (void 0)().optional(),
-  maximum: (void 0)().optional(),
-  default: (void 0)().optional()
-});
-var UntitledSingleSelectEnumSchemaSchema = (void 0)({
-  type: (void 0)("string"),
-  title: (void 0)().optional(),
-  description: (void 0)().optional(),
-  enum: (void 0)((void 0)()),
-  default: (void 0)().optional()
-});
-var TitledSingleSelectEnumSchemaSchema = (void 0)({
-  type: (void 0)("string"),
-  title: (void 0)().optional(),
-  description: (void 0)().optional(),
-  oneOf: (void 0)((void 0)({
-    const: (void 0)(),
-    title: (void 0)()
-  })),
-  default: (void 0)().optional()
-});
-var LegacyTitledEnumSchemaSchema = (void 0)({
-  type: (void 0)("string"),
-  title: (void 0)().optional(),
-  description: (void 0)().optional(),
-  enum: (void 0)((void 0)()),
-  enumNames: (void 0)((void 0)()).optional(),
-  default: (void 0)().optional()
-});
-var SingleSelectEnumSchemaSchema = (void 0)([UntitledSingleSelectEnumSchemaSchema, TitledSingleSelectEnumSchemaSchema]);
-var UntitledMultiSelectEnumSchemaSchema = (void 0)({
-  type: (void 0)("array"),
-  title: (void 0)().optional(),
-  description: (void 0)().optional(),
-  minItems: (void 0)().optional(),
-  maxItems: (void 0)().optional(),
-  items: (void 0)({
-    type: (void 0)("string"),
-    enum: (void 0)((void 0)())
-  }),
-  default: (void 0)((void 0)()).optional()
-});
-var TitledMultiSelectEnumSchemaSchema = (void 0)({
-  type: (void 0)("array"),
-  title: (void 0)().optional(),
-  description: (void 0)().optional(),
-  minItems: (void 0)().optional(),
-  maxItems: (void 0)().optional(),
-  items: (void 0)({
-    anyOf: (void 0)((void 0)({
-      const: (void 0)(),
-      title: (void 0)()
-    }))
-  }),
-  default: (void 0)((void 0)()).optional()
-});
-var MultiSelectEnumSchemaSchema = (void 0)([UntitledMultiSelectEnumSchemaSchema, TitledMultiSelectEnumSchemaSchema]);
-var EnumSchemaSchema = (void 0)([LegacyTitledEnumSchemaSchema, SingleSelectEnumSchemaSchema, MultiSelectEnumSchemaSchema]);
-var PrimitiveSchemaDefinitionSchema = (void 0)([EnumSchemaSchema, BooleanSchemaSchema, StringSchemaSchema, NumberSchemaSchema]);
-var ElicitRequestFormParamsSchema = TaskAugmentedRequestParamsSchema.extend({
-  /**
-   * The elicitation mode.
-   *
-   * Optional for backward compatibility. Clients MUST treat missing mode as "form".
-   */
-  mode: (void 0)("form").optional(),
-  /**
-   * The message to present to the user describing what information is being requested.
-   */
-  message: (void 0)(),
-  /**
-   * A restricted subset of JSON Schema.
-   * Only top-level properties are allowed, without nesting.
-   */
-  requestedSchema: (void 0)({
-    type: (void 0)("object"),
-    properties: (void 0)((void 0)(), PrimitiveSchemaDefinitionSchema),
-    required: (void 0)((void 0)()).optional()
-  })
-});
-var ElicitRequestURLParamsSchema = TaskAugmentedRequestParamsSchema.extend({
-  /**
-   * The elicitation mode.
-   */
-  mode: (void 0)("url"),
-  /**
-   * The message to present to the user explaining why the interaction is needed.
-   */
-  message: (void 0)(),
-  /**
-   * The ID of the elicitation, which must be unique within the context of the server.
-   * The client MUST treat this ID as an opaque value.
-   */
-  elicitationId: (void 0)(),
-  /**
-   * The URL that the user should navigate to.
-   */
-  url: (void 0)().url()
-});
-var ElicitRequestParamsSchema = (void 0)([ElicitRequestFormParamsSchema, ElicitRequestURLParamsSchema]);
-var ElicitRequestSchema = RequestSchema.extend({
-  method: (void 0)("elicitation/create"),
-  params: ElicitRequestParamsSchema
-});
-var ElicitationCompleteNotificationParamsSchema = NotificationsParamsSchema.extend({
-  /**
-   * The ID of the elicitation that completed.
-   */
-  elicitationId: (void 0)()
-});
-var ElicitationCompleteNotificationSchema = NotificationSchema.extend({
-  method: (void 0)("notifications/elicitation/complete"),
-  params: ElicitationCompleteNotificationParamsSchema
-});
-var ElicitResultSchema = ResultSchema.extend({
-  /**
-   * The user action in response to the elicitation.
-   * - "accept": User submitted the form/confirmed the action
-   * - "decline": User explicitly decline the action
-   * - "cancel": User dismissed without making an explicit choice
-   */
-  action: (void 0)(["accept", "decline", "cancel"]),
-  /**
-   * The submitted form data, only present when action is "accept".
-   * Contains values matching the requested schema.
-   * Per MCP spec, content is "typically omitted" for decline/cancel actions.
-   * We normalize null to undefined for leniency while maintaining type compatibility.
-   */
-  content: (void 0)((val) => val === null ? void 0 : val, (void 0)((void 0)(), (void 0)([(void 0)(), (void 0)(), (void 0)(), (void 0)((void 0)())])).optional())
-});
-var ResourceTemplateReferenceSchema = (void 0)({
-  type: (void 0)("ref/resource"),
-  /**
-   * The URI or URI template of the resource.
-   */
-  uri: (void 0)()
-});
-var PromptReferenceSchema = (void 0)({
-  type: (void 0)("ref/prompt"),
-  /**
-   * The name of the prompt or prompt template
-   */
-  name: (void 0)()
-});
-var CompleteRequestParamsSchema = BaseRequestParamsSchema.extend({
-  ref: (void 0)([PromptReferenceSchema, ResourceTemplateReferenceSchema]),
-  /**
-   * The argument's information
-   */
-  argument: (void 0)({
-    /**
-     * The name of the argument
-     */
-    name: (void 0)(),
-    /**
-     * The value of the argument to use for completion matching.
-     */
-    value: (void 0)()
-  }),
-  context: (void 0)({
-    /**
-     * Previously-resolved variables in a URI template or prompt.
-     */
-    arguments: (void 0)((void 0)(), (void 0)()).optional()
-  }).optional()
-});
-var CompleteRequestSchema = RequestSchema.extend({
-  method: (void 0)("completion/complete"),
-  params: CompleteRequestParamsSchema
-});
-var CompleteResultSchema = ResultSchema.extend({
-  completion: (void 0)({
-    /**
-     * An array of completion values. Must not exceed 100 items.
-     */
-    values: (void 0)((void 0)()).max(100),
-    /**
-     * The total number of completion options available. This can exceed the number of values actually sent in the response.
-     */
-    total: (void 0)((void 0)().int()),
-    /**
-     * Indicates whether there are additional completion options beyond those provided in the current response, even if the exact total is unknown.
-     */
-    hasMore: (void 0)((void 0)())
-  })
-});
-var RootSchema = (void 0)({
-  /**
-   * The URI identifying the root. This *must* start with file:// for now.
-   */
-  uri: (void 0)().startsWith("file://"),
-  /**
-   * An optional name for the root.
-   */
-  name: (void 0)().optional(),
-  /**
-   * See [MCP specification](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/47339c03c143bb4ec01a26e721a1b8fe66634ebe/docs/specification/draft/basic/index.mdx#general-fields)
-   * for notes on _meta usage.
-   */
-  _meta: (void 0)((void 0)(), (void 0)()).optional()
-});
-var ListRootsRequestSchema = RequestSchema.extend({
-  method: (void 0)("roots/list"),
-  params: BaseRequestParamsSchema.optional()
-});
-var ListRootsResultSchema = ResultSchema.extend({
-  roots: (void 0)(RootSchema)
-});
-var RootsListChangedNotificationSchema = NotificationSchema.extend({
-  method: (void 0)("notifications/roots/list_changed"),
-  params: NotificationsParamsSchema.optional()
-});
-var ClientRequestSchema = (void 0)([
-  PingRequestSchema,
-  InitializeRequestSchema,
-  CompleteRequestSchema,
-  SetLevelRequestSchema,
-  GetPromptRequestSchema,
-  ListPromptsRequestSchema,
-  ListResourcesRequestSchema,
-  ListResourceTemplatesRequestSchema,
-  ReadResourceRequestSchema,
-  SubscribeRequestSchema,
-  UnsubscribeRequestSchema,
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-  GetTaskRequestSchema,
-  GetTaskPayloadRequestSchema,
-  ListTasksRequestSchema,
-  CancelTaskRequestSchema
-]);
-var ClientNotificationSchema = (void 0)([
-  CancelledNotificationSchema,
-  ProgressNotificationSchema,
-  InitializedNotificationSchema,
-  RootsListChangedNotificationSchema,
-  TaskStatusNotificationSchema
-]);
-var ClientResultSchema = (void 0)([
-  EmptyResultSchema,
-  CreateMessageResultSchema,
-  CreateMessageResultWithToolsSchema,
-  ElicitResultSchema,
-  ListRootsResultSchema,
-  GetTaskResultSchema,
-  ListTasksResultSchema,
-  CreateTaskResultSchema
-]);
-var ServerRequestSchema = (void 0)([
-  PingRequestSchema,
-  CreateMessageRequestSchema,
-  ElicitRequestSchema,
-  ListRootsRequestSchema,
-  GetTaskRequestSchema,
-  GetTaskPayloadRequestSchema,
-  ListTasksRequestSchema,
-  CancelTaskRequestSchema
-]);
-var ServerNotificationSchema = (void 0)([
-  CancelledNotificationSchema,
-  ProgressNotificationSchema,
-  LoggingMessageNotificationSchema,
-  ResourceUpdatedNotificationSchema,
-  ResourceListChangedNotificationSchema,
-  ToolListChangedNotificationSchema,
-  PromptListChangedNotificationSchema,
-  TaskStatusNotificationSchema,
-  ElicitationCompleteNotificationSchema
-]);
-var ServerResultSchema = (void 0)([
-  EmptyResultSchema,
-  InitializeResultSchema,
-  CompleteResultSchema,
-  GetPromptResultSchema,
-  ListPromptsResultSchema,
-  ListResourcesResultSchema,
-  ListResourceTemplatesResultSchema,
-  ReadResourceResultSchema,
-  CallToolResultSchema,
-  ListToolsResultSchema,
-  GetTaskResultSchema,
-  ListTasksResultSchema,
-  CreateTaskResultSchema
-]);
-var McpError = class _McpError extends Error {
+var McpError = class extends Error {
   constructor(code, message, data) {
-    super(`MCP error ${code}: ${message}`);
+    super(message);
     this.code = code;
     this.data = data;
-    this.name = "McpError";
-  }
-  /**
-   * Factory method to create the appropriate error type based on the error code and data
-   */
-  static fromError(code, message, data) {
-    if (code === ErrorCode.UrlElicitationRequired && data) {
-      const errorData = data;
-      if (errorData.elicitations) {
-        return new UrlElicitationRequiredError(errorData.elicitations, message);
-      }
-    }
-    return new _McpError(code, message, data);
   }
 };
-var UrlElicitationRequiredError = class extends McpError {
-  constructor(elicitations, message = `URL elicitation${elicitations.length > 1 ? "s" : ""} required`) {
-    super(ErrorCode.UrlElicitationRequired, message, {
-      elicitations
-    });
-  }
-  get elicitations() {
-    return this.data?.elicitations ?? [];
-  }
-};
+var isJSONRPCRequest = (v) => v?.jsonrpc === "2.0" && "method" in v && "id" in v;
+var isJSONRPCNotification = (v) => v?.jsonrpc === "2.0" && "method" in v && !("id" in v);
+var isJSONRPCResultResponse = (v) => v?.jsonrpc === "2.0" && "result" in v && "id" in v;
+var isJSONRPCErrorResponse = (v) => v?.jsonrpc === "2.0" && "error" in v && "id" in v;
+var isTaskAugmentedRequestParams = () => false;
+var isInitializedNotification = (v) => v?.method === "notifications/initialized";
+var s = void 0;
+var JSONRPCMessageSchema = s;
+var InitializeResultSchema = s;
+var PingRequestSchema = s;
+var ProgressNotificationSchema = s;
+var CancelledNotificationSchema = s;
+var ListResourcesResultSchema = s;
+var ReadResourceResultSchema = s;
+var ResourceListChangedNotificationSchema = s;
+var ListResourceTemplatesResultSchema = s;
+var ListPromptsResultSchema = s;
+var GetPromptResultSchema = s;
+var PromptListChangedNotificationSchema = s;
+var ListToolsResultSchema = s;
+var CallToolResultSchema = s;
+var ToolListChangedNotificationSchema = s;
+var CompleteResultSchema = s;
+var EmptyResultSchema = s;
+var CreateMessageRequestSchema = s;
+var CreateMessageResultSchema = s;
+var CreateMessageResultWithToolsSchema = s;
+var ElicitRequestSchema = s;
+var ElicitResultSchema = s;
+var ListChangedOptionsBaseSchema = s;
+var CreateTaskResultSchema = s;
+var GetTaskRequestSchema = s;
+var GetTaskResultSchema = s;
+var GetTaskPayloadRequestSchema = s;
+var ListTasksRequestSchema = s;
+var ListTasksResultSchema = s;
+var CancelTaskRequestSchema = s;
+var CancelTaskResultSchema = s;
+var TaskStatusNotificationSchema = s;
 
 // ../../StrandsAgentsSDKTypescript/node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/interfaces.js
 function isTerminal(status) {
@@ -7666,8 +6146,8 @@ var McpTool = class extends Tool {
     if (typeof value !== "object" || value === null) {
       return false;
     }
-    const record2 = value;
-    return Array.isArray(record2.content);
+    const record = value;
+    return Array.isArray(record.content);
   }
   /**
    * Type Guard: Checks if an item is a Text content block.
@@ -7677,8 +6157,8 @@ var McpTool = class extends Tool {
     if (typeof value !== "object" || value === null) {
       return false;
     }
-    const record2 = value;
-    return record2.type === "text" && typeof record2.text === "string";
+    const record = value;
+    return record.type === "text" && typeof record.text === "string";
   }
 };
 
@@ -8415,23 +6895,23 @@ var __disposeResources = /* @__PURE__ */ (function(SuppressedError2) {
       env.error = env.hasError ? new SuppressedError2(e, env.error, "An error was suppressed during disposal.") : e;
       env.hasError = true;
     }
-    var r, s = 0;
+    var r, s2 = 0;
     function next() {
       while (r = env.stack.pop()) {
         try {
-          if (!r.async && s === 1) return s = 0, env.stack.push(r), Promise.resolve().then(next);
+          if (!r.async && s2 === 1) return s2 = 0, env.stack.push(r), Promise.resolve().then(next);
           if (r.dispose) {
             var result = r.dispose.call(r.value);
-            if (r.async) return s |= 2, Promise.resolve(result).then(next, function(e) {
+            if (r.async) return s2 |= 2, Promise.resolve(result).then(next, function(e) {
               fail(e);
               return next();
             });
-          } else s |= 1;
+          } else s2 |= 1;
         } catch (e) {
           fail(e);
         }
       }
-      if (s === 1) return env.hasError ? Promise.reject(env.error) : Promise.resolve();
+      if (s2 === 1) return env.hasError ? Promise.reject(env.error) : Promise.resolve();
       if (env.hasError) throw env.error;
     }
     return next();
@@ -14306,31 +12786,31 @@ var RFC1738 = "RFC1738";
 // ../../StrandsAgentsSDKTypescript/node_modules/openai/internal/qs/utils.mjs
 var has = (obj, key) => (has = Object.hasOwn ?? Function.prototype.call.bind(Object.prototype.hasOwnProperty), has(obj, key));
 var hex_table = /* @__PURE__ */ (() => {
-  const array3 = [];
+  const array2 = [];
   for (let i = 0; i < 256; ++i) {
-    array3.push("%" + ((i < 16 ? "0" : "") + i.toString(16)).toUpperCase());
+    array2.push("%" + ((i < 16 ? "0" : "") + i.toString(16)).toUpperCase());
   }
-  return array3;
+  return array2;
 })();
 var limit = 1024;
 var encode = (str2, _defaultEncoder, charset, _kind, format) => {
   if (str2.length === 0) {
     return str2;
   }
-  let string3 = str2;
+  let string2 = str2;
   if (typeof str2 === "symbol") {
-    string3 = Symbol.prototype.toString.call(str2);
+    string2 = Symbol.prototype.toString.call(str2);
   } else if (typeof str2 !== "string") {
-    string3 = String(str2);
+    string2 = String(str2);
   }
   if (charset === "iso-8859-1") {
-    return escape(string3).replace(/%u[0-9a-f]{4}/gi, function($0) {
+    return escape(string2).replace(/%u[0-9a-f]{4}/gi, function($0) {
       return "%26%23" + parseInt($0.slice(2), 16) + "%3B";
     });
   }
   let out = "";
-  for (let j = 0; j < string3.length; j += limit) {
-    const segment = string3.length >= limit ? string3.slice(j, j + limit) : string3;
+  for (let j = 0; j < string2.length; j += limit) {
+    const segment = string2.length >= limit ? string2.slice(j, j + limit) : string2;
     const arr = [];
     for (let i = 0; i < segment.length; ++i) {
       let c = segment.charCodeAt(i);
@@ -14425,13 +12905,13 @@ function is_non_nullish_primitive(v) {
   return typeof v === "string" || typeof v === "number" || typeof v === "boolean" || typeof v === "symbol" || typeof v === "bigint";
 }
 var sentinel = {};
-function inner_stringify(object5, prefix, generateArrayPrefix, commaRoundTrip, allowEmptyArrays, strictNullHandling, skipNulls, encodeDotInKeys, encoder, filter, sort, allowDots, serializeDate, format, formatter, encodeValuesOnly, charset, sideChannel) {
-  let obj = object5;
+function inner_stringify(object4, prefix, generateArrayPrefix, commaRoundTrip, allowEmptyArrays, strictNullHandling, skipNulls, encodeDotInKeys, encoder, filter, sort, allowDots, serializeDate, format, formatter, encodeValuesOnly, charset, sideChannel) {
+  let obj = object4;
   let tmp_sc = sideChannel;
   let step = 0;
   let find_flag = false;
   while ((tmp_sc = tmp_sc.get(sentinel)) !== void 0 && !find_flag) {
-    const pos = tmp_sc.get(object5);
+    const pos = tmp_sc.get(object4);
     step += 1;
     if (typeof pos !== "undefined") {
       if (pos === step) {
@@ -14507,7 +12987,7 @@ function inner_stringify(object5, prefix, generateArrayPrefix, commaRoundTrip, a
     }
     const encoded_key = allowDots && encodeDotInKeys ? key.replace(/\./g, "%2E") : key;
     const key_prefix = isArray2(obj) ? typeof generateArrayPrefix === "function" ? generateArrayPrefix(adjusted_prefix, encoded_key) : adjusted_prefix : adjusted_prefix + (allowDots ? "." + encoded_key : "[" + encoded_key + "]");
-    sideChannel.set(object5, step);
+    sideChannel.set(object4, step);
     const valueSideChannel = /* @__PURE__ */ new WeakMap();
     valueSideChannel.set(sentinel, sideChannel);
     push_to_array(values, inner_stringify(
@@ -14596,8 +13076,8 @@ function normalize_stringify_options(opts = defaults) {
     strictNullHandling: typeof opts.strictNullHandling === "boolean" ? opts.strictNullHandling : defaults.strictNullHandling
   };
 }
-function stringify(object5, opts = {}) {
-  let obj = object5;
+function stringify(object4, opts = {}) {
+  let obj = object4;
   const options = normalize_stringify_options(opts);
   let obj_keys;
   let filter;
@@ -18706,6 +17186,80 @@ async function pkceChallenge(length) {
     code_challenge: challenge
   };
 }
+
+// stubs/zod/v4.js
+var identity4 = (v) => v;
+var schema4 = () => ({
+  parse: identity4,
+  safeParse: (v) => ({ success: true, data: v }),
+  optional: schema4,
+  nullable: schema4,
+  array: schema4,
+  object: schema4,
+  string: schema4,
+  number: schema4,
+  boolean: schema4,
+  enum: schema4,
+  union: schema4,
+  literal: schema4,
+  record: schema4,
+  tuple: schema4,
+  intersection: schema4,
+  lazy: schema4,
+  any: schema4,
+  unknown: schema4,
+  void: schema4,
+  never: schema4,
+  undefined: schema4,
+  null: schema4,
+  default: schema4,
+  transform: schema4,
+  refine: schema4,
+  pipe: schema4,
+  describe: schema4,
+  brand: schema4,
+  catch: schema4,
+  readonly: schema4,
+  extend: schema4,
+  merge: schema4,
+  pick: schema4,
+  omit: schema4,
+  partial: schema4,
+  required: schema4,
+  passthrough: schema4,
+  strict: schema4,
+  strip: schema4,
+  keyof: schema4,
+  shape: {},
+  _def: { typeName: "ZodObject" },
+  _type: void 0,
+  _output: void 0,
+  _input: void 0,
+  and: schema4,
+  or: schema4,
+  isOptional: () => false,
+  isNullable: () => false
+});
+var z4 = new Proxy(schema4(), {
+  get(target, prop) {
+    if (prop === "ZodType" || prop === "ZodObject" || prop === "ZodString" || prop === "ZodNumber" || prop === "ZodBoolean" || prop === "ZodArray" || prop === "ZodEnum" || prop === "ZodUnion" || prop === "ZodLiteral" || prop === "ZodRecord" || prop === "ZodTuple" || prop === "ZodIntersection" || prop === "ZodLazy" || prop === "ZodAny" || prop === "ZodUnknown" || prop === "ZodVoid" || prop === "ZodNever" || prop === "ZodUndefined" || prop === "ZodNull" || prop === "ZodDefault" || prop === "ZodOptional" || prop === "ZodNullable") {
+      return class {
+        static create = schema4;
+        constructor() {
+          return schema4();
+        }
+      };
+    }
+    if (prop === "instanceof") return () => schema4();
+    if (prop === "custom") return () => schema4();
+    if (prop === "coerce") return z4;
+    if (prop === "NEVER") return /* @__PURE__ */ Symbol("NEVER");
+    return target[prop] ?? schema4;
+  }
+});
+var ZodFirstPartyTypeKind4 = new Proxy({}, { get: (_, p) => p });
+var ZodIssueCode4 = new Proxy({}, { get: (_, p) => p });
+var ZodParsedType4 = new Proxy({}, { get: (_, p) => p });
 
 // ../../StrandsAgentsSDKTypescript/node_modules/@modelcontextprotocol/sdk/dist/esm/shared/auth.js
 var SafeUrlSchema = (void 0)().superRefine((val, ctx) => {

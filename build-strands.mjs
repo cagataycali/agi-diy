@@ -52,15 +52,13 @@ const STUBS = resolve(__dirname, 'stubs');
 
 // OpenAI resources to keep (chat, responses, shared). Stub everything else.
 const OPENAI_KEEP = new Set(['chat', 'responses', 'shared', 'index']);
-const STUB_RESOURCE = resolve(STUBS, 'openai-resource.js');
-const openaiTrimPlugin = {
-  name: 'openai-trim',
+const trimPlugin = {
+  name: 'trim-unused',
   setup(build) {
-    // Intercept resolved OpenAI resource files — stub unused ones
+    // OpenAI: stub unused resource modules
     build.onLoad({ filter: /openai\/resources\/.*\.mjs$/ }, args => {
       const match = args.path.match(/resources\/([^/.]+)/);
       if (match && !OPENAI_KEEP.has(match[1])) {
-        // Generate exports matching what the file normally exports
         return { contents: `
           const S = class { constructor() {} };
           export { S as default };
@@ -70,6 +68,13 @@ const openaiTrimPlugin = {
           export const Moderations=S, Realtime=S, Uploads=S, VectorStores=S;
           export const Videos=S, Webhooks=S;
         `, loader: 'js' };
+      }
+    });
+    // MCP SDK: replace 73KB types.js with minimal runtime-only version
+    const MCP_TYPES_STUB = resolve(STUBS, 'mcp-types.js');
+    build.onResolve({ filter: /\.\.\/types(\.js)?$/ }, args => {
+      if (args.importer.includes('@modelcontextprotocol/sdk')) {
+        return { path: MCP_TYPES_STUB };
       }
     });
   }
@@ -83,7 +88,7 @@ await build({
   outfile: OUT_FILE,
   target: ['es2022'],
   treeShaking: true,
-  plugins: [openaiTrimPlugin],
+  plugins: [trimPlugin],
   nodePaths: [resolve(SDK_DIR, 'node_modules')],
   alias: {
     // Zod — MCP SDK uses for protocol validation, stub with pass-through (saves ~700KB)
