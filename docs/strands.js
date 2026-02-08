@@ -774,74 +774,117 @@ var FunctionTool = class extends Tool {
 
 // stubs/zod/index.js
 var identity = (v) => v;
-var schema = () => ({
-  parse: identity,
-  safeParse: (v) => ({ success: true, data: v }),
-  optional: schema,
-  nullable: schema,
-  array: schema,
-  object: schema,
-  string: schema,
-  number: schema,
-  boolean: schema,
-  enum: schema,
-  union: schema,
-  literal: schema,
-  record: schema,
-  tuple: schema,
-  intersection: schema,
-  lazy: schema,
-  any: schema,
-  unknown: schema,
-  void: schema,
-  never: schema,
-  undefined: schema,
-  null: schema,
-  default: schema,
-  transform: schema,
-  refine: schema,
-  pipe: schema,
-  describe: schema,
-  brand: schema,
-  catch: schema,
-  readonly: schema,
-  extend: schema,
-  merge: schema,
-  pick: schema,
-  omit: schema,
-  partial: schema,
-  required: schema,
-  passthrough: schema,
-  strict: schema,
-  strip: schema,
-  keyof: schema,
-  shape: {},
-  _def: { typeName: "ZodObject" },
-  _type: void 0,
-  _output: void 0,
-  _input: void 0,
-  and: schema,
-  or: schema,
-  isOptional: () => false,
-  isNullable: () => false
-});
-var z = new Proxy(schema(), {
-  get(target, prop) {
-    if (prop === "ZodType" || prop === "ZodObject" || prop === "ZodString" || prop === "ZodNumber" || prop === "ZodBoolean" || prop === "ZodArray" || prop === "ZodEnum" || prop === "ZodUnion" || prop === "ZodLiteral" || prop === "ZodRecord" || prop === "ZodTuple" || prop === "ZodIntersection" || prop === "ZodLazy" || prop === "ZodAny" || prop === "ZodUnknown" || prop === "ZodVoid" || prop === "ZodNever" || prop === "ZodUndefined" || prop === "ZodNull" || prop === "ZodDefault" || prop === "ZodOptional" || prop === "ZodNullable") {
-      return class {
-        static create = schema;
-        constructor() {
-          return schema();
-        }
-      };
+function S(jsonType, extra) {
+  const s2 = {
+    _js: { type: jsonType, ...extra },
+    parse: identity,
+    safeParse: (v) => ({ success: true, data: v }),
+    optional: () => S(jsonType, { ...extra, _optional: true }),
+    nullable: () => S(jsonType, { ...extra, nullable: true }),
+    describe: (d) => S(jsonType, { ...extra, description: d }),
+    default: () => S(jsonType, { ...extra, _optional: true }),
+    array: () => S("array", { items: s2._js }),
+    // passthrough methods that return self
+    transform: () => s2,
+    refine: () => s2,
+    pipe: () => s2,
+    brand: () => s2,
+    catch: () => s2,
+    readonly: () => s2,
+    strip: () => s2,
+    strict: () => s2,
+    superRefine: () => s2,
+    url: () => s2,
+    or: () => s2,
+    // object methods
+    extend: (shape) => S("object", { ...extra, properties: { ...extra?.properties || {}, ...mapShape(shape) } }),
+    merge: (other) => S("object", { ...extra, properties: { ...extra?.properties || {}, ...other?._js?.properties || {} } }),
+    pick: () => s2,
+    omit: () => s2,
+    partial: () => s2,
+    required: () => s2,
+    passthrough: () => s2,
+    keyof: () => s2,
+    shape: extra?.properties || {},
+    _def: { typeName: jsonType === "object" ? "ZodObject" : "Zod" + jsonType.charAt(0).toUpperCase() + jsonType.slice(1) },
+    _type: void 0,
+    _output: void 0,
+    _input: void 0,
+    and: () => s2,
+    isOptional: () => !!extra?._optional,
+    isNullable: () => !!extra?.nullable,
+    // for enum
+    options: extra?._values || []
+  };
+  return s2;
+}
+function mapShape(obj) {
+  const out = {};
+  for (const [k, v] of Object.entries(obj)) out[k] = v._js || { type: "string" };
+  return out;
+}
+function toJSONSchema(s2) {
+  if (!s2?._js) return { type: "object", properties: {} };
+  const j = s2._js;
+  const out = {};
+  if (j.description) out.description = j.description;
+  if (j.type === "object") {
+    out.type = "object";
+    out.properties = {};
+    const req = [];
+    for (const [k, v] of Object.entries(j.properties || {})) {
+      out.properties[k] = toJSONSchema({ _js: v });
+      if (!v._optional) req.push(k);
     }
-    if (prop === "instanceof") return () => schema();
-    if (prop === "custom") return () => schema();
-    if (prop === "coerce") return z;
-    if (prop === "NEVER") return /* @__PURE__ */ Symbol("NEVER");
-    return target[prop] ?? schema;
+    if (req.length) out.required = req;
+  } else if (j.type === "array") {
+    out.type = "array";
+    if (j.items) out.items = toJSONSchema({ _js: j.items });
+  } else if (j.type === "enum") {
+    out.type = "string";
+    if (j._values) out.enum = j._values;
+  } else if (j.type === "record") {
+    out.type = "object";
+    if (j._valueType) out.additionalProperties = toJSONSchema({ _js: j._valueType });
+  } else {
+    out.type = j.type || "string";
   }
-});
+  return out;
+}
+var z = {
+  string: () => S("string"),
+  number: () => S("number"),
+  boolean: () => S("boolean"),
+  object: (shape) => S("object", { properties: shape ? mapShape(shape) : {} }),
+  array: (item) => S("array", { items: item?._js }),
+  enum: (vals) => S("enum", { _values: vals }),
+  record: (k, v) => S("record", { _valueType: (v || k)?._js }),
+  literal: (val) => S("string", { enum: [val] }),
+  union: () => S("string"),
+  any: () => S("string"),
+  unknown: () => S("string"),
+  void: () => {
+    const s2 = S("object");
+    s2._def = { typeName: "ZodVoid" };
+    return s2;
+  },
+  never: () => S("string"),
+  lazy: (fn) => fn(),
+  custom: () => S("string"),
+  instanceof: () => S("string"),
+  coerce: null,
+  // set below
+  NEVER: /* @__PURE__ */ Symbol("NEVER"),
+  toJSONSchema,
+  // Zod class exports
+  ZodType: class {
+  },
+  ZodObject: class {
+  },
+  ZodString: class {
+  }
+};
+z.coerce = z;
 var ZodVoid = class {
 };
 var ZodFirstPartyTypeKind = new Proxy({}, { get: (_, p) => p });
@@ -876,8 +919,8 @@ var ZodTool = class extends Tool {
         additionalProperties: false
       };
     } else {
-      const schema4 = z.toJSONSchema(this._inputSchema);
-      const { $schema, ...schemaWithoutMeta } = schema4;
+      const schema3 = z.toJSONSchema(this._inputSchema);
+      const { $schema, ...schemaWithoutMeta } = schema3;
       generatedSchema = schemaWithoutMeta;
     }
     this._functionTool = new FunctionTool({
@@ -4167,8 +4210,82 @@ var SlidingWindowConversationManager = class {
 
 // stubs/zod/v3.js
 var identity2 = (v) => v;
-var schema2 = () => ({
+var schema = () => ({
   parse: identity2,
+  safeParse: (v) => ({ success: true, data: v }),
+  optional: schema,
+  nullable: schema,
+  array: schema,
+  object: schema,
+  string: schema,
+  number: schema,
+  boolean: schema,
+  enum: schema,
+  union: schema,
+  literal: schema,
+  record: schema,
+  tuple: schema,
+  intersection: schema,
+  lazy: schema,
+  any: schema,
+  unknown: schema,
+  void: schema,
+  never: schema,
+  undefined: schema,
+  null: schema,
+  default: schema,
+  transform: schema,
+  refine: schema,
+  pipe: schema,
+  describe: schema,
+  brand: schema,
+  catch: schema,
+  readonly: schema,
+  extend: schema,
+  merge: schema,
+  pick: schema,
+  omit: schema,
+  partial: schema,
+  required: schema,
+  passthrough: schema,
+  strict: schema,
+  strip: schema,
+  keyof: schema,
+  shape: {},
+  _def: { typeName: "ZodObject" },
+  _type: void 0,
+  _output: void 0,
+  _input: void 0,
+  and: schema,
+  or: schema,
+  isOptional: () => false,
+  isNullable: () => false
+});
+var z2 = new Proxy(schema(), {
+  get(target, prop) {
+    if (prop === "ZodType" || prop === "ZodObject" || prop === "ZodString" || prop === "ZodNumber" || prop === "ZodBoolean" || prop === "ZodArray" || prop === "ZodEnum" || prop === "ZodUnion" || prop === "ZodLiteral" || prop === "ZodRecord" || prop === "ZodTuple" || prop === "ZodIntersection" || prop === "ZodLazy" || prop === "ZodAny" || prop === "ZodUnknown" || prop === "ZodVoid" || prop === "ZodNever" || prop === "ZodUndefined" || prop === "ZodNull" || prop === "ZodDefault" || prop === "ZodOptional" || prop === "ZodNullable") {
+      return class {
+        static create = schema;
+        constructor() {
+          return schema();
+        }
+      };
+    }
+    if (prop === "instanceof") return () => schema();
+    if (prop === "custom") return () => schema();
+    if (prop === "coerce") return z2;
+    if (prop === "NEVER") return /* @__PURE__ */ Symbol("NEVER");
+    return target[prop] ?? schema;
+  }
+});
+var ZodFirstPartyTypeKind2 = new Proxy({}, { get: (_, p) => p });
+var ZodIssueCode2 = new Proxy({}, { get: (_, p) => p });
+var ZodParsedType2 = new Proxy({}, { get: (_, p) => p });
+
+// stubs/zod/v4-mini.js
+var identity3 = (v) => v;
+var schema2 = () => ({
+  parse: identity3,
   safeParse: (v) => ({ success: true, data: v }),
   optional: schema2,
   nullable: schema2,
@@ -4218,7 +4335,7 @@ var schema2 = () => ({
   isOptional: () => false,
   isNullable: () => false
 });
-var z2 = new Proxy(schema2(), {
+var z3 = new Proxy(schema2(), {
   get(target, prop) {
     if (prop === "ZodType" || prop === "ZodObject" || prop === "ZodString" || prop === "ZodNumber" || prop === "ZodBoolean" || prop === "ZodArray" || prop === "ZodEnum" || prop === "ZodUnion" || prop === "ZodLiteral" || prop === "ZodRecord" || prop === "ZodTuple" || prop === "ZodIntersection" || prop === "ZodLazy" || prop === "ZodAny" || prop === "ZodUnknown" || prop === "ZodVoid" || prop === "ZodNever" || prop === "ZodUndefined" || prop === "ZodNull" || prop === "ZodDefault" || prop === "ZodOptional" || prop === "ZodNullable") {
       return class {
@@ -4230,83 +4347,9 @@ var z2 = new Proxy(schema2(), {
     }
     if (prop === "instanceof") return () => schema2();
     if (prop === "custom") return () => schema2();
-    if (prop === "coerce") return z2;
-    if (prop === "NEVER") return /* @__PURE__ */ Symbol("NEVER");
-    return target[prop] ?? schema2;
-  }
-});
-var ZodFirstPartyTypeKind2 = new Proxy({}, { get: (_, p) => p });
-var ZodIssueCode2 = new Proxy({}, { get: (_, p) => p });
-var ZodParsedType2 = new Proxy({}, { get: (_, p) => p });
-
-// stubs/zod/v4-mini.js
-var identity3 = (v) => v;
-var schema3 = () => ({
-  parse: identity3,
-  safeParse: (v) => ({ success: true, data: v }),
-  optional: schema3,
-  nullable: schema3,
-  array: schema3,
-  object: schema3,
-  string: schema3,
-  number: schema3,
-  boolean: schema3,
-  enum: schema3,
-  union: schema3,
-  literal: schema3,
-  record: schema3,
-  tuple: schema3,
-  intersection: schema3,
-  lazy: schema3,
-  any: schema3,
-  unknown: schema3,
-  void: schema3,
-  never: schema3,
-  undefined: schema3,
-  null: schema3,
-  default: schema3,
-  transform: schema3,
-  refine: schema3,
-  pipe: schema3,
-  describe: schema3,
-  brand: schema3,
-  catch: schema3,
-  readonly: schema3,
-  extend: schema3,
-  merge: schema3,
-  pick: schema3,
-  omit: schema3,
-  partial: schema3,
-  required: schema3,
-  passthrough: schema3,
-  strict: schema3,
-  strip: schema3,
-  keyof: schema3,
-  shape: {},
-  _def: { typeName: "ZodObject" },
-  _type: void 0,
-  _output: void 0,
-  _input: void 0,
-  and: schema3,
-  or: schema3,
-  isOptional: () => false,
-  isNullable: () => false
-});
-var z3 = new Proxy(schema3(), {
-  get(target, prop) {
-    if (prop === "ZodType" || prop === "ZodObject" || prop === "ZodString" || prop === "ZodNumber" || prop === "ZodBoolean" || prop === "ZodArray" || prop === "ZodEnum" || prop === "ZodUnion" || prop === "ZodLiteral" || prop === "ZodRecord" || prop === "ZodTuple" || prop === "ZodIntersection" || prop === "ZodLazy" || prop === "ZodAny" || prop === "ZodUnknown" || prop === "ZodVoid" || prop === "ZodNever" || prop === "ZodUndefined" || prop === "ZodNull" || prop === "ZodDefault" || prop === "ZodOptional" || prop === "ZodNullable") {
-      return class {
-        static create = schema3;
-        constructor() {
-          return schema3();
-        }
-      };
-    }
-    if (prop === "instanceof") return () => schema3();
-    if (prop === "custom") return () => schema3();
     if (prop === "coerce") return z3;
     if (prop === "NEVER") return /* @__PURE__ */ Symbol("NEVER");
-    return target[prop] ?? schema3;
+    return target[prop] ?? schema2;
   }
 });
 var ZodFirstPartyTypeKind3 = new Proxy({}, { get: (_, p) => p });
@@ -4315,27 +4358,27 @@ var ZodParsedType3 = new Proxy({}, { get: (_, p) => p });
 
 // ../../sdk-typescript/node_modules/@modelcontextprotocol/sdk/dist/esm/server/zod-compat.js
 function isZ4Schema(s2) {
-  const schema4 = s2;
-  return !!schema4._zod;
+  const schema3 = s2;
+  return !!schema3._zod;
 }
-function safeParse2(schema4, data) {
-  if (isZ4Schema(schema4)) {
-    const result2 = (void 0)(schema4, data);
+function safeParse2(schema3, data) {
+  if (isZ4Schema(schema3)) {
+    const result2 = (void 0)(schema3, data);
     return result2;
   }
-  const v3Schema = schema4;
+  const v3Schema = schema3;
   const result = v3Schema.safeParse(data);
   return result;
 }
-function getObjectShape(schema4) {
-  if (!schema4)
+function getObjectShape(schema3) {
+  if (!schema3)
     return void 0;
   let rawShape;
-  if (isZ4Schema(schema4)) {
-    const v4Schema = schema4;
+  if (isZ4Schema(schema3)) {
+    const v4Schema = schema3;
     rawShape = v4Schema._zod?.def?.shape;
   } else {
-    const v3Schema = schema4;
+    const v3Schema = schema3;
     rawShape = v3Schema.shape;
   }
   if (!rawShape)
@@ -4349,9 +4392,9 @@ function getObjectShape(schema4) {
   }
   return rawShape;
 }
-function getLiteralValue(schema4) {
-  if (isZ4Schema(schema4)) {
-    const v4Schema = schema4;
+function getLiteralValue(schema3) {
+  if (isZ4Schema(schema3)) {
+    const v4Schema = schema3;
     const def2 = v4Schema._zod?.def;
     if (def2) {
       if (def2.value !== void 0)
@@ -4361,7 +4404,7 @@ function getLiteralValue(schema4) {
       }
     }
   }
-  const v3Schema = schema4;
+  const v3Schema = schema3;
   const def = v3Schema._def;
   if (def) {
     if (def.value !== void 0)
@@ -4370,7 +4413,7 @@ function getLiteralValue(schema4) {
       return def.values[0];
     }
   }
-  const directValue = schema4.value;
+  const directValue = schema3.value;
   if (directValue !== void 0)
     return directValue;
   return void 0;
@@ -4443,8 +4486,8 @@ function isTerminal(status) {
 }
 
 // ../../sdk-typescript/node_modules/@modelcontextprotocol/sdk/dist/esm/server/zod-json-schema-compat.js
-function getMethodLiteral(schema4) {
-  const shape = getObjectShape(schema4);
+function getMethodLiteral(schema3) {
+  const shape = getObjectShape(schema3);
   const methodSchema = shape?.method;
   if (!methodSchema) {
     throw new Error("Schema is missing a method literal");
@@ -4455,8 +4498,8 @@ function getMethodLiteral(schema4) {
   }
   return value;
 }
-function parseWithCompat(schema4, data) {
-  const result = safeParse2(schema4, data);
+function parseWithCompat(schema3, data) {
+  const result = safeParse2(schema3, data);
   if (!result.success) {
     throw result.error;
   }
@@ -5473,8 +5516,8 @@ var AjvJsonSchemaValidator = class {
    * @param schema - Standard JSON Schema object
    * @returns A validator function that validates input data
    */
-  getValidator(schema4) {
-    const ajvValidator = "$id" in schema4 && typeof schema4.$id === "string" ? this._ajv.getSchema(schema4.$id) ?? this._ajv.compile(schema4) : this._ajv.compile(schema4);
+  getValidator(schema3) {
+    const ajvValidator = "$id" in schema3 && typeof schema3.$id === "string" ? this._ajv.getSchema(schema3.$id) ?? this._ajv.compile(schema3) : this._ajv.compile(schema3);
     return (input) => {
       const valid = ajvValidator(input);
       if (valid) {
@@ -5684,12 +5727,12 @@ function assertClientRequestTaskCapability(requests, method, entityName) {
 }
 
 // ../../sdk-typescript/node_modules/@modelcontextprotocol/sdk/dist/esm/client/index.js
-function applyElicitationDefaults(schema4, data) {
-  if (!schema4 || data === null || typeof data !== "object")
+function applyElicitationDefaults(schema3, data) {
+  if (!schema3 || data === null || typeof data !== "object")
     return;
-  if (schema4.type === "object" && schema4.properties && typeof schema4.properties === "object") {
+  if (schema3.type === "object" && schema3.properties && typeof schema3.properties === "object") {
     const obj = data;
-    const props = schema4.properties;
+    const props = schema3.properties;
     for (const key of Object.keys(props)) {
       const propSchema = props[key];
       if (obj[key] === void 0 && Object.prototype.hasOwnProperty.call(propSchema, "default")) {
@@ -5700,15 +5743,15 @@ function applyElicitationDefaults(schema4, data) {
       }
     }
   }
-  if (Array.isArray(schema4.anyOf)) {
-    for (const sub of schema4.anyOf) {
+  if (Array.isArray(schema3.anyOf)) {
+    for (const sub of schema3.anyOf) {
       if (typeof sub !== "boolean") {
         applyElicitationDefaults(sub, data);
       }
     }
   }
-  if (Array.isArray(schema4.oneOf)) {
-    for (const sub of schema4.oneOf) {
+  if (Array.isArray(schema3.oneOf)) {
+    for (const sub of schema3.oneOf) {
       if (typeof sub !== "boolean") {
         applyElicitationDefaults(sub, data);
       }
@@ -8590,18 +8633,18 @@ function propsForError(value) {
 }
 
 // ../../sdk-typescript/node_modules/@anthropic-ai/sdk/resources/beta/beta.mjs
-var S = class {
-  constructor() {
-  }
-};
-var Beta = S;
-
-// ../../sdk-typescript/node_modules/@anthropic-ai/sdk/resources/completions.mjs
 var S2 = class {
   constructor() {
   }
 };
-var Completions = S2;
+var Beta = S2;
+
+// ../../sdk-typescript/node_modules/@anthropic-ai/sdk/resources/completions.mjs
+var S3 = class {
+  constructor() {
+  }
+};
+var Completions = S3;
 
 // ../../sdk-typescript/node_modules/@anthropic-ai/sdk/core/resource.mjs
 var APIResource = class {
@@ -9782,11 +9825,11 @@ var DEPRECATED_MODELS = {
 Messages.Batches = Batches;
 
 // ../../sdk-typescript/node_modules/@anthropic-ai/sdk/resources/models.mjs
-var S3 = class {
+var S4 = class {
   constructor() {
   }
 };
-var Models = S3;
+var Models = S4;
 
 // ../../sdk-typescript/node_modules/@anthropic-ai/sdk/internal/utils/env.mjs
 var readEnv = (env) => {
@@ -13653,109 +13696,109 @@ var Chat = class extends APIResource2 {
 Chat.Completions = Completions2;
 
 // ../../sdk-typescript/node_modules/openai/resources/audio/audio.mjs
-var S4 = class {
-  constructor() {
-  }
-};
-var Audio = S4;
-
-// ../../sdk-typescript/node_modules/openai/resources/batches.mjs
 var S5 = class {
   constructor() {
   }
 };
-var Batches2 = S5;
+var Audio = S5;
 
-// ../../sdk-typescript/node_modules/openai/resources/beta/beta.mjs
+// ../../sdk-typescript/node_modules/openai/resources/batches.mjs
 var S6 = class {
   constructor() {
   }
 };
-var Beta2 = S6;
+var Batches2 = S6;
 
-// ../../sdk-typescript/node_modules/openai/resources/completions.mjs
+// ../../sdk-typescript/node_modules/openai/resources/beta/beta.mjs
 var S7 = class {
   constructor() {
   }
 };
-var Completions3 = S7;
+var Beta2 = S7;
 
-// ../../sdk-typescript/node_modules/openai/resources/containers/containers.mjs
+// ../../sdk-typescript/node_modules/openai/resources/completions.mjs
 var S8 = class {
   constructor() {
   }
 };
-var Containers = S8;
+var Completions3 = S8;
 
-// ../../sdk-typescript/node_modules/openai/resources/conversations/conversations.mjs
+// ../../sdk-typescript/node_modules/openai/resources/containers/containers.mjs
 var S9 = class {
   constructor() {
   }
 };
-var Conversations = S9;
+var Containers = S9;
 
-// ../../sdk-typescript/node_modules/openai/resources/embeddings.mjs
+// ../../sdk-typescript/node_modules/openai/resources/conversations/conversations.mjs
 var S10 = class {
   constructor() {
   }
 };
-var Embeddings = S10;
+var Conversations = S10;
 
-// ../../sdk-typescript/node_modules/openai/resources/evals/evals.mjs
+// ../../sdk-typescript/node_modules/openai/resources/embeddings.mjs
 var S11 = class {
   constructor() {
   }
 };
-var Evals = S11;
+var Embeddings = S11;
 
-// ../../sdk-typescript/node_modules/openai/resources/files.mjs
+// ../../sdk-typescript/node_modules/openai/resources/evals/evals.mjs
 var S12 = class {
   constructor() {
   }
 };
-var Files = S12;
+var Evals = S12;
 
-// ../../sdk-typescript/node_modules/openai/resources/fine-tuning/fine-tuning.mjs
+// ../../sdk-typescript/node_modules/openai/resources/files.mjs
 var S13 = class {
   constructor() {
   }
 };
-var FineTuning = S13;
+var Files = S13;
 
-// ../../sdk-typescript/node_modules/openai/resources/graders/graders.mjs
+// ../../sdk-typescript/node_modules/openai/resources/fine-tuning/fine-tuning.mjs
 var S14 = class {
   constructor() {
   }
 };
-var Graders = S14;
+var FineTuning = S14;
 
-// ../../sdk-typescript/node_modules/openai/resources/images.mjs
+// ../../sdk-typescript/node_modules/openai/resources/graders/graders.mjs
 var S15 = class {
   constructor() {
   }
 };
-var Images = S15;
+var Graders = S15;
 
-// ../../sdk-typescript/node_modules/openai/resources/models.mjs
+// ../../sdk-typescript/node_modules/openai/resources/images.mjs
 var S16 = class {
   constructor() {
   }
 };
-var Models2 = S16;
+var Images = S16;
 
-// ../../sdk-typescript/node_modules/openai/resources/moderations.mjs
+// ../../sdk-typescript/node_modules/openai/resources/models.mjs
 var S17 = class {
   constructor() {
   }
 };
-var Moderations = S17;
+var Models2 = S17;
 
-// ../../sdk-typescript/node_modules/openai/resources/realtime/realtime.mjs
+// ../../sdk-typescript/node_modules/openai/resources/moderations.mjs
 var S18 = class {
   constructor() {
   }
 };
-var Realtime = S18;
+var Moderations = S18;
+
+// ../../sdk-typescript/node_modules/openai/resources/realtime/realtime.mjs
+var S19 = class {
+  constructor() {
+  }
+};
+var Realtime = S19;
 
 // ../../sdk-typescript/node_modules/openai/lib/ResponsesParser.mjs
 function maybeParseResponse(response, params) {
@@ -14323,32 +14366,32 @@ Responses.InputItems = InputItems;
 Responses.InputTokens = InputTokens;
 
 // ../../sdk-typescript/node_modules/openai/resources/uploads/uploads.mjs
-var S19 = class {
-  constructor() {
-  }
-};
-var Uploads = S19;
-
-// ../../sdk-typescript/node_modules/openai/resources/vector-stores/vector-stores.mjs
 var S20 = class {
   constructor() {
   }
 };
-var VectorStores = S20;
+var Uploads = S20;
 
-// ../../sdk-typescript/node_modules/openai/resources/videos.mjs
+// ../../sdk-typescript/node_modules/openai/resources/vector-stores/vector-stores.mjs
 var S21 = class {
   constructor() {
   }
 };
-var Videos = S21;
+var VectorStores = S21;
 
-// ../../sdk-typescript/node_modules/openai/resources/webhooks.mjs
+// ../../sdk-typescript/node_modules/openai/resources/videos.mjs
 var S22 = class {
   constructor() {
   }
 };
-var Webhooks = S22;
+var Videos = S22;
+
+// ../../sdk-typescript/node_modules/openai/resources/webhooks.mjs
+var S23 = class {
+  constructor() {
+  }
+};
+var Webhooks = S23;
 
 // ../../sdk-typescript/node_modules/openai/internal/utils/env.mjs
 var readEnv2 = (env) => {
@@ -15503,13 +15546,13 @@ async function pkceChallenge(length) {
 }
 
 // ../../sdk-typescript/node_modules/@modelcontextprotocol/sdk/dist/esm/shared/auth.js
-var S23 = { parse: (v) => v, safeParse: (v) => ({ success: true, data: v }), optional: () => S23, or: () => S23, merge: () => S23, transform: () => S23, looseObject: () => S23, object: () => S23, string: () => S23, array: () => S23, boolean: () => S23, number: () => S23, literal: () => S23, superRefine: () => S23, refine: () => S23 };
-var OAuthProtectedResourceMetadataSchema = S23;
-var OAuthMetadataSchema = S23;
-var OpenIdProviderDiscoveryMetadataSchema = S23;
-var OAuthTokensSchema = S23;
-var OAuthErrorResponseSchema = S23;
-var OAuthClientInformationFullSchema = S23;
+var S24 = { parse: (v) => v, safeParse: (v) => ({ success: true, data: v }), optional: () => S24, or: () => S24, merge: () => S24, transform: () => S24, looseObject: () => S24, object: () => S24, string: () => S24, array: () => S24, boolean: () => S24, number: () => S24, literal: () => S24, superRefine: () => S24, refine: () => S24 };
+var OAuthProtectedResourceMetadataSchema = S24;
+var OAuthMetadataSchema = S24;
+var OpenIdProviderDiscoveryMetadataSchema = S24;
+var OAuthTokensSchema = S24;
+var OAuthErrorResponseSchema = S24;
+var OAuthClientInformationFullSchema = S24;
 
 // ../../sdk-typescript/node_modules/@modelcontextprotocol/sdk/dist/esm/shared/auth-utils.js
 function resourceUrlFromServerUrl(url) {
