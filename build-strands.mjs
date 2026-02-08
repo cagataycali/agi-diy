@@ -20,16 +20,18 @@ import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const SDK_DIR = resolve(__dirname, '../../StrandsAgentsSDKTypescript');
+const SDK_DIR = resolve(__dirname, '../../sdk-typescript');
 const OUT_FILE = resolve(__dirname, 'docs/strands.js');
 
 const ENTRY = `
-  // Core SDK — import directly to avoid pulling in zod-tool (zod = 703KB)
+  // Core SDK — zod stubbed so zod-tool is safe to include
   export { Agent } from '${SDK_DIR}/dist/src/agent/agent.js';
   export { AgentResult } from '${SDK_DIR}/dist/src/types/agent.js';
   export { FunctionTool } from '${SDK_DIR}/dist/src/tools/function-tool.js';
+  export { tool } from '${SDK_DIR}/dist/src/tools/zod-tool.js';
   export { Tool } from '${SDK_DIR}/dist/src/tools/tool.js';
   export { Model } from '${SDK_DIR}/dist/src/models/model.js';
+  export { z } from 'zod';
   export { Message, TextBlock, JsonBlock, ToolResultBlock } from '${SDK_DIR}/dist/src/types/messages.js';
   export { ImageBlock } from '${SDK_DIR}/dist/src/types/media.js';
   export {
@@ -94,6 +96,13 @@ const trimPlugin = {
         return { path: MCP_TYPES_STUB };
       }
     });
+    // MCP SDK: stub auth module — browser MCP doesn't use OAuth, avoids zod/v4 namespace issue
+    build.onLoad({ filter: /\/@modelcontextprotocol\/sdk\/.*\/shared\/auth\.js$/ }, () => ({
+      contents: `const S={parse:v=>v,safeParse:v=>({success:true,data:v}),optional:()=>S,or:()=>S,merge:()=>S,transform:()=>S,looseObject:()=>S,object:()=>S,string:()=>S,array:()=>S,boolean:()=>S,number:()=>S,literal:()=>S,superRefine:()=>S,refine:()=>S};
+export const SafeUrlSchema=S,OptionalSafeUrlSchema=S,OAuthProtectedResourceMetadataSchema=S,OAuthMetadataSchema=S,OpenIdProviderMetadataSchema=S,OpenIdProviderDiscoveryMetadataSchema=S,OAuthTokensSchema=S,OAuthErrorResponseSchema=S,OAuthClientMetadataSchema=S,OAuthClientInformationSchema=S,OAuthClientInformationFullSchema=S,OAuthClientRegistrationErrorSchema=S,OAuthTokenRevocationRequestSchema=S;
+export function discoverOAuthMetadata(){}export function discoverOAuthProtectedResourceMetadata(){}`,
+      loader: 'js'
+    }));
   }
 };
 

@@ -982,7 +982,7 @@
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-header">
-                <div class="brand">
+                <div class="brand" id="brandTitle">
                     agi.diy
                     <span class="brand-sub">multi-agent</span>
                 </div>
@@ -5280,7 +5280,10 @@ ${getRingContext()}`;
         Notification.requestPermission();
     }
     
-    console.log('%c🦆 agi.diy Multi-Agent v1.0', 'font-size:16px;font-weight:bold;');
+    const pageName = location.pathname.split('/').pop().replace(/\.html?$/,'') || 'agi.diy';
+    document.getElementById('brandTitle').childNodes[0].textContent = pageName + ' ';
+    document.title = pageName + ' — multi-agent';
+    console.log('%c🦆 ' + pageName + ' Multi-Agent v1.0', 'font-size:16px;font-weight:bold;');
     console.log('%cSpawn agents, schedule tasks, let them coordinate via ring attention.', 'color:#888');
     </script>
 </body>

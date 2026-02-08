@@ -4,7 +4,7 @@ var define_process_env_default = {};
 // <define:process.stdout>
 var define_process_stdout_default = {};
 
-// ../../StrandsAgentsSDKTypescript/dist/src/types/media.js
+// ../../sdk-typescript/dist/src/types/media.js
 var MIME_TYPES = {
   // Images
   png: "image/png",
@@ -199,7 +199,7 @@ var DocumentBlock = class {
   }
 };
 
-// ../../StrandsAgentsSDKTypescript/dist/src/types/messages.js
+// ../../sdk-typescript/dist/src/types/messages.js
 var Message = class _Message {
   /**
    * Discriminator for message type.
@@ -434,7 +434,7 @@ function contentBlockFromData(data) {
   }
 }
 
-// ../../StrandsAgentsSDKTypescript/dist/src/errors.js
+// ../../sdk-typescript/dist/src/errors.js
 var ModelError = class extends Error {
   /**
    * Creates a new ModelError.
@@ -502,7 +502,7 @@ function normalizeError(error) {
   return error instanceof Error ? error : new Error(String(error));
 }
 
-// ../../StrandsAgentsSDKTypescript/dist/src/tools/tool.js
+// ../../sdk-typescript/dist/src/tools/tool.js
 var ToolStreamEvent = class {
   /**
    * Discriminator for tool stream events.
@@ -531,7 +531,7 @@ function createErrorResult(error, toolUseId) {
   });
 }
 
-// ../../StrandsAgentsSDKTypescript/dist/src/types/agent.js
+// ../../sdk-typescript/dist/src/types/agent.js
 var AgentResult = class {
   type = "agentResult";
   /**
@@ -575,7 +575,7 @@ var AgentResult = class {
   }
 };
 
-// ../../StrandsAgentsSDKTypescript/dist/src/types/json.js
+// ../../sdk-typescript/dist/src/types/json.js
 function deepCopy(value) {
   try {
     return JSON.parse(JSON.stringify(value));
@@ -622,7 +622,7 @@ function deepCopyWithValidation(value, contextPath = "value") {
   }
 }
 
-// ../../StrandsAgentsSDKTypescript/dist/src/tools/function-tool.js
+// ../../sdk-typescript/dist/src/tools/function-tool.js
 var FunctionTool = class extends Tool {
   /**
    * The unique name of the tool.
@@ -842,11 +842,113 @@ var z = new Proxy(schema(), {
     return target[prop] ?? schema;
   }
 });
+var ZodVoid = class {
+};
 var ZodFirstPartyTypeKind = new Proxy({}, { get: (_, p) => p });
 var ZodIssueCode = new Proxy({}, { get: (_, p) => p });
 var ZodParsedType = new Proxy({}, { get: (_, p) => p });
 
-// ../../StrandsAgentsSDKTypescript/dist/src/models/streaming.js
+// ../../sdk-typescript/dist/src/tools/zod-tool.js
+var ZodTool = class extends Tool {
+  /**
+   * Internal FunctionTool for delegating stream operations.
+   */
+  _functionTool;
+  /**
+   * Zod schema for input validation.
+   * Note: undefined is normalized to z.void() in constructor, so this is always defined.
+   */
+  _inputSchema;
+  /**
+   * User callback function.
+   */
+  _callback;
+  constructor(config) {
+    super();
+    const { name, description = "", inputSchema, callback } = config;
+    this._inputSchema = inputSchema ?? z.void();
+    this._callback = callback;
+    let generatedSchema;
+    if (this._inputSchema instanceof ZodVoid) {
+      generatedSchema = {
+        type: "object",
+        properties: {},
+        additionalProperties: false
+      };
+    } else {
+      const schema4 = z.toJSONSchema(this._inputSchema);
+      const { $schema, ...schemaWithoutMeta } = schema4;
+      generatedSchema = schemaWithoutMeta;
+    }
+    this._functionTool = new FunctionTool({
+      name,
+      description,
+      inputSchema: generatedSchema,
+      callback: (input, toolContext) => {
+        const validatedInput = this._inputSchema instanceof ZodVoid ? input : this._inputSchema.parse(input);
+        return callback(validatedInput, toolContext);
+      }
+    });
+  }
+  /**
+   * The unique name of the tool.
+   */
+  get name() {
+    return this._functionTool.name;
+  }
+  /**
+   * Human-readable description of what the tool does.
+   */
+  get description() {
+    return this._functionTool.description;
+  }
+  /**
+   * OpenAPI JSON specification for the tool.
+   */
+  get toolSpec() {
+    return this._functionTool.toolSpec;
+  }
+  /**
+   * Executes the tool with streaming support.
+   * Delegates to internal FunctionTool implementation.
+   *
+   * @param toolContext - Context information including the tool use request and invocation state
+   * @returns Async generator that yields ToolStreamEvents and returns a ToolResultBlock
+   */
+  stream(toolContext) {
+    return this._functionTool.stream(toolContext);
+  }
+  /**
+   * Invokes the tool directly with type-safe input and returns the unwrapped result.
+   *
+   * Unlike stream(), this method:
+   * - Returns the raw result (not wrapped in ToolResult)
+   * - Consumes async generators and returns only the final value
+   * - Lets errors throw naturally (not wrapped in error ToolResult)
+   *
+   * @param input - The input parameters for the tool
+   * @param context - Optional tool execution context
+   * @returns The unwrapped result
+   */
+  async invoke(input, context) {
+    const validatedInput = this._inputSchema instanceof ZodVoid ? input : this._inputSchema.parse(input);
+    const result = this._callback(validatedInput, context);
+    if (result && typeof result === "object" && Symbol.asyncIterator in result) {
+      let lastValue = void 0;
+      for await (const value of result) {
+        lastValue = value;
+      }
+      return lastValue;
+    } else {
+      return await result;
+    }
+  }
+};
+function tool(config) {
+  return new ZodTool(config);
+}
+
+// ../../sdk-typescript/dist/src/models/streaming.js
 var ModelMessageStartEvent = class {
   /**
    * Discriminator for message start events.
@@ -951,7 +1053,7 @@ var ModelMetadataEvent = class {
   }
 };
 
-// ../../StrandsAgentsSDKTypescript/dist/src/models/model.js
+// ../../sdk-typescript/dist/src/models/model.js
 var Model = class {
   /**
    * Converts event data to event class representation
@@ -1125,7 +1227,7 @@ var Model = class {
   }
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@smithy/util-hex-encoding/dist-es/index.js
+// ../../sdk-typescript/node_modules/@smithy/util-hex-encoding/dist-es/index.js
 var SHORT_TO_HEX = {};
 var HEX_TO_SHORT = {};
 for (let i = 0; i < 256; i++) {
@@ -1159,10 +1261,10 @@ function toHex(bytes) {
   return out;
 }
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@smithy/util-utf8/dist-es/fromUtf8.browser.js
+// ../../sdk-typescript/node_modules/@smithy/util-utf8/dist-es/fromUtf8.browser.js
 var fromUtf8 = (input) => new TextEncoder().encode(input);
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@smithy/util-utf8/dist-es/toUint8Array.js
+// ../../sdk-typescript/node_modules/@smithy/util-utf8/dist-es/toUint8Array.js
 var toUint8Array = (data) => {
   if (typeof data === "string") {
     return fromUtf8(data);
@@ -1173,7 +1275,7 @@ var toUint8Array = (data) => {
   return new Uint8Array(data);
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@smithy/util-utf8/dist-es/toUtf8.browser.js
+// ../../sdk-typescript/node_modules/@smithy/util-utf8/dist-es/toUtf8.browser.js
 var toUtf8 = (input) => {
   if (typeof input === "string") {
     return input;
@@ -1184,7 +1286,7 @@ var toUtf8 = (input) => {
   return new TextDecoder("utf-8").decode(input);
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@smithy/signature-v4/dist-es/constants.js
+// ../../sdk-typescript/node_modules/@smithy/signature-v4/dist-es/constants.js
 var ALGORITHM_QUERY_PARAM = "X-Amz-Algorithm";
 var CREDENTIAL_QUERY_PARAM = "X-Amz-Credential";
 var AMZ_DATE_QUERY_PARAM = "X-Amz-Date";
@@ -1225,7 +1327,7 @@ var MAX_CACHE_SIZE = 50;
 var KEY_TYPE_IDENTIFIER = "aws4_request";
 var MAX_PRESIGNED_TTL = 60 * 60 * 24 * 7;
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@smithy/signature-v4/dist-es/credentialDerivation.js
+// ../../sdk-typescript/node_modules/@smithy/signature-v4/dist-es/credentialDerivation.js
 var signingKeyCache = {};
 var cacheQueue = [];
 var createScope = (shortDate, region, service) => `${shortDate}/${region}/${service}/${KEY_TYPE_IDENTIFIER}`;
@@ -1251,7 +1353,7 @@ var hmac = (ctor, secret, data) => {
   return hash.digest();
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@smithy/signature-v4/dist-es/getCanonicalHeaders.js
+// ../../sdk-typescript/node_modules/@smithy/signature-v4/dist-es/getCanonicalHeaders.js
 var getCanonicalHeaders = ({ headers }, unsignableHeaders, signableHeaders) => {
   const canonical = {};
   for (const headerName of Object.keys(headers).sort()) {
@@ -1269,10 +1371,10 @@ var getCanonicalHeaders = ({ headers }, unsignableHeaders, signableHeaders) => {
   return canonical;
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@smithy/is-array-buffer/dist-es/index.js
+// ../../sdk-typescript/node_modules/@smithy/is-array-buffer/dist-es/index.js
 var isArrayBuffer = (arg) => typeof ArrayBuffer === "function" && arg instanceof ArrayBuffer || Object.prototype.toString.call(arg) === "[object ArrayBuffer]";
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@smithy/signature-v4/dist-es/getPayloadHash.js
+// ../../sdk-typescript/node_modules/@smithy/signature-v4/dist-es/getPayloadHash.js
 var getPayloadHash = async ({ headers, body }, hashConstructor) => {
   for (const headerName of Object.keys(headers)) {
     if (headerName.toLowerCase() === SHA256_HEADER) {
@@ -1289,7 +1391,7 @@ var getPayloadHash = async ({ headers, body }, hashConstructor) => {
   return UNSIGNED_PAYLOAD;
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@smithy/signature-v4/dist-es/HeaderFormatter.js
+// ../../sdk-typescript/node_modules/@smithy/signature-v4/dist-es/HeaderFormatter.js
 var HeaderFormatter = class {
   format(headers) {
     const chunks = [];
@@ -1379,15 +1481,15 @@ var Int64 = class _Int64 {
       throw new Error("Int64 buffers must be exactly 8 bytes");
     }
   }
-  static fromNumber(number2) {
-    if (number2 > 9223372036854776e3 || number2 < -9223372036854776e3) {
-      throw new Error(`${number2} is too large (or, if negative, too small) to represent as an Int64`);
+  static fromNumber(number) {
+    if (number > 9223372036854776e3 || number < -9223372036854776e3) {
+      throw new Error(`${number} is too large (or, if negative, too small) to represent as an Int64`);
     }
     const bytes = new Uint8Array(8);
-    for (let i = 7, remaining = Math.abs(Math.round(number2)); i > -1 && remaining > 0; i--, remaining /= 256) {
+    for (let i = 7, remaining = Math.abs(Math.round(number)); i > -1 && remaining > 0; i--, remaining /= 256) {
       bytes[i] = remaining;
     }
-    if (number2 < 0) {
+    if (number < 0) {
       negate(bytes);
     }
     return new _Int64(bytes);
@@ -1415,7 +1517,7 @@ function negate(bytes) {
   }
 }
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@smithy/signature-v4/dist-es/headerUtil.js
+// ../../sdk-typescript/node_modules/@smithy/signature-v4/dist-es/headerUtil.js
 var hasHeader = (soughtHeader, headers) => {
   soughtHeader = soughtHeader.toLowerCase();
   for (const headerName of Object.keys(headers)) {
@@ -1426,7 +1528,7 @@ var hasHeader = (soughtHeader, headers) => {
   return false;
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@smithy/protocol-http/dist-es/httpRequest.js
+// ../../sdk-typescript/node_modules/@smithy/protocol-http/dist-es/httpRequest.js
 var HttpRequest = class _HttpRequest {
   method;
   protocol;
@@ -1483,7 +1585,7 @@ function cloneQuery(query) {
   }, {});
 }
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@smithy/signature-v4/dist-es/moveHeadersToQuery.js
+// ../../sdk-typescript/node_modules/@smithy/signature-v4/dist-es/moveHeadersToQuery.js
 var moveHeadersToQuery = (request, options = {}) => {
   const { headers, query = {} } = HttpRequest.clone(request);
   for (const name of Object.keys(headers)) {
@@ -1500,7 +1602,7 @@ var moveHeadersToQuery = (request, options = {}) => {
   };
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@smithy/signature-v4/dist-es/prepareRequest.js
+// ../../sdk-typescript/node_modules/@smithy/signature-v4/dist-es/prepareRequest.js
 var prepareRequest = (request) => {
   request = HttpRequest.clone(request);
   for (const headerName of Object.keys(request.headers)) {
@@ -1511,7 +1613,7 @@ var prepareRequest = (request) => {
   return request;
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@smithy/util-middleware/dist-es/normalizeProvider.js
+// ../../sdk-typescript/node_modules/@smithy/util-middleware/dist-es/normalizeProvider.js
 var normalizeProvider = (input) => {
   if (typeof input === "function")
     return input;
@@ -1519,11 +1621,11 @@ var normalizeProvider = (input) => {
   return () => promisified;
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@smithy/util-uri-escape/dist-es/escape-uri.js
+// ../../sdk-typescript/node_modules/@smithy/util-uri-escape/dist-es/escape-uri.js
 var escapeUri = (uri) => encodeURIComponent(uri).replace(/[!'()*]/g, hexEncode);
 var hexEncode = (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`;
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@smithy/signature-v4/dist-es/getCanonicalQuery.js
+// ../../sdk-typescript/node_modules/@smithy/signature-v4/dist-es/getCanonicalQuery.js
 var getCanonicalQuery = ({ query = {} }) => {
   const keys = [];
   const serialized = {};
@@ -1543,7 +1645,7 @@ var getCanonicalQuery = ({ query = {} }) => {
   return keys.sort().map((key) => serialized[key]).filter((serialized2) => serialized2).join("&");
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@smithy/signature-v4/dist-es/utilDate.js
+// ../../sdk-typescript/node_modules/@smithy/signature-v4/dist-es/utilDate.js
 var iso8601 = (time) => toDate(time).toISOString().replace(/\.\d{3}Z$/, "Z");
 var toDate = (time) => {
   if (typeof time === "number") {
@@ -1558,7 +1660,7 @@ var toDate = (time) => {
   return time;
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@smithy/signature-v4/dist-es/SignatureV4Base.js
+// ../../sdk-typescript/node_modules/@smithy/signature-v4/dist-es/SignatureV4Base.js
 var SignatureV4Base = class {
   service;
   regionProvider;
@@ -1630,7 +1732,7 @@ ${toHex(hashedRequest)}`;
   }
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@smithy/signature-v4/dist-es/SignatureV4.js
+// ../../sdk-typescript/node_modules/@smithy/signature-v4/dist-es/SignatureV4.js
 var SignatureV4 = class extends SignatureV4Base {
   headerFormatter = new HeaderFormatter();
   constructor({ applyChecksum, credentials, region, service, sha256, uriEscapePath = true }) {
@@ -1749,7 +1851,7 @@ var SignatureV4 = class extends SignatureV4Base {
   }
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/tslib/tslib.es6.mjs
+// ../../sdk-typescript/node_modules/tslib/tslib.es6.mjs
 function __awaiter(thisArg, _arguments, P, generator) {
   function adopt(value) {
     return value instanceof P ? value : new P(function(resolve) {
@@ -1858,7 +1960,7 @@ function __values(o) {
   throw new TypeError(s2 ? "Object is not iterable." : "Symbol.iterator is not defined.");
 }
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@aws-crypto/sha256-js/build/module/constants.js
+// ../../sdk-typescript/node_modules/@aws-crypto/sha256-js/build/module/constants.js
 var BLOCK_SIZE = 64;
 var DIGEST_LENGTH = 32;
 var KEY = new Uint32Array([
@@ -1939,7 +2041,7 @@ var INIT = [
 ];
 var MAX_HASHABLE_LENGTH = Math.pow(2, 53) - 1;
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@aws-crypto/sha256-js/build/module/RawSha256.js
+// ../../sdk-typescript/node_modules/@aws-crypto/sha256-js/build/module/RawSha256.js
 var RawSha256 = (
   /** @class */
   (function() {
@@ -2037,10 +2139,10 @@ var RawSha256 = (
   })()
 );
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@aws-crypto/util/node_modules/@smithy/util-utf8/dist-es/fromUtf8.browser.js
+// ../../sdk-typescript/node_modules/@aws-crypto/util/node_modules/@smithy/util-utf8/dist-es/fromUtf8.browser.js
 var fromUtf82 = (input) => new TextEncoder().encode(input);
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@aws-crypto/util/build/module/convertToBuffer.js
+// ../../sdk-typescript/node_modules/@aws-crypto/util/build/module/convertToBuffer.js
 var fromUtf83 = typeof Buffer !== "undefined" && Buffer.from ? function(input) {
   return Buffer.from(input, "utf8");
 } : fromUtf82;
@@ -2056,7 +2158,7 @@ function convertToBuffer(data) {
   return new Uint8Array(data);
 }
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@aws-crypto/util/build/module/isEmptyData.js
+// ../../sdk-typescript/node_modules/@aws-crypto/util/build/module/isEmptyData.js
 function isEmptyData(data) {
   if (typeof data === "string") {
     return data.length === 0;
@@ -2064,7 +2166,7 @@ function isEmptyData(data) {
   return data.byteLength === 0;
 }
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@aws-crypto/util/build/module/numToUint8.js
+// ../../sdk-typescript/node_modules/@aws-crypto/util/build/module/numToUint8.js
 function numToUint8(num) {
   return new Uint8Array([
     (num & 4278190080) >> 24,
@@ -2074,7 +2176,7 @@ function numToUint8(num) {
   ]);
 }
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@aws-crypto/util/build/module/uint32ArrayFrom.js
+// ../../sdk-typescript/node_modules/@aws-crypto/util/build/module/uint32ArrayFrom.js
 function uint32ArrayFrom(a_lookUpTable2) {
   if (!Uint32Array.from) {
     var return_array = new Uint32Array(a_lookUpTable2.length);
@@ -2088,7 +2190,7 @@ function uint32ArrayFrom(a_lookUpTable2) {
   return Uint32Array.from(a_lookUpTable2);
 }
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@aws-crypto/sha256-js/build/module/jsSha256.js
+// ../../sdk-typescript/node_modules/@aws-crypto/sha256-js/build/module/jsSha256.js
 var Sha256 = (
   /** @class */
   (function() {
@@ -2159,7 +2261,7 @@ function bufferFromSecret(secret) {
   return buffer;
 }
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@aws-crypto/crc32/build/module/aws_crc32.js
+// ../../sdk-typescript/node_modules/@aws-crypto/crc32/build/module/aws_crc32.js
 var AwsCrc32 = (
   /** @class */
   (function() {
@@ -2185,7 +2287,7 @@ var AwsCrc32 = (
   })()
 );
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@aws-crypto/crc32/build/module/index.js
+// ../../sdk-typescript/node_modules/@aws-crypto/crc32/build/module/index.js
 var Crc32 = (
   /** @class */
   (function() {
@@ -2476,7 +2578,7 @@ var a_lookUpTable = [
 ];
 var lookupTable = uint32ArrayFrom(a_lookUpTable);
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@smithy/eventstream-codec/dist-es/Int64.js
+// ../../sdk-typescript/node_modules/@smithy/eventstream-codec/dist-es/Int64.js
 var Int642 = class _Int64 {
   bytes;
   constructor(bytes) {
@@ -2485,15 +2587,15 @@ var Int642 = class _Int64 {
       throw new Error("Int64 buffers must be exactly 8 bytes");
     }
   }
-  static fromNumber(number2) {
-    if (number2 > 9223372036854776e3 || number2 < -9223372036854776e3) {
-      throw new Error(`${number2} is too large (or, if negative, too small) to represent as an Int64`);
+  static fromNumber(number) {
+    if (number > 9223372036854776e3 || number < -9223372036854776e3) {
+      throw new Error(`${number} is too large (or, if negative, too small) to represent as an Int64`);
     }
     const bytes = new Uint8Array(8);
-    for (let i = 7, remaining = Math.abs(Math.round(number2)); i > -1 && remaining > 0; i--, remaining /= 256) {
+    for (let i = 7, remaining = Math.abs(Math.round(number)); i > -1 && remaining > 0; i--, remaining /= 256) {
       bytes[i] = remaining;
     }
-    if (number2 < 0) {
+    if (number < 0) {
       negate2(bytes);
     }
     return new _Int64(bytes);
@@ -2521,7 +2623,7 @@ function negate2(bytes) {
   }
 }
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@smithy/eventstream-codec/dist-es/HeaderMarshaller.js
+// ../../sdk-typescript/node_modules/@smithy/eventstream-codec/dist-es/HeaderMarshaller.js
 var HeaderMarshaller = class {
   toUtf8;
   fromUtf8;
@@ -2705,7 +2807,7 @@ var TIMESTAMP_TAG = "timestamp";
 var UUID_TAG = "uuid";
 var UUID_PATTERN2 = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@smithy/eventstream-codec/dist-es/splitMessage.js
+// ../../sdk-typescript/node_modules/@smithy/eventstream-codec/dist-es/splitMessage.js
 var PRELUDE_MEMBER_LENGTH = 4;
 var PRELUDE_LENGTH = PRELUDE_MEMBER_LENGTH * 2;
 var CHECKSUM_LENGTH = 4;
@@ -2736,7 +2838,7 @@ function splitMessage({ byteLength, byteOffset, buffer }) {
   };
 }
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@smithy/eventstream-codec/dist-es/EventStreamCodec.js
+// ../../sdk-typescript/node_modules/@smithy/eventstream-codec/dist-es/EventStreamCodec.js
 var EventStreamCodec = class {
   headerMarshaller;
   messageBuffer;
@@ -2833,7 +2935,7 @@ var BedrockRuntimeClient = class {
   }
   async send(command) {
     const region = typeof this._region === "function" ? await this._region() : this._region;
-    const url2 = `https://bedrock-runtime.${region}.amazonaws.com${command.path}`;
+    const url = `https://bedrock-runtime.${region}.amazonaws.com${command.path}`;
     const { modelId, ...body } = command.input;
     const bodyStr = JSON.stringify(body);
     const headers = { "Content-Type": "application/json" };
@@ -2853,7 +2955,7 @@ var BedrockRuntimeClient = class {
       });
       Object.assign(headers, signed.headers);
     }
-    const response = await fetch(url2, { method: command.method, headers, body: bodyStr });
+    const response = await fetch(url, { method: command.method, headers, body: bodyStr });
     if (!response.ok) throw new Error(`Bedrock ${response.status}: ${await response.text()}`);
     if (command instanceof ConverseStreamCommand) {
       return { stream: parseEventStream(response.body) };
@@ -2888,7 +2990,7 @@ async function* parseEventStream(body) {
   }
 }
 
-// ../../StrandsAgentsSDKTypescript/dist/src/types/validation.js
+// ../../sdk-typescript/dist/src/types/validation.js
 function ensureDefined(value, fieldName) {
   if (value == null) {
     throw new Error(`Expected ${fieldName} to be defined, but got ${value}`);
@@ -2896,7 +2998,7 @@ function ensureDefined(value, fieldName) {
   return value;
 }
 
-// ../../StrandsAgentsSDKTypescript/dist/src/logging/logger.js
+// ../../sdk-typescript/dist/src/logging/logger.js
 var defaultLogger = {
   debug: () => {
   },
@@ -2907,7 +3009,7 @@ var defaultLogger = {
 };
 var logger = defaultLogger;
 
-// ../../StrandsAgentsSDKTypescript/dist/src/models/bedrock.js
+// ../../sdk-typescript/dist/src/models/bedrock.js
 var DEFAULT_BEDROCK_MODEL_ID = "global.anthropic.claude-sonnet-4-5-20250929-v1:0";
 var DEFAULT_BEDROCK_REGION = "us-west-2";
 var DEFAULT_BEDROCK_REGION_SUPPORTS_FIP = false;
@@ -2963,7 +3065,7 @@ var BedrockModel = class extends Model {
    */
   constructor(options) {
     super();
-    const { region, clientConfig, ...modelConfig } = options ?? {};
+    const { region, clientConfig, apiKey, ...modelConfig } = options ?? {};
     this._config = {
       modelId: DEFAULT_BEDROCK_MODEL_ID,
       ...modelConfig
@@ -2975,6 +3077,9 @@ var BedrockModel = class extends Model {
       ...region ? { region } : {},
       customUserAgent
     });
+    if (apiKey) {
+      applyApiKey(this._client, apiKey);
+    }
     applyDefaultRegion(this._client.config);
   }
   /**
@@ -3595,6 +3700,21 @@ var BedrockModel = class extends Model {
     return mappedStopReason;
   }
 };
+function applyApiKey(client, apiKey) {
+  client.middlewareStack.add(
+    // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+    (next) => async (args) => {
+      const request = args.request;
+      request.headers["authorization"] = `Bearer ${apiKey}`;
+      return next(args);
+    },
+    {
+      step: "finalizeRequest",
+      priority: "low",
+      name: "bedrockApiKeyMiddleware"
+    }
+  );
+}
 function applyDefaultRegion(config) {
   const originalRegion = config.region.bind(config);
   config.region = async () => {
@@ -3620,7 +3740,7 @@ function applyDefaultRegion(config) {
   };
 }
 
-// ../../StrandsAgentsSDKTypescript/dist/src/hooks/events.js
+// ../../sdk-typescript/dist/src/hooks/events.js
 var HookEvent = class {
   /**
    * @internal
@@ -3764,7 +3884,7 @@ var AfterToolsEvent = class extends HookEvent {
   }
 };
 
-// ../../StrandsAgentsSDKTypescript/dist/src/hooks/registry.js
+// ../../sdk-typescript/dist/src/hooks/registry.js
 var HookRegistryImplementation = class {
   _callbacks;
   _currentProvider;
@@ -3860,7 +3980,7 @@ var HookRegistryImplementation = class {
   }
 };
 
-// ../../StrandsAgentsSDKTypescript/dist/src/conversation-manager/null-conversation-manager.js
+// ../../sdk-typescript/dist/src/conversation-manager/null-conversation-manager.js
 var NullConversationManager = class {
   /**
    * Registers callbacks with the hook registry.
@@ -3872,7 +3992,7 @@ var NullConversationManager = class {
   }
 };
 
-// ../../StrandsAgentsSDKTypescript/dist/src/conversation-manager/sliding-window-conversation-manager.js
+// ../../sdk-typescript/dist/src/conversation-manager/sliding-window-conversation-manager.js
 var SlidingWindowConversationManager = class {
   _windowSize;
   _shouldTruncateResults;
@@ -4193,29 +4313,29 @@ var ZodFirstPartyTypeKind3 = new Proxy({}, { get: (_, p) => p });
 var ZodIssueCode3 = new Proxy({}, { get: (_, p) => p });
 var ZodParsedType3 = new Proxy({}, { get: (_, p) => p });
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@modelcontextprotocol/sdk/dist/esm/server/zod-compat.js
+// ../../sdk-typescript/node_modules/@modelcontextprotocol/sdk/dist/esm/server/zod-compat.js
 function isZ4Schema(s2) {
-  const schema5 = s2;
-  return !!schema5._zod;
+  const schema4 = s2;
+  return !!schema4._zod;
 }
-function safeParse2(schema5, data) {
-  if (isZ4Schema(schema5)) {
-    const result2 = (void 0)(schema5, data);
+function safeParse2(schema4, data) {
+  if (isZ4Schema(schema4)) {
+    const result2 = (void 0)(schema4, data);
     return result2;
   }
-  const v3Schema = schema5;
+  const v3Schema = schema4;
   const result = v3Schema.safeParse(data);
   return result;
 }
-function getObjectShape(schema5) {
-  if (!schema5)
+function getObjectShape(schema4) {
+  if (!schema4)
     return void 0;
   let rawShape;
-  if (isZ4Schema(schema5)) {
-    const v4Schema = schema5;
+  if (isZ4Schema(schema4)) {
+    const v4Schema = schema4;
     rawShape = v4Schema._zod?.def?.shape;
   } else {
-    const v3Schema = schema5;
+    const v3Schema = schema4;
     rawShape = v3Schema.shape;
   }
   if (!rawShape)
@@ -4229,9 +4349,9 @@ function getObjectShape(schema5) {
   }
   return rawShape;
 }
-function getLiteralValue(schema5) {
-  if (isZ4Schema(schema5)) {
-    const v4Schema = schema5;
+function getLiteralValue(schema4) {
+  if (isZ4Schema(schema4)) {
+    const v4Schema = schema4;
     const def2 = v4Schema._zod?.def;
     if (def2) {
       if (def2.value !== void 0)
@@ -4241,7 +4361,7 @@ function getLiteralValue(schema5) {
       }
     }
   }
-  const v3Schema = schema5;
+  const v3Schema = schema4;
   const def = v3Schema._def;
   if (def) {
     if (def.value !== void 0)
@@ -4250,7 +4370,7 @@ function getLiteralValue(schema5) {
       return def.values[0];
     }
   }
-  const directValue = schema5.value;
+  const directValue = schema4.value;
   if (directValue !== void 0)
     return directValue;
   return void 0;
@@ -4317,14 +4437,14 @@ var CancelTaskRequestSchema = s;
 var CancelTaskResultSchema = s;
 var TaskStatusNotificationSchema = s;
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/interfaces.js
+// ../../sdk-typescript/node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/interfaces.js
 function isTerminal(status) {
   return status === "completed" || status === "failed" || status === "cancelled";
 }
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@modelcontextprotocol/sdk/dist/esm/server/zod-json-schema-compat.js
-function getMethodLiteral(schema5) {
-  const shape = getObjectShape(schema5);
+// ../../sdk-typescript/node_modules/@modelcontextprotocol/sdk/dist/esm/server/zod-json-schema-compat.js
+function getMethodLiteral(schema4) {
+  const shape = getObjectShape(schema4);
   const methodSchema = shape?.method;
   if (!methodSchema) {
     throw new Error("Schema is missing a method literal");
@@ -4335,15 +4455,15 @@ function getMethodLiteral(schema5) {
   }
   return value;
 }
-function parseWithCompat(schema5, data) {
-  const result = safeParse2(schema5, data);
+function parseWithCompat(schema4, data) {
+  const result = safeParse2(schema4, data);
   if (!result.success) {
     throw result.error;
   }
   return result.data;
 }
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@modelcontextprotocol/sdk/dist/esm/shared/protocol.js
+// ../../sdk-typescript/node_modules/@modelcontextprotocol/sdk/dist/esm/shared/protocol.js
 var DEFAULT_REQUEST_TIMEOUT_MSEC = 6e4;
 var Protocol = class {
   constructor(_options) {
@@ -5308,7 +5428,7 @@ var ajv_default = Ajv;
 // stubs/empty.js
 var empty_default = {};
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@modelcontextprotocol/sdk/dist/esm/validation/ajv-provider.js
+// ../../sdk-typescript/node_modules/@modelcontextprotocol/sdk/dist/esm/validation/ajv-provider.js
 function createDefaultAjvInstance() {
   const ajv = new ajv_default({
     strict: false,
@@ -5353,8 +5473,8 @@ var AjvJsonSchemaValidator = class {
    * @param schema - Standard JSON Schema object
    * @returns A validator function that validates input data
    */
-  getValidator(schema5) {
-    const ajvValidator = "$id" in schema5 && typeof schema5.$id === "string" ? this._ajv.getSchema(schema5.$id) ?? this._ajv.compile(schema5) : this._ajv.compile(schema5);
+  getValidator(schema4) {
+    const ajvValidator = "$id" in schema4 && typeof schema4.$id === "string" ? this._ajv.getSchema(schema4.$id) ?? this._ajv.compile(schema4) : this._ajv.compile(schema4);
     return (input) => {
       const valid = ajvValidator(input);
       if (valid) {
@@ -5374,7 +5494,7 @@ var AjvJsonSchemaValidator = class {
   }
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/client.js
+// ../../sdk-typescript/node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/client.js
 var ExperimentalClientTasks = class {
   constructor(_client) {
     this._client = _client;
@@ -5528,7 +5648,7 @@ var ExperimentalClientTasks = class {
   }
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/helpers.js
+// ../../sdk-typescript/node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/helpers.js
 function assertToolsCallTaskCapability(requests, method, entityName) {
   if (!requests) {
     throw new Error(`${entityName} does not support task creation (required for ${method})`);
@@ -5563,13 +5683,13 @@ function assertClientRequestTaskCapability(requests, method, entityName) {
   }
 }
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@modelcontextprotocol/sdk/dist/esm/client/index.js
-function applyElicitationDefaults(schema5, data) {
-  if (!schema5 || data === null || typeof data !== "object")
+// ../../sdk-typescript/node_modules/@modelcontextprotocol/sdk/dist/esm/client/index.js
+function applyElicitationDefaults(schema4, data) {
+  if (!schema4 || data === null || typeof data !== "object")
     return;
-  if (schema5.type === "object" && schema5.properties && typeof schema5.properties === "object") {
+  if (schema4.type === "object" && schema4.properties && typeof schema4.properties === "object") {
     const obj = data;
-    const props = schema5.properties;
+    const props = schema4.properties;
     for (const key of Object.keys(props)) {
       const propSchema = props[key];
       if (obj[key] === void 0 && Object.prototype.hasOwnProperty.call(propSchema, "default")) {
@@ -5580,15 +5700,15 @@ function applyElicitationDefaults(schema5, data) {
       }
     }
   }
-  if (Array.isArray(schema5.anyOf)) {
-    for (const sub of schema5.anyOf) {
+  if (Array.isArray(schema4.anyOf)) {
+    for (const sub of schema4.anyOf) {
       if (typeof sub !== "boolean") {
         applyElicitationDefaults(sub, data);
       }
     }
   }
-  if (Array.isArray(schema5.oneOf)) {
-    for (const sub of schema5.oneOf) {
+  if (Array.isArray(schema4.oneOf)) {
+    for (const sub of schema4.oneOf) {
       if (typeof sub !== "boolean") {
         applyElicitationDefaults(sub, data);
       }
@@ -6083,7 +6203,7 @@ var Client = class extends Protocol {
   }
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@modelcontextprotocol/sdk/dist/esm/shared/responseMessage.js
+// ../../sdk-typescript/node_modules/@modelcontextprotocol/sdk/dist/esm/shared/responseMessage.js
 async function takeResult(it) {
   for await (const o of it) {
     if (o.type === "result") {
@@ -6095,7 +6215,7 @@ async function takeResult(it) {
   throw new Error("No result in stream.");
 }
 
-// ../../StrandsAgentsSDKTypescript/dist/src/tools/mcp-tool.js
+// ../../sdk-typescript/dist/src/tools/mcp-tool.js
 var McpTool = class extends Tool {
   name;
   description;
@@ -6162,7 +6282,7 @@ var McpTool = class extends Tool {
   }
 };
 
-// ../../StrandsAgentsSDKTypescript/dist/src/mcp.js
+// ../../sdk-typescript/dist/src/mcp.js
 var McpClient = class {
   _clientName;
   _clientVersion;
@@ -6250,7 +6370,7 @@ var McpClient = class {
   }
 };
 
-// ../../StrandsAgentsSDKTypescript/dist/src/registry/registry.js
+// ../../sdk-typescript/dist/src/registry/registry.js
 var ItemNotFoundError = class extends Error {
   constructor(id) {
     super(`Item with id '${id}' not found`);
@@ -6519,7 +6639,7 @@ if (import.meta.vitest) {
   });
 }
 
-// ../../StrandsAgentsSDKTypescript/dist/src/registry/tool-registry.js
+// ../../sdk-typescript/dist/src/registry/tool-registry.js
 var ToolRegistry = class extends Registry {
   /**
    * Generates a unique identifier for a Tool.
@@ -6679,7 +6799,7 @@ if (import.meta.vitest) {
   });
 }
 
-// ../../StrandsAgentsSDKTypescript/dist/src/agent/state.js
+// ../../sdk-typescript/dist/src/agent/state.js
 var AgentState = class {
   _state;
   /**
@@ -6735,7 +6855,7 @@ var AgentState = class {
   }
 };
 
-// ../../StrandsAgentsSDKTypescript/dist/src/agent/printer.js
+// ../../sdk-typescript/dist/src/agent/printer.js
 function getDefaultAppender() {
   if (typeof process !== "undefined" && define_process_stdout_default?.write) {
     return (text) => define_process_stdout_default.write(text);
@@ -6861,7 +6981,7 @@ var AgentPrinter = class {
   }
 };
 
-// ../../StrandsAgentsSDKTypescript/dist/src/agent/agent.js
+// ../../sdk-typescript/dist/src/agent/agent.js
 var __addDisposableResource = function(env, value, async) {
   if (value !== null && value !== void 0) {
     if (typeof value !== "object" && typeof value !== "function") throw new TypeError("Object expected.");
@@ -7348,7 +7468,7 @@ function flattenTools(toolList) {
   return { tools, mcpClients };
 }
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@anthropic-ai/sdk/internal/tslib.mjs
+// ../../sdk-typescript/node_modules/@anthropic-ai/sdk/internal/tslib.mjs
 function __classPrivateFieldSet(receiver, state, value, kind, f) {
   if (kind === "m")
     throw new TypeError("Private method is not writable");
@@ -7366,7 +7486,7 @@ function __classPrivateFieldGet(receiver, state, kind, f) {
   return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
 }
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@anthropic-ai/sdk/internal/utils/uuid.mjs
+// ../../sdk-typescript/node_modules/@anthropic-ai/sdk/internal/utils/uuid.mjs
 var uuid4 = function() {
   const { crypto: crypto2 } = globalThis;
   if (crypto2?.randomUUID) {
@@ -7378,7 +7498,7 @@ var uuid4 = function() {
   return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c) => (+c ^ randomByte() & 15 >> +c / 4).toString(16));
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@anthropic-ai/sdk/internal/errors.mjs
+// ../../sdk-typescript/node_modules/@anthropic-ai/sdk/internal/errors.mjs
 function isAbortError(err) {
   return typeof err === "object" && err !== null && // Spec-compliant fetch implementations
   ("name" in err && err.name === "AbortError" || // Expo fetch
@@ -7409,7 +7529,7 @@ var castToError = (err) => {
   return new Error(err);
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@anthropic-ai/sdk/core/error.mjs
+// ../../sdk-typescript/node_modules/@anthropic-ai/sdk/core/error.mjs
 var AnthropicError = class extends Error {
 };
 var APIError = class _APIError extends AnthropicError {
@@ -7499,10 +7619,10 @@ var RateLimitError = class extends APIError {
 var InternalServerError = class extends APIError {
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@anthropic-ai/sdk/internal/utils/values.mjs
+// ../../sdk-typescript/node_modules/@anthropic-ai/sdk/internal/utils/values.mjs
 var startsWithSchemeRegexp = /^[a-z][a-z0-9+.-]*:/i;
-var isAbsoluteURL = (url2) => {
-  return startsWithSchemeRegexp.test(url2);
+var isAbsoluteURL = (url) => {
+  return startsWithSchemeRegexp.test(url);
 };
 var isArray = (val) => (isArray = Array.isArray, isArray(val));
 var isReadonlyArray = isArray;
@@ -7539,13 +7659,13 @@ var safeJSON = (text) => {
   }
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@anthropic-ai/sdk/internal/utils/sleep.mjs
+// ../../sdk-typescript/node_modules/@anthropic-ai/sdk/internal/utils/sleep.mjs
 var sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@anthropic-ai/sdk/version.mjs
+// ../../sdk-typescript/node_modules/@anthropic-ai/sdk/version.mjs
 var VERSION = "0.71.2";
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@anthropic-ai/sdk/internal/detect-platform.mjs
+// ../../sdk-typescript/node_modules/@anthropic-ai/sdk/internal/detect-platform.mjs
 var isRunningInBrowser = () => {
   return (
     // @ts-ignore
@@ -7679,7 +7799,7 @@ var getPlatformHeaders = () => {
   return _platformHeaders ?? (_platformHeaders = getPlatformProperties());
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@anthropic-ai/sdk/internal/shims.mjs
+// ../../sdk-typescript/node_modules/@anthropic-ai/sdk/internal/shims.mjs
 function getDefaultFetch() {
   if (typeof fetch !== "undefined") {
     return fetch;
@@ -7751,7 +7871,7 @@ async function CancelReadableStream(stream) {
   await cancelPromise;
 }
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@anthropic-ai/sdk/internal/request-options.mjs
+// ../../sdk-typescript/node_modules/@anthropic-ai/sdk/internal/request-options.mjs
 var FallbackEncoder = ({ headers, body }) => {
   return {
     bodyHeaders: {
@@ -7761,7 +7881,7 @@ var FallbackEncoder = ({ headers, body }) => {
   };
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@anthropic-ai/sdk/internal/utils/bytes.mjs
+// ../../sdk-typescript/node_modules/@anthropic-ai/sdk/internal/utils/bytes.mjs
 function concatBytes(buffers) {
   let length = 0;
   for (const buffer of buffers) {
@@ -7786,7 +7906,7 @@ function decodeUTF8(bytes) {
   return (decodeUTF8_ ?? (decoder = new globalThis.TextDecoder(), decodeUTF8_ = decoder.decode.bind(decoder)))(bytes);
 }
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@anthropic-ai/sdk/internal/decoders/line.mjs
+// ../../sdk-typescript/node_modules/@anthropic-ai/sdk/internal/decoders/line.mjs
 var _LineDecoder_buffer;
 var _LineDecoder_carriageReturnIndex;
 var LineDecoder = class {
@@ -7863,7 +7983,7 @@ function findDoubleNewlineIndex(buffer) {
   return -1;
 }
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@anthropic-ai/sdk/internal/utils/log.mjs
+// ../../sdk-typescript/node_modules/@anthropic-ai/sdk/internal/utils/log.mjs
 var levelNumbers = {
   off: 0,
   error: 200,
@@ -7936,7 +8056,7 @@ var formatRequestDetails = (details) => {
   return details;
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@anthropic-ai/sdk/core/streaming.mjs
+// ../../sdk-typescript/node_modules/@anthropic-ai/sdk/core/streaming.mjs
 var _Stream_client;
 var Stream = class _Stream {
   constructor(iterator, controller, client) {
@@ -8185,7 +8305,7 @@ function partition(str2, delimiter) {
   return [str2, "", ""];
 }
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@anthropic-ai/sdk/internal/parse.mjs
+// ../../sdk-typescript/node_modules/@anthropic-ai/sdk/internal/parse.mjs
 async function defaultParseResponse(client, props) {
   const { response, requestLogID, retryOfRequestLogID, startTime } = props;
   const body = await (async () => {
@@ -8231,7 +8351,7 @@ function addRequestID(value, response) {
   });
 }
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@anthropic-ai/sdk/core/api-promise.mjs
+// ../../sdk-typescript/node_modules/@anthropic-ai/sdk/core/api-promise.mjs
 var _APIPromise_client;
 var APIPromise = class _APIPromise extends Promise {
   constructor(client, responsePromise, parseResponse2 = defaultParseResponse) {
@@ -8294,7 +8414,7 @@ var APIPromise = class _APIPromise extends Promise {
 };
 _APIPromise_client = /* @__PURE__ */ new WeakMap();
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@anthropic-ai/sdk/core/pagination.mjs
+// ../../sdk-typescript/node_modules/@anthropic-ai/sdk/core/pagination.mjs
 var _AbstractPage_client;
 var AbstractPage = class {
   constructor(client, response, body, options) {
@@ -8396,7 +8516,7 @@ var Page = class extends AbstractPage {
   }
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@anthropic-ai/sdk/internal/uploads.mjs
+// ../../sdk-typescript/node_modules/@anthropic-ai/sdk/internal/uploads.mjs
 var checkFileSupport = () => {
   if (typeof File === "undefined") {
     const { process: process2 } = globalThis;
@@ -8413,7 +8533,7 @@ function getName(value) {
 }
 var isAsyncIterable = (value) => value != null && typeof value === "object" && typeof value[Symbol.asyncIterator] === "function";
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@anthropic-ai/sdk/internal/to-file.mjs
+// ../../sdk-typescript/node_modules/@anthropic-ai/sdk/internal/to-file.mjs
 var isBlobLike = (value) => value != null && typeof value === "object" && typeof value.size === "number" && typeof value.type === "string" && typeof value.text === "function" && typeof value.slice === "function" && typeof value.arrayBuffer === "function";
 var isFileLike = (value) => value != null && typeof value === "object" && typeof value.name === "string" && typeof value.lastModified === "number" && isBlobLike(value);
 var isResponseLike = (value) => value != null && typeof value === "object" && typeof value.url === "string" && typeof value.blob === "function";
@@ -8469,28 +8589,28 @@ function propsForError(value) {
   return `; props: [${props.map((p) => `"${p}"`).join(", ")}]`;
 }
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@anthropic-ai/sdk/resources/beta/beta.mjs
+// ../../sdk-typescript/node_modules/@anthropic-ai/sdk/resources/beta/beta.mjs
 var S = class {
   constructor() {
   }
 };
 var Beta = S;
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@anthropic-ai/sdk/resources/completions.mjs
+// ../../sdk-typescript/node_modules/@anthropic-ai/sdk/resources/completions.mjs
 var S2 = class {
   constructor() {
   }
 };
 var Completions = S2;
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@anthropic-ai/sdk/core/resource.mjs
+// ../../sdk-typescript/node_modules/@anthropic-ai/sdk/core/resource.mjs
 var APIResource = class {
   constructor(client) {
     this._client = client;
   }
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@anthropic-ai/sdk/_vendor/partial-json-parser/parser.mjs
+// ../../sdk-typescript/node_modules/@anthropic-ai/sdk/_vendor/partial-json-parser/parser.mjs
 var tokenize = (input) => {
   let current = 0;
   let tokens = [];
@@ -8710,7 +8830,7 @@ var generate = (tokens) => {
 };
 var partialParse = (input) => JSON.parse(generate(unstrip(strip(tokenize(input)))));
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@anthropic-ai/sdk/lib/MessageStream.mjs
+// ../../sdk-typescript/node_modules/@anthropic-ai/sdk/lib/MessageStream.mjs
 var _MessageStream_instances;
 var _MessageStream_currentMessageSnapshot;
 var _MessageStream_connectedPromise;
@@ -9292,7 +9412,7 @@ var MessageStream = class _MessageStream {
 function checkNever(x) {
 }
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@anthropic-ai/sdk/internal/headers.mjs
+// ../../sdk-typescript/node_modules/@anthropic-ai/sdk/internal/headers.mjs
 var brand_privateNullableHeaders = /* @__PURE__ */ Symbol.for("brand.privateNullableHeaders");
 function* iterateHeaders(headers) {
   if (!headers)
@@ -9355,7 +9475,7 @@ var buildHeaders = (newHeaders) => {
   return { [brand_privateNullableHeaders]: true, values: targetHeaders, nulls: nullHeaders };
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@anthropic-ai/sdk/internal/decoders/jsonl.mjs
+// ../../sdk-typescript/node_modules/@anthropic-ai/sdk/internal/decoders/jsonl.mjs
 var JSONLDecoder = class _JSONLDecoder {
   constructor(iterator, controller) {
     this.iterator = iterator;
@@ -9387,7 +9507,7 @@ var JSONLDecoder = class _JSONLDecoder {
   }
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@anthropic-ai/sdk/internal/utils/path.mjs
+// ../../sdk-typescript/node_modules/@anthropic-ai/sdk/internal/utils/path.mjs
 function encodeURIPath(str2) {
   return str2.replace(/[^A-Za-z0-9\-._~!$&'()*+,;=:@]+/g, encodeURIComponent);
 }
@@ -9442,7 +9562,7 @@ ${underline}`);
 };
 var path = /* @__PURE__ */ createPathTagFunction(encodeURIPath);
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@anthropic-ai/sdk/resources/messages/batches.mjs
+// ../../sdk-typescript/node_modules/@anthropic-ai/sdk/resources/messages/batches.mjs
 var Batches = class extends APIResource {
   /**
    * Send a batch of Message creation requests.
@@ -9583,7 +9703,7 @@ var Batches = class extends APIResource {
   }
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@anthropic-ai/sdk/internal/constants.mjs
+// ../../sdk-typescript/node_modules/@anthropic-ai/sdk/internal/constants.mjs
 var MODEL_NONSTREAMING_TOKENS = {
   "claude-opus-4-20250514": 8192,
   "claude-opus-4-0": 8192,
@@ -9595,7 +9715,7 @@ var MODEL_NONSTREAMING_TOKENS = {
   "claude-opus-4-1@20250805": 8192
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@anthropic-ai/sdk/resources/messages/messages.mjs
+// ../../sdk-typescript/node_modules/@anthropic-ai/sdk/resources/messages/messages.mjs
 var Messages = class extends APIResource {
   constructor() {
     super(...arguments);
@@ -9661,14 +9781,14 @@ var DEPRECATED_MODELS = {
 };
 Messages.Batches = Batches;
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@anthropic-ai/sdk/resources/models.mjs
+// ../../sdk-typescript/node_modules/@anthropic-ai/sdk/resources/models.mjs
 var S3 = class {
   constructor() {
   }
 };
 var Models = S3;
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@anthropic-ai/sdk/internal/utils/env.mjs
+// ../../sdk-typescript/node_modules/@anthropic-ai/sdk/internal/utils/env.mjs
 var readEnv = (env) => {
   if (typeof globalThis.process !== "undefined") {
     return globalThis.process.env?.[env]?.trim() ?? void 0;
@@ -9679,7 +9799,7 @@ var readEnv = (env) => {
   return void 0;
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@anthropic-ai/sdk/client.mjs
+// ../../sdk-typescript/node_modules/@anthropic-ai/sdk/client.mjs
 var _BaseAnthropic_instances;
 var _a;
 var _BaseAnthropic_encoder;
@@ -9807,15 +9927,15 @@ var BaseAnthropic = class {
   }
   buildURL(path3, query, defaultBaseURL) {
     const baseURL = !__classPrivateFieldGet(this, _BaseAnthropic_instances, "m", _BaseAnthropic_baseURLOverridden).call(this) && defaultBaseURL || this.baseURL;
-    const url2 = isAbsoluteURL(path3) ? new URL(path3) : new URL(baseURL + (baseURL.endsWith("/") && path3.startsWith("/") ? path3.slice(1) : path3));
+    const url = isAbsoluteURL(path3) ? new URL(path3) : new URL(baseURL + (baseURL.endsWith("/") && path3.startsWith("/") ? path3.slice(1) : path3));
     const defaultQuery = this.defaultQuery();
     if (!isEmptyObj(defaultQuery)) {
       query = { ...defaultQuery, ...query };
     }
     if (typeof query === "object" && query && !Array.isArray(query)) {
-      url2.search = this.stringifyQuery(query);
+      url.search = this.stringifyQuery(query);
     }
-    return url2.toString();
+    return url.toString();
   }
   _calculateNonstreamingTimeout(maxTokens) {
     const defaultTimeout = 10 * 60;
@@ -9836,7 +9956,7 @@ var BaseAnthropic = class {
    * This is useful for cases where you want to add certain headers based off of
    * the request properties, e.g. `method` or `url`.
    */
-  async prepareRequest(request, { url: url2, options }) {
+  async prepareRequest(request, { url, options }) {
   }
   get(path3, opts) {
     return this.methodRequest("get", path3, opts);
@@ -9868,17 +9988,17 @@ var BaseAnthropic = class {
       retriesRemaining = maxRetries;
     }
     await this.prepareOptions(options);
-    const { req, url: url2, timeout } = await this.buildRequest(options, {
+    const { req, url, timeout } = await this.buildRequest(options, {
       retryCount: maxRetries - retriesRemaining
     });
-    await this.prepareRequest(req, { url: url2, options });
+    await this.prepareRequest(req, { url, options });
     const requestLogID = "log_" + (Math.random() * (1 << 24) | 0).toString(16).padStart(6, "0");
     const retryLogStr = retryOfRequestLogID === void 0 ? "" : `, retryOf: ${retryOfRequestLogID}`;
     const startTime = Date.now();
     loggerFor(this).debug(`[${requestLogID}] sending request`, formatRequestDetails({
       retryOfRequestLogID,
       method: options.method,
-      url: url2,
+      url,
       options,
       headers: req.headers
     }));
@@ -9886,7 +10006,7 @@ var BaseAnthropic = class {
       throw new APIUserAbortError();
     }
     const controller = new AbortController();
-    const response = await this.fetchWithTimeout(url2, req, timeout, controller).catch(castToError);
+    const response = await this.fetchWithTimeout(url, req, timeout, controller).catch(castToError);
     const headersTime = Date.now();
     if (response instanceof globalThis.Error) {
       const retryMessage = `retrying, ${retriesRemaining} attempts remaining`;
@@ -9898,7 +10018,7 @@ var BaseAnthropic = class {
         loggerFor(this).info(`[${requestLogID}] connection ${isTimeout ? "timed out" : "failed"} - ${retryMessage}`);
         loggerFor(this).debug(`[${requestLogID}] connection ${isTimeout ? "timed out" : "failed"} (${retryMessage})`, formatRequestDetails({
           retryOfRequestLogID,
-          url: url2,
+          url,
           durationMs: headersTime - startTime,
           message: response.message
         }));
@@ -9907,7 +10027,7 @@ var BaseAnthropic = class {
       loggerFor(this).info(`[${requestLogID}] connection ${isTimeout ? "timed out" : "failed"} - error; no more retries left`);
       loggerFor(this).debug(`[${requestLogID}] connection ${isTimeout ? "timed out" : "failed"} (error; no more retries left)`, formatRequestDetails({
         retryOfRequestLogID,
-        url: url2,
+        url,
         durationMs: headersTime - startTime,
         message: response.message
       }));
@@ -9917,7 +10037,7 @@ var BaseAnthropic = class {
       throw new APIConnectionError({ cause: response });
     }
     const specialHeaders = [...response.headers.entries()].filter(([name]) => name === "request-id").map(([name, value]) => ", " + name + ": " + JSON.stringify(value)).join("");
-    const responseInfo = `[${requestLogID}${retryLogStr}${specialHeaders}] ${req.method} ${url2} ${response.ok ? "succeeded" : "failed"} with status ${response.status} in ${headersTime - startTime}ms`;
+    const responseInfo = `[${requestLogID}${retryLogStr}${specialHeaders}] ${req.method} ${url} ${response.ok ? "succeeded" : "failed"} with status ${response.status} in ${headersTime - startTime}ms`;
     if (!response.ok) {
       const shouldRetry = await this.shouldRetry(response);
       if (retriesRemaining && shouldRetry) {
@@ -9966,7 +10086,7 @@ var BaseAnthropic = class {
     const request = this.makeRequest(options, null, void 0);
     return new PagePromise(this, request, Page2);
   }
-  async fetchWithTimeout(url2, init, ms, controller) {
+  async fetchWithTimeout(url, init, ms, controller) {
     const { signal, method, ...options } = init || {};
     if (signal)
       signal.addEventListener("abort", () => controller.abort());
@@ -9982,7 +10102,7 @@ var BaseAnthropic = class {
       fetchOptions.method = method.toUpperCase();
     }
     try {
-      return await this.fetch.call(void 0, url2, fetchOptions);
+      return await this.fetch.call(void 0, url, fetchOptions);
     } finally {
       clearTimeout(timeout);
     }
@@ -10048,7 +10168,7 @@ var BaseAnthropic = class {
   async buildRequest(inputOptions, { retryCount = 0 } = {}) {
     const options = { ...inputOptions };
     const { method, path: path3, query, defaultBaseURL } = options;
-    const url2 = this.buildURL(path3, query, defaultBaseURL);
+    const url = this.buildURL(path3, query, defaultBaseURL);
     if ("timeout" in options)
       validatePositiveInteger("timeout", options.timeout);
     options.timeout = options.timeout ?? this.timeout;
@@ -10063,7 +10183,7 @@ var BaseAnthropic = class {
       ...this.fetchOptions ?? {},
       ...options.fetchOptions ?? {}
     };
-    return { req, url: url2, timeout: options.timeout };
+    return { req, url, timeout: options.timeout };
   }
   async buildHeaders({ options, method, bodyHeaders, retryCount }) {
     let idempotencyHeaders = {};
@@ -10148,7 +10268,7 @@ Anthropic.Messages = Messages;
 Anthropic.Models = Models;
 Anthropic.Beta = Beta;
 
-// ../../StrandsAgentsSDKTypescript/dist/src/models/anthropic.js
+// ../../sdk-typescript/dist/src/models/anthropic.js
 var DEFAULT_ANTHROPIC_MODEL_ID = "claude-sonnet-4-5-20250929";
 var CONTEXT_WINDOW_OVERFLOW_ERRORS = ["prompt is too long", "max_tokens exceeded", "input too long"];
 var TEXT_FILE_FORMATS = ["txt", "md", "markdown", "csv", "json", "xml", "html", "yml", "yaml", "js", "ts", "py"];
@@ -10537,7 +10657,7 @@ var AnthropicModel = class extends Model {
   }
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/internal/tslib.mjs
+// ../../sdk-typescript/node_modules/openai/internal/tslib.mjs
 function __classPrivateFieldSet2(receiver, state, value, kind, f) {
   if (kind === "m")
     throw new TypeError("Private method is not writable");
@@ -10555,7 +10675,7 @@ function __classPrivateFieldGet2(receiver, state, kind, f) {
   return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
 }
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/internal/utils/uuid.mjs
+// ../../sdk-typescript/node_modules/openai/internal/utils/uuid.mjs
 var uuid42 = function() {
   const { crypto: crypto2 } = globalThis;
   if (crypto2?.randomUUID) {
@@ -10567,7 +10687,7 @@ var uuid42 = function() {
   return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c) => (+c ^ randomByte() & 15 >> +c / 4).toString(16));
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/internal/errors.mjs
+// ../../sdk-typescript/node_modules/openai/internal/errors.mjs
 function isAbortError2(err) {
   return typeof err === "object" && err !== null && // Spec-compliant fetch implementations
   ("name" in err && err.name === "AbortError" || // Expo fetch
@@ -10598,7 +10718,7 @@ var castToError2 = (err) => {
   return new Error(err);
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/core/error.mjs
+// ../../sdk-typescript/node_modules/openai/core/error.mjs
 var OpenAIError = class extends Error {
 };
 var APIError2 = class _APIError extends OpenAIError {
@@ -10707,10 +10827,10 @@ var InvalidWebhookSignatureError = class extends Error {
   }
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/internal/utils/values.mjs
+// ../../sdk-typescript/node_modules/openai/internal/utils/values.mjs
 var startsWithSchemeRegexp2 = /^[a-z][a-z0-9+.-]*:/i;
-var isAbsoluteURL2 = (url2) => {
-  return startsWithSchemeRegexp2.test(url2);
+var isAbsoluteURL2 = (url) => {
+  return startsWithSchemeRegexp2.test(url);
 };
 var isArray2 = (val) => (isArray2 = Array.isArray, isArray2(val));
 var isReadonlyArray2 = isArray2;
@@ -10747,13 +10867,13 @@ var safeJSON2 = (text) => {
   }
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/internal/utils/sleep.mjs
+// ../../sdk-typescript/node_modules/openai/internal/utils/sleep.mjs
 var sleep2 = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/version.mjs
+// ../../sdk-typescript/node_modules/openai/version.mjs
 var VERSION2 = "6.18.0";
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/internal/detect-platform.mjs
+// ../../sdk-typescript/node_modules/openai/internal/detect-platform.mjs
 var isRunningInBrowser2 = () => {
   return (
     // @ts-ignore
@@ -10887,7 +11007,7 @@ var getPlatformHeaders2 = () => {
   return _platformHeaders2 ?? (_platformHeaders2 = getPlatformProperties2());
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/internal/shims.mjs
+// ../../sdk-typescript/node_modules/openai/internal/shims.mjs
 function getDefaultFetch2() {
   if (typeof fetch !== "undefined") {
     return fetch;
@@ -10959,7 +11079,7 @@ async function CancelReadableStream2(stream) {
   await cancelPromise;
 }
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/internal/request-options.mjs
+// ../../sdk-typescript/node_modules/openai/internal/request-options.mjs
 var FallbackEncoder2 = ({ headers, body }) => {
   return {
     bodyHeaders: {
@@ -10969,7 +11089,7 @@ var FallbackEncoder2 = ({ headers, body }) => {
   };
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/internal/qs/formats.mjs
+// ../../sdk-typescript/node_modules/openai/internal/qs/formats.mjs
 var default_format = "RFC3986";
 var default_formatter = (v) => String(v);
 var formatters = {
@@ -10978,34 +11098,34 @@ var formatters = {
 };
 var RFC1738 = "RFC1738";
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/internal/qs/utils.mjs
+// ../../sdk-typescript/node_modules/openai/internal/qs/utils.mjs
 var has = (obj, key) => (has = Object.hasOwn ?? Function.prototype.call.bind(Object.prototype.hasOwnProperty), has(obj, key));
 var hex_table = /* @__PURE__ */ (() => {
-  const array2 = [];
+  const array = [];
   for (let i = 0; i < 256; ++i) {
-    array2.push("%" + ((i < 16 ? "0" : "") + i.toString(16)).toUpperCase());
+    array.push("%" + ((i < 16 ? "0" : "") + i.toString(16)).toUpperCase());
   }
-  return array2;
+  return array;
 })();
 var limit = 1024;
 var encode = (str2, _defaultEncoder, charset, _kind, format) => {
   if (str2.length === 0) {
     return str2;
   }
-  let string2 = str2;
+  let string = str2;
   if (typeof str2 === "symbol") {
-    string2 = Symbol.prototype.toString.call(str2);
+    string = Symbol.prototype.toString.call(str2);
   } else if (typeof str2 !== "string") {
-    string2 = String(str2);
+    string = String(str2);
   }
   if (charset === "iso-8859-1") {
-    return escape(string2).replace(/%u[0-9a-f]{4}/gi, function($0) {
+    return escape(string).replace(/%u[0-9a-f]{4}/gi, function($0) {
       return "%26%23" + parseInt($0.slice(2), 16) + "%3B";
     });
   }
   let out = "";
-  for (let j = 0; j < string2.length; j += limit) {
-    const segment = string2.length >= limit ? string2.slice(j, j + limit) : string2;
+  for (let j = 0; j < string.length; j += limit) {
+    const segment = string.length >= limit ? string.slice(j, j + limit) : string;
     const arr = [];
     for (let i = 0; i < segment.length; ++i) {
       let c = segment.charCodeAt(i);
@@ -11057,7 +11177,7 @@ function maybe_map(val, fn) {
   return fn(val);
 }
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/internal/qs/stringify.mjs
+// ../../sdk-typescript/node_modules/openai/internal/qs/stringify.mjs
 var array_prefix_generators = {
   brackets(prefix) {
     return String(prefix) + "[]";
@@ -11100,13 +11220,13 @@ function is_non_nullish_primitive(v) {
   return typeof v === "string" || typeof v === "number" || typeof v === "boolean" || typeof v === "symbol" || typeof v === "bigint";
 }
 var sentinel = {};
-function inner_stringify(object4, prefix, generateArrayPrefix, commaRoundTrip, allowEmptyArrays, strictNullHandling, skipNulls, encodeDotInKeys, encoder, filter, sort, allowDots, serializeDate, format, formatter, encodeValuesOnly, charset, sideChannel) {
-  let obj = object4;
+function inner_stringify(object3, prefix, generateArrayPrefix, commaRoundTrip, allowEmptyArrays, strictNullHandling, skipNulls, encodeDotInKeys, encoder, filter, sort, allowDots, serializeDate, format, formatter, encodeValuesOnly, charset, sideChannel) {
+  let obj = object3;
   let tmp_sc = sideChannel;
   let step = 0;
   let find_flag = false;
   while ((tmp_sc = tmp_sc.get(sentinel)) !== void 0 && !find_flag) {
-    const pos = tmp_sc.get(object4);
+    const pos = tmp_sc.get(object3);
     step += 1;
     if (typeof pos !== "undefined") {
       if (pos === step) {
@@ -11182,7 +11302,7 @@ function inner_stringify(object4, prefix, generateArrayPrefix, commaRoundTrip, a
     }
     const encoded_key = allowDots && encodeDotInKeys ? key.replace(/\./g, "%2E") : key;
     const key_prefix = isArray2(obj) ? typeof generateArrayPrefix === "function" ? generateArrayPrefix(adjusted_prefix, encoded_key) : adjusted_prefix : adjusted_prefix + (allowDots ? "." + encoded_key : "[" + encoded_key + "]");
-    sideChannel.set(object4, step);
+    sideChannel.set(object3, step);
     const valueSideChannel = /* @__PURE__ */ new WeakMap();
     valueSideChannel.set(sentinel, sideChannel);
     push_to_array(values, inner_stringify(
@@ -11271,8 +11391,8 @@ function normalize_stringify_options(opts = defaults) {
     strictNullHandling: typeof opts.strictNullHandling === "boolean" ? opts.strictNullHandling : defaults.strictNullHandling
   };
 }
-function stringify(object4, opts = {}) {
-  let obj = object4;
+function stringify(object3, opts = {}) {
+  let obj = object3;
   const options = normalize_stringify_options(opts);
   let obj_keys;
   let filter;
@@ -11335,7 +11455,7 @@ function stringify(object4, opts = {}) {
   return joined.length > 0 ? prefix + joined : "";
 }
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/internal/utils/bytes.mjs
+// ../../sdk-typescript/node_modules/openai/internal/utils/bytes.mjs
 function concatBytes2(buffers) {
   let length = 0;
   for (const buffer of buffers) {
@@ -11360,7 +11480,7 @@ function decodeUTF82(bytes) {
   return (decodeUTF8_2 ?? (decoder = new globalThis.TextDecoder(), decodeUTF8_2 = decoder.decode.bind(decoder)))(bytes);
 }
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/internal/decoders/line.mjs
+// ../../sdk-typescript/node_modules/openai/internal/decoders/line.mjs
 var _LineDecoder_buffer2;
 var _LineDecoder_carriageReturnIndex2;
 var LineDecoder2 = class {
@@ -11437,7 +11557,7 @@ function findDoubleNewlineIndex2(buffer) {
   return -1;
 }
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/internal/utils/log.mjs
+// ../../sdk-typescript/node_modules/openai/internal/utils/log.mjs
 var levelNumbers2 = {
   off: 0,
   error: 200,
@@ -11510,7 +11630,7 @@ var formatRequestDetails2 = (details) => {
   return details;
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/core/streaming.mjs
+// ../../sdk-typescript/node_modules/openai/core/streaming.mjs
 var _Stream_client2;
 var Stream2 = class _Stream {
   constructor(iterator, controller, client) {
@@ -11768,7 +11888,7 @@ function partition2(str2, delimiter) {
   return [str2, "", ""];
 }
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/internal/parse.mjs
+// ../../sdk-typescript/node_modules/openai/internal/parse.mjs
 async function defaultParseResponse2(client, props) {
   const { response, requestLogID, retryOfRequestLogID, startTime } = props;
   const body = await (async () => {
@@ -11818,7 +11938,7 @@ function addRequestID2(value, response) {
   });
 }
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/core/api-promise.mjs
+// ../../sdk-typescript/node_modules/openai/core/api-promise.mjs
 var _APIPromise_client2;
 var APIPromise2 = class _APIPromise extends Promise {
   constructor(client, responsePromise, parseResponse2 = defaultParseResponse2) {
@@ -11881,7 +12001,7 @@ var APIPromise2 = class _APIPromise extends Promise {
 };
 _APIPromise_client2 = /* @__PURE__ */ new WeakMap();
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/core/pagination.mjs
+// ../../sdk-typescript/node_modules/openai/core/pagination.mjs
 var _AbstractPage_client2;
 var AbstractPage2 = class {
   constructor(client, response, body, options) {
@@ -11969,7 +12089,7 @@ var CursorPage = class extends AbstractPage2 {
   }
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/internal/uploads.mjs
+// ../../sdk-typescript/node_modules/openai/internal/uploads.mjs
 var checkFileSupport2 = () => {
   if (typeof File === "undefined") {
     const { process: process2 } = globalThis;
@@ -11986,7 +12106,7 @@ function getName2(value) {
 }
 var isAsyncIterable2 = (value) => value != null && typeof value === "object" && typeof value[Symbol.asyncIterator] === "function";
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/internal/to-file.mjs
+// ../../sdk-typescript/node_modules/openai/internal/to-file.mjs
 var isBlobLike2 = (value) => value != null && typeof value === "object" && typeof value.size === "number" && typeof value.type === "string" && typeof value.text === "function" && typeof value.slice === "function" && typeof value.arrayBuffer === "function";
 var isFileLike2 = (value) => value != null && typeof value === "object" && typeof value.name === "string" && typeof value.lastModified === "number" && isBlobLike2(value);
 var isResponseLike2 = (value) => value != null && typeof value === "object" && typeof value.url === "string" && typeof value.blob === "function";
@@ -12038,14 +12158,14 @@ function propsForError2(value) {
   return `; props: [${props.map((p) => `"${p}"`).join(", ")}]`;
 }
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/core/resource.mjs
+// ../../sdk-typescript/node_modules/openai/core/resource.mjs
 var APIResource2 = class {
   constructor(client) {
     this._client = client;
   }
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/internal/utils/path.mjs
+// ../../sdk-typescript/node_modules/openai/internal/utils/path.mjs
 function encodeURIPath2(str2) {
   return str2.replace(/[^A-Za-z0-9\-._~!$&'()*+,;=:@]+/g, encodeURIComponent);
 }
@@ -12100,7 +12220,7 @@ ${underline}`);
 };
 var path2 = /* @__PURE__ */ createPathTagFunction2(encodeURIPath2);
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/chat/completions/messages.mjs
+// ../../sdk-typescript/node_modules/openai/resources/chat/completions/messages.mjs
 var Messages2 = class extends APIResource2 {
   /**
    * Get the messages in a stored chat completion. Only Chat Completions that have
@@ -12121,7 +12241,7 @@ var Messages2 = class extends APIResource2 {
   }
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/lib/parser.mjs
+// ../../sdk-typescript/node_modules/openai/lib/parser.mjs
 function isChatCompletionFunctionTool(tool2) {
   return tool2 !== void 0 && "function" in tool2 && tool2.function !== void 0;
 }
@@ -12228,7 +12348,7 @@ function validateInputTools(tools) {
   }
 }
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/lib/chatCompletionUtils.mjs
+// ../../sdk-typescript/node_modules/openai/lib/chatCompletionUtils.mjs
 var isAssistantMessage = (message) => {
   return message?.role === "assistant";
 };
@@ -12236,7 +12356,7 @@ var isToolMessage = (message) => {
   return message?.role === "tool";
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/lib/EventStream.mjs
+// ../../sdk-typescript/node_modules/openai/lib/EventStream.mjs
 var _EventStream_instances;
 var _EventStream_connectedPromise;
 var _EventStream_resolveConnectedPromise;
@@ -12425,12 +12545,12 @@ _EventStream_connectedPromise = /* @__PURE__ */ new WeakMap(), _EventStream_reso
   return this._emit("error", new OpenAIError(String(error)));
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/lib/RunnableFunction.mjs
+// ../../sdk-typescript/node_modules/openai/lib/RunnableFunction.mjs
 function isRunnableFunctionWithParse(fn) {
   return typeof fn.parse === "function";
 }
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/lib/AbstractChatCompletionRunner.mjs
+// ../../sdk-typescript/node_modules/openai/lib/AbstractChatCompletionRunner.mjs
 var _AbstractChatCompletionRunner_instances;
 var _AbstractChatCompletionRunner_getFinalContent;
 var _AbstractChatCompletionRunner_getFinalMessage;
@@ -12700,7 +12820,7 @@ _AbstractChatCompletionRunner_instances = /* @__PURE__ */ new WeakSet(), _Abstra
   return typeof rawContent === "string" ? rawContent : rawContent === void 0 ? "undefined" : JSON.stringify(rawContent);
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/lib/ChatCompletionRunner.mjs
+// ../../sdk-typescript/node_modules/openai/lib/ChatCompletionRunner.mjs
 var ChatCompletionRunner = class _ChatCompletionRunner extends AbstractChatCompletionRunner {
   static runTools(client, params, options) {
     const runner = new _ChatCompletionRunner();
@@ -12719,7 +12839,7 @@ var ChatCompletionRunner = class _ChatCompletionRunner extends AbstractChatCompl
   }
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/_vendor/partial-json-parser/parser.mjs
+// ../../sdk-typescript/node_modules/openai/_vendor/partial-json-parser/parser.mjs
 var STR = 1;
 var NUM = 2;
 var ARR = 4;
@@ -12931,7 +13051,7 @@ var _parseJSON = (jsonString, allow) => {
 };
 var partialParse2 = (input) => parseJSON(input, Allow.ALL ^ Allow.NUM);
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/lib/ChatCompletionStream.mjs
+// ../../sdk-typescript/node_modules/openai/lib/ChatCompletionStream.mjs
 var _ChatCompletionStream_instances;
 var _ChatCompletionStream_params;
 var _ChatCompletionStream_choiceEventStates;
@@ -13411,7 +13531,7 @@ function assertIsEmpty(obj) {
 function assertNever(_x) {
 }
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/lib/ChatCompletionStreamingRunner.mjs
+// ../../sdk-typescript/node_modules/openai/lib/ChatCompletionStreamingRunner.mjs
 var ChatCompletionStreamingRunner = class _ChatCompletionStreamingRunner extends ChatCompletionStream {
   static fromReadableStream(stream) {
     const runner = new _ChatCompletionStreamingRunner(null);
@@ -13432,7 +13552,7 @@ var ChatCompletionStreamingRunner = class _ChatCompletionStreamingRunner extends
   }
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/chat/completions/completions.mjs
+// ../../sdk-typescript/node_modules/openai/resources/chat/completions/completions.mjs
 var Completions2 = class extends APIResource2 {
   constructor() {
     super(...arguments);
@@ -13523,7 +13643,7 @@ var Completions2 = class extends APIResource2 {
 };
 Completions2.Messages = Messages2;
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/chat/chat.mjs
+// ../../sdk-typescript/node_modules/openai/resources/chat/chat.mjs
 var Chat = class extends APIResource2 {
   constructor() {
     super(...arguments);
@@ -13532,112 +13652,112 @@ var Chat = class extends APIResource2 {
 };
 Chat.Completions = Completions2;
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/audio/audio.mjs
+// ../../sdk-typescript/node_modules/openai/resources/audio/audio.mjs
 var S4 = class {
   constructor() {
   }
 };
 var Audio = S4;
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/batches.mjs
+// ../../sdk-typescript/node_modules/openai/resources/batches.mjs
 var S5 = class {
   constructor() {
   }
 };
 var Batches2 = S5;
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/beta/beta.mjs
+// ../../sdk-typescript/node_modules/openai/resources/beta/beta.mjs
 var S6 = class {
   constructor() {
   }
 };
 var Beta2 = S6;
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/completions.mjs
+// ../../sdk-typescript/node_modules/openai/resources/completions.mjs
 var S7 = class {
   constructor() {
   }
 };
 var Completions3 = S7;
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/containers/containers.mjs
+// ../../sdk-typescript/node_modules/openai/resources/containers/containers.mjs
 var S8 = class {
   constructor() {
   }
 };
 var Containers = S8;
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/conversations/conversations.mjs
+// ../../sdk-typescript/node_modules/openai/resources/conversations/conversations.mjs
 var S9 = class {
   constructor() {
   }
 };
 var Conversations = S9;
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/embeddings.mjs
+// ../../sdk-typescript/node_modules/openai/resources/embeddings.mjs
 var S10 = class {
   constructor() {
   }
 };
 var Embeddings = S10;
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/evals/evals.mjs
+// ../../sdk-typescript/node_modules/openai/resources/evals/evals.mjs
 var S11 = class {
   constructor() {
   }
 };
 var Evals = S11;
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/files.mjs
+// ../../sdk-typescript/node_modules/openai/resources/files.mjs
 var S12 = class {
   constructor() {
   }
 };
 var Files = S12;
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/fine-tuning/fine-tuning.mjs
+// ../../sdk-typescript/node_modules/openai/resources/fine-tuning/fine-tuning.mjs
 var S13 = class {
   constructor() {
   }
 };
 var FineTuning = S13;
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/graders/graders.mjs
+// ../../sdk-typescript/node_modules/openai/resources/graders/graders.mjs
 var S14 = class {
   constructor() {
   }
 };
 var Graders = S14;
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/images.mjs
+// ../../sdk-typescript/node_modules/openai/resources/images.mjs
 var S15 = class {
   constructor() {
   }
 };
 var Images = S15;
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/models.mjs
+// ../../sdk-typescript/node_modules/openai/resources/models.mjs
 var S16 = class {
   constructor() {
   }
 };
 var Models2 = S16;
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/moderations.mjs
+// ../../sdk-typescript/node_modules/openai/resources/moderations.mjs
 var S17 = class {
   constructor() {
   }
 };
 var Moderations = S17;
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/realtime/realtime.mjs
+// ../../sdk-typescript/node_modules/openai/resources/realtime/realtime.mjs
 var S18 = class {
   constructor() {
   }
 };
 var Realtime = S18;
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/lib/ResponsesParser.mjs
+// ../../sdk-typescript/node_modules/openai/lib/ResponsesParser.mjs
 function maybeParseResponse(response, params) {
   if (!params || !hasAutoParseableInput2(params)) {
     return {
@@ -13758,7 +13878,7 @@ function addOutputText(rsp) {
   rsp.output_text = texts.join("");
 }
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/lib/responses/ResponseStream.mjs
+// ../../sdk-typescript/node_modules/openai/lib/responses/ResponseStream.mjs
 var _ResponseStream_instances;
 var _ResponseStream_params;
 var _ResponseStream_currentResponseSnapshot;
@@ -14020,7 +14140,7 @@ function finalizeResponse(snapshot, params) {
   return maybeParseResponse(snapshot, params);
 }
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/responses/input-items.mjs
+// ../../sdk-typescript/node_modules/openai/resources/responses/input-items.mjs
 var InputItems = class extends APIResource2 {
   /**
    * Returns a list of input items for a given response.
@@ -14040,7 +14160,7 @@ var InputItems = class extends APIResource2 {
   }
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/responses/input-tokens.mjs
+// ../../sdk-typescript/node_modules/openai/resources/responses/input-tokens.mjs
 var InputTokens = class extends APIResource2 {
   /**
    * Get input token counts
@@ -14055,7 +14175,7 @@ var InputTokens = class extends APIResource2 {
   }
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/internal/headers.mjs
+// ../../sdk-typescript/node_modules/openai/internal/headers.mjs
 var brand_privateNullableHeaders2 = /* @__PURE__ */ Symbol("brand.privateNullableHeaders");
 function* iterateHeaders2(headers) {
   if (!headers)
@@ -14118,7 +14238,7 @@ var buildHeaders2 = (newHeaders) => {
   return { [brand_privateNullableHeaders2]: true, values: targetHeaders, nulls: nullHeaders };
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/responses/responses.mjs
+// ../../sdk-typescript/node_modules/openai/resources/responses/responses.mjs
 var Responses = class extends APIResource2 {
   constructor() {
     super(...arguments);
@@ -14202,35 +14322,35 @@ var Responses = class extends APIResource2 {
 Responses.InputItems = InputItems;
 Responses.InputTokens = InputTokens;
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/uploads/uploads.mjs
+// ../../sdk-typescript/node_modules/openai/resources/uploads/uploads.mjs
 var S19 = class {
   constructor() {
   }
 };
 var Uploads = S19;
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/vector-stores/vector-stores.mjs
+// ../../sdk-typescript/node_modules/openai/resources/vector-stores/vector-stores.mjs
 var S20 = class {
   constructor() {
   }
 };
 var VectorStores = S20;
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/videos.mjs
+// ../../sdk-typescript/node_modules/openai/resources/videos.mjs
 var S21 = class {
   constructor() {
   }
 };
 var Videos = S21;
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/resources/webhooks.mjs
+// ../../sdk-typescript/node_modules/openai/resources/webhooks.mjs
 var S22 = class {
   constructor() {
   }
 };
 var Webhooks = S22;
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/internal/utils/env.mjs
+// ../../sdk-typescript/node_modules/openai/internal/utils/env.mjs
 var readEnv2 = (env) => {
   if (typeof globalThis.process !== "undefined") {
     return globalThis.process.env?.[env]?.trim() ?? void 0;
@@ -14241,7 +14361,7 @@ var readEnv2 = (env) => {
   return void 0;
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/openai/client.mjs
+// ../../sdk-typescript/node_modules/openai/client.mjs
 var _OpenAI_instances;
 var _a2;
 var _OpenAI_encoder;
@@ -14383,15 +14503,15 @@ var OpenAI = class {
   }
   buildURL(path3, query, defaultBaseURL) {
     const baseURL = !__classPrivateFieldGet2(this, _OpenAI_instances, "m", _OpenAI_baseURLOverridden).call(this) && defaultBaseURL || this.baseURL;
-    const url2 = isAbsoluteURL2(path3) ? new URL(path3) : new URL(baseURL + (baseURL.endsWith("/") && path3.startsWith("/") ? path3.slice(1) : path3));
+    const url = isAbsoluteURL2(path3) ? new URL(path3) : new URL(baseURL + (baseURL.endsWith("/") && path3.startsWith("/") ? path3.slice(1) : path3));
     const defaultQuery = this.defaultQuery();
     if (!isEmptyObj2(defaultQuery)) {
       query = { ...defaultQuery, ...query };
     }
     if (typeof query === "object" && query && !Array.isArray(query)) {
-      url2.search = this.stringifyQuery(query);
+      url.search = this.stringifyQuery(query);
     }
-    return url2.toString();
+    return url.toString();
   }
   /**
    * Used as a callback for mutating the given `FinalRequestOptions` object.
@@ -14405,7 +14525,7 @@ var OpenAI = class {
    * This is useful for cases where you want to add certain headers based off of
    * the request properties, e.g. `method` or `url`.
    */
-  async prepareRequest(request, { url: url2, options }) {
+  async prepareRequest(request, { url, options }) {
   }
   get(path3, opts) {
     return this.methodRequest("get", path3, opts);
@@ -14437,17 +14557,17 @@ var OpenAI = class {
       retriesRemaining = maxRetries;
     }
     await this.prepareOptions(options);
-    const { req, url: url2, timeout } = await this.buildRequest(options, {
+    const { req, url, timeout } = await this.buildRequest(options, {
       retryCount: maxRetries - retriesRemaining
     });
-    await this.prepareRequest(req, { url: url2, options });
+    await this.prepareRequest(req, { url, options });
     const requestLogID = "log_" + (Math.random() * (1 << 24) | 0).toString(16).padStart(6, "0");
     const retryLogStr = retryOfRequestLogID === void 0 ? "" : `, retryOf: ${retryOfRequestLogID}`;
     const startTime = Date.now();
     loggerFor2(this).debug(`[${requestLogID}] sending request`, formatRequestDetails2({
       retryOfRequestLogID,
       method: options.method,
-      url: url2,
+      url,
       options,
       headers: req.headers
     }));
@@ -14455,7 +14575,7 @@ var OpenAI = class {
       throw new APIUserAbortError2();
     }
     const controller = new AbortController();
-    const response = await this.fetchWithTimeout(url2, req, timeout, controller).catch(castToError2);
+    const response = await this.fetchWithTimeout(url, req, timeout, controller).catch(castToError2);
     const headersTime = Date.now();
     if (response instanceof globalThis.Error) {
       const retryMessage = `retrying, ${retriesRemaining} attempts remaining`;
@@ -14467,7 +14587,7 @@ var OpenAI = class {
         loggerFor2(this).info(`[${requestLogID}] connection ${isTimeout ? "timed out" : "failed"} - ${retryMessage}`);
         loggerFor2(this).debug(`[${requestLogID}] connection ${isTimeout ? "timed out" : "failed"} (${retryMessage})`, formatRequestDetails2({
           retryOfRequestLogID,
-          url: url2,
+          url,
           durationMs: headersTime - startTime,
           message: response.message
         }));
@@ -14476,7 +14596,7 @@ var OpenAI = class {
       loggerFor2(this).info(`[${requestLogID}] connection ${isTimeout ? "timed out" : "failed"} - error; no more retries left`);
       loggerFor2(this).debug(`[${requestLogID}] connection ${isTimeout ? "timed out" : "failed"} (error; no more retries left)`, formatRequestDetails2({
         retryOfRequestLogID,
-        url: url2,
+        url,
         durationMs: headersTime - startTime,
         message: response.message
       }));
@@ -14486,7 +14606,7 @@ var OpenAI = class {
       throw new APIConnectionError2({ cause: response });
     }
     const specialHeaders = [...response.headers.entries()].filter(([name]) => name === "x-request-id").map(([name, value]) => ", " + name + ": " + JSON.stringify(value)).join("");
-    const responseInfo = `[${requestLogID}${retryLogStr}${specialHeaders}] ${req.method} ${url2} ${response.ok ? "succeeded" : "failed"} with status ${response.status} in ${headersTime - startTime}ms`;
+    const responseInfo = `[${requestLogID}${retryLogStr}${specialHeaders}] ${req.method} ${url} ${response.ok ? "succeeded" : "failed"} with status ${response.status} in ${headersTime - startTime}ms`;
     if (!response.ok) {
       const shouldRetry = await this.shouldRetry(response);
       if (retriesRemaining && shouldRetry) {
@@ -14535,7 +14655,7 @@ var OpenAI = class {
     const request = this.makeRequest(options, null, void 0);
     return new PagePromise2(this, request, Page2);
   }
-  async fetchWithTimeout(url2, init, ms, controller) {
+  async fetchWithTimeout(url, init, ms, controller) {
     const { signal, method, ...options } = init || {};
     const abort = this._makeAbort(controller);
     if (signal)
@@ -14552,7 +14672,7 @@ var OpenAI = class {
       fetchOptions.method = method.toUpperCase();
     }
     try {
-      return await this.fetch.call(void 0, url2, fetchOptions);
+      return await this.fetch.call(void 0, url, fetchOptions);
     } finally {
       clearTimeout(timeout);
     }
@@ -14609,7 +14729,7 @@ var OpenAI = class {
   async buildRequest(inputOptions, { retryCount = 0 } = {}) {
     const options = { ...inputOptions };
     const { method, path: path3, query, defaultBaseURL } = options;
-    const url2 = this.buildURL(path3, query, defaultBaseURL);
+    const url = this.buildURL(path3, query, defaultBaseURL);
     if ("timeout" in options)
       validatePositiveInteger2("timeout", options.timeout);
     options.timeout = options.timeout ?? this.timeout;
@@ -14624,7 +14744,7 @@ var OpenAI = class {
       ...this.fetchOptions ?? {},
       ...options.fetchOptions ?? {}
     };
-    return { req, url: url2, timeout: options.timeout };
+    return { req, url, timeout: options.timeout };
   }
   async buildHeaders({ options, method, bodyHeaders, retryCount }) {
     let idempotencyHeaders = {};
@@ -14719,7 +14839,7 @@ OpenAI.Evals = Evals;
 OpenAI.Containers = Containers;
 OpenAI.Videos = Videos;
 
-// ../../StrandsAgentsSDKTypescript/dist/src/models/openai.js
+// ../../sdk-typescript/dist/src/models/openai.js
 var DEFAULT_OPENAI_MODEL_ID = "gpt-4o";
 var OPENAI_CONTEXT_WINDOW_OVERFLOW_PATTERNS = [
   "maximum context length",
@@ -15314,7 +15434,7 @@ var OpenAIModel = class extends Model {
   }
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@modelcontextprotocol/sdk/dist/esm/shared/transport.js
+// ../../sdk-typescript/node_modules/@modelcontextprotocol/sdk/dist/esm/shared/transport.js
 function normalizeHeaders(headers) {
   if (!headers)
     return {};
@@ -15330,18 +15450,18 @@ function createFetchWithInit(baseFetch = fetch, baseInit) {
   if (!baseInit) {
     return baseFetch;
   }
-  return async (url2, init) => {
+  return async (url, init) => {
     const mergedInit = {
       ...baseInit,
       ...init,
       // Headers need special handling - merge instead of replace
       headers: init?.headers ? { ...normalizeHeaders(baseInit.headers), ...normalizeHeaders(init.headers) } : baseInit.headers
     };
-    return baseFetch(url2, mergedInit);
+    return baseFetch(url, mergedInit);
   };
 }
 
-// ../../StrandsAgentsSDKTypescript/node_modules/pkce-challenge/dist/index.browser.js
+// ../../sdk-typescript/node_modules/pkce-challenge/dist/index.browser.js
 var crypto;
 crypto = globalThis.crypto;
 async function getRandomValues(size) {
@@ -15382,227 +15502,18 @@ async function pkceChallenge(length) {
   };
 }
 
-// stubs/zod/v4.js
-var identity4 = (v) => v;
-var schema4 = () => ({
-  parse: identity4,
-  safeParse: (v) => ({ success: true, data: v }),
-  optional: schema4,
-  nullable: schema4,
-  array: schema4,
-  object: schema4,
-  string: schema4,
-  number: schema4,
-  boolean: schema4,
-  enum: schema4,
-  union: schema4,
-  literal: schema4,
-  record: schema4,
-  tuple: schema4,
-  intersection: schema4,
-  lazy: schema4,
-  any: schema4,
-  unknown: schema4,
-  void: schema4,
-  never: schema4,
-  undefined: schema4,
-  null: schema4,
-  default: schema4,
-  transform: schema4,
-  refine: schema4,
-  pipe: schema4,
-  describe: schema4,
-  brand: schema4,
-  catch: schema4,
-  readonly: schema4,
-  extend: schema4,
-  merge: schema4,
-  pick: schema4,
-  omit: schema4,
-  partial: schema4,
-  required: schema4,
-  passthrough: schema4,
-  strict: schema4,
-  strip: schema4,
-  keyof: schema4,
-  shape: {},
-  _def: { typeName: "ZodObject" },
-  _type: void 0,
-  _output: void 0,
-  _input: void 0,
-  and: schema4,
-  or: schema4,
-  isOptional: () => false,
-  isNullable: () => false
-});
-var z4 = new Proxy(schema4(), {
-  get(target, prop) {
-    if (prop === "ZodType" || prop === "ZodObject" || prop === "ZodString" || prop === "ZodNumber" || prop === "ZodBoolean" || prop === "ZodArray" || prop === "ZodEnum" || prop === "ZodUnion" || prop === "ZodLiteral" || prop === "ZodRecord" || prop === "ZodTuple" || prop === "ZodIntersection" || prop === "ZodLazy" || prop === "ZodAny" || prop === "ZodUnknown" || prop === "ZodVoid" || prop === "ZodNever" || prop === "ZodUndefined" || prop === "ZodNull" || prop === "ZodDefault" || prop === "ZodOptional" || prop === "ZodNullable") {
-      return class {
-        static create = schema4;
-        constructor() {
-          return schema4();
-        }
-      };
-    }
-    if (prop === "instanceof") return () => schema4();
-    if (prop === "custom") return () => schema4();
-    if (prop === "coerce") return z4;
-    if (prop === "NEVER") return /* @__PURE__ */ Symbol("NEVER");
-    return target[prop] ?? schema4;
-  }
-});
-var ZodFirstPartyTypeKind4 = new Proxy({}, { get: (_, p) => p });
-var ZodIssueCode4 = new Proxy({}, { get: (_, p) => p });
-var ZodParsedType4 = new Proxy({}, { get: (_, p) => p });
+// ../../sdk-typescript/node_modules/@modelcontextprotocol/sdk/dist/esm/shared/auth.js
+var S23 = { parse: (v) => v, safeParse: (v) => ({ success: true, data: v }), optional: () => S23, or: () => S23, merge: () => S23, transform: () => S23, looseObject: () => S23, object: () => S23, string: () => S23, array: () => S23, boolean: () => S23, number: () => S23, literal: () => S23, superRefine: () => S23, refine: () => S23 };
+var OAuthProtectedResourceMetadataSchema = S23;
+var OAuthMetadataSchema = S23;
+var OpenIdProviderDiscoveryMetadataSchema = S23;
+var OAuthTokensSchema = S23;
+var OAuthErrorResponseSchema = S23;
+var OAuthClientInformationFullSchema = S23;
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@modelcontextprotocol/sdk/dist/esm/shared/auth.js
-var SafeUrlSchema = (void 0)().superRefine((val, ctx) => {
-  if (!URL.canParse(val)) {
-    ctx.addIssue({
-      code: ZodIssueCode4.custom,
-      message: "URL must be parseable",
-      fatal: true
-    });
-    return void 0;
-  }
-}).refine((url2) => {
-  const u = new URL(url2);
-  return u.protocol !== "javascript:" && u.protocol !== "data:" && u.protocol !== "vbscript:";
-}, { message: "URL cannot use javascript:, data:, or vbscript: scheme" });
-var OAuthProtectedResourceMetadataSchema = (void 0)({
-  resource: (void 0)().url(),
-  authorization_servers: (void 0)(SafeUrlSchema).optional(),
-  jwks_uri: (void 0)().url().optional(),
-  scopes_supported: (void 0)((void 0)()).optional(),
-  bearer_methods_supported: (void 0)((void 0)()).optional(),
-  resource_signing_alg_values_supported: (void 0)((void 0)()).optional(),
-  resource_name: (void 0)().optional(),
-  resource_documentation: (void 0)().optional(),
-  resource_policy_uri: (void 0)().url().optional(),
-  resource_tos_uri: (void 0)().url().optional(),
-  tls_client_certificate_bound_access_tokens: (void 0)().optional(),
-  authorization_details_types_supported: (void 0)((void 0)()).optional(),
-  dpop_signing_alg_values_supported: (void 0)((void 0)()).optional(),
-  dpop_bound_access_tokens_required: (void 0)().optional()
-});
-var OAuthMetadataSchema = (void 0)({
-  issuer: (void 0)(),
-  authorization_endpoint: SafeUrlSchema,
-  token_endpoint: SafeUrlSchema,
-  registration_endpoint: SafeUrlSchema.optional(),
-  scopes_supported: (void 0)((void 0)()).optional(),
-  response_types_supported: (void 0)((void 0)()),
-  response_modes_supported: (void 0)((void 0)()).optional(),
-  grant_types_supported: (void 0)((void 0)()).optional(),
-  token_endpoint_auth_methods_supported: (void 0)((void 0)()).optional(),
-  token_endpoint_auth_signing_alg_values_supported: (void 0)((void 0)()).optional(),
-  service_documentation: SafeUrlSchema.optional(),
-  revocation_endpoint: SafeUrlSchema.optional(),
-  revocation_endpoint_auth_methods_supported: (void 0)((void 0)()).optional(),
-  revocation_endpoint_auth_signing_alg_values_supported: (void 0)((void 0)()).optional(),
-  introspection_endpoint: (void 0)().optional(),
-  introspection_endpoint_auth_methods_supported: (void 0)((void 0)()).optional(),
-  introspection_endpoint_auth_signing_alg_values_supported: (void 0)((void 0)()).optional(),
-  code_challenge_methods_supported: (void 0)((void 0)()).optional(),
-  client_id_metadata_document_supported: (void 0)().optional()
-});
-var OpenIdProviderMetadataSchema = (void 0)({
-  issuer: (void 0)(),
-  authorization_endpoint: SafeUrlSchema,
-  token_endpoint: SafeUrlSchema,
-  userinfo_endpoint: SafeUrlSchema.optional(),
-  jwks_uri: SafeUrlSchema,
-  registration_endpoint: SafeUrlSchema.optional(),
-  scopes_supported: (void 0)((void 0)()).optional(),
-  response_types_supported: (void 0)((void 0)()),
-  response_modes_supported: (void 0)((void 0)()).optional(),
-  grant_types_supported: (void 0)((void 0)()).optional(),
-  acr_values_supported: (void 0)((void 0)()).optional(),
-  subject_types_supported: (void 0)((void 0)()),
-  id_token_signing_alg_values_supported: (void 0)((void 0)()),
-  id_token_encryption_alg_values_supported: (void 0)((void 0)()).optional(),
-  id_token_encryption_enc_values_supported: (void 0)((void 0)()).optional(),
-  userinfo_signing_alg_values_supported: (void 0)((void 0)()).optional(),
-  userinfo_encryption_alg_values_supported: (void 0)((void 0)()).optional(),
-  userinfo_encryption_enc_values_supported: (void 0)((void 0)()).optional(),
-  request_object_signing_alg_values_supported: (void 0)((void 0)()).optional(),
-  request_object_encryption_alg_values_supported: (void 0)((void 0)()).optional(),
-  request_object_encryption_enc_values_supported: (void 0)((void 0)()).optional(),
-  token_endpoint_auth_methods_supported: (void 0)((void 0)()).optional(),
-  token_endpoint_auth_signing_alg_values_supported: (void 0)((void 0)()).optional(),
-  display_values_supported: (void 0)((void 0)()).optional(),
-  claim_types_supported: (void 0)((void 0)()).optional(),
-  claims_supported: (void 0)((void 0)()).optional(),
-  service_documentation: (void 0)().optional(),
-  claims_locales_supported: (void 0)((void 0)()).optional(),
-  ui_locales_supported: (void 0)((void 0)()).optional(),
-  claims_parameter_supported: (void 0)().optional(),
-  request_parameter_supported: (void 0)().optional(),
-  request_uri_parameter_supported: (void 0)().optional(),
-  require_request_uri_registration: (void 0)().optional(),
-  op_policy_uri: SafeUrlSchema.optional(),
-  op_tos_uri: SafeUrlSchema.optional(),
-  client_id_metadata_document_supported: (void 0)().optional()
-});
-var OpenIdProviderDiscoveryMetadataSchema = (void 0)({
-  ...OpenIdProviderMetadataSchema.shape,
-  ...OAuthMetadataSchema.pick({
-    code_challenge_methods_supported: true
-  }).shape
-});
-var OAuthTokensSchema = (void 0)({
-  access_token: (void 0)(),
-  id_token: (void 0)().optional(),
-  // Optional for OAuth 2.1, but necessary in OpenID Connect
-  token_type: (void 0)(),
-  expires_in: (void 0).number().optional(),
-  scope: (void 0)().optional(),
-  refresh_token: (void 0)().optional()
-}).strip();
-var OAuthErrorResponseSchema = (void 0)({
-  error: (void 0)(),
-  error_description: (void 0)().optional(),
-  error_uri: (void 0)().optional()
-});
-var OptionalSafeUrlSchema = SafeUrlSchema.optional().or((void 0)("").transform(() => void 0));
-var OAuthClientMetadataSchema = (void 0)({
-  redirect_uris: (void 0)(SafeUrlSchema),
-  token_endpoint_auth_method: (void 0)().optional(),
-  grant_types: (void 0)((void 0)()).optional(),
-  response_types: (void 0)((void 0)()).optional(),
-  client_name: (void 0)().optional(),
-  client_uri: SafeUrlSchema.optional(),
-  logo_uri: OptionalSafeUrlSchema,
-  scope: (void 0)().optional(),
-  contacts: (void 0)((void 0)()).optional(),
-  tos_uri: OptionalSafeUrlSchema,
-  policy_uri: (void 0)().optional(),
-  jwks_uri: SafeUrlSchema.optional(),
-  jwks: (void 0)().optional(),
-  software_id: (void 0)().optional(),
-  software_version: (void 0)().optional(),
-  software_statement: (void 0)().optional()
-}).strip();
-var OAuthClientInformationSchema = (void 0)({
-  client_id: (void 0)(),
-  client_secret: (void 0)().optional(),
-  client_id_issued_at: (void 0)().optional(),
-  client_secret_expires_at: (void 0)().optional()
-}).strip();
-var OAuthClientInformationFullSchema = OAuthClientMetadataSchema.merge(OAuthClientInformationSchema);
-var OAuthClientRegistrationErrorSchema = (void 0)({
-  error: (void 0)(),
-  error_description: (void 0)().optional()
-}).strip();
-var OAuthTokenRevocationRequestSchema = (void 0)({
-  token: (void 0)(),
-  token_type_hint: (void 0)().optional()
-}).strip();
-
-// ../../StrandsAgentsSDKTypescript/node_modules/@modelcontextprotocol/sdk/dist/esm/shared/auth-utils.js
-function resourceUrlFromServerUrl(url2) {
-  const resourceURL = typeof url2 === "string" ? new URL(url2) : new URL(url2.href);
+// ../../sdk-typescript/node_modules/@modelcontextprotocol/sdk/dist/esm/shared/auth-utils.js
+function resourceUrlFromServerUrl(url) {
+  const resourceURL = typeof url === "string" ? new URL(url) : new URL(url.href);
   resourceURL.hash = "";
   return resourceURL;
 }
@@ -15620,7 +15531,7 @@ function checkResourceAllowed({ requestedResource, configuredResource }) {
   return requestedPath.startsWith(configuredPath);
 }
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@modelcontextprotocol/sdk/dist/esm/server/auth/errors.js
+// ../../sdk-typescript/node_modules/@modelcontextprotocol/sdk/dist/esm/server/auth/errors.js
 var OAuthError = class extends Error {
   constructor(message, errorUri) {
     super(message);
@@ -15715,7 +15626,7 @@ var OAUTH_ERRORS = {
   [InvalidTargetError.errorCode]: InvalidTargetError
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@modelcontextprotocol/sdk/dist/esm/client/auth.js
+// ../../sdk-typescript/node_modules/@modelcontextprotocol/sdk/dist/esm/client/auth.js
 var UnauthorizedError = class extends Error {
   constructor(message) {
     super(message ?? "Unauthorized");
@@ -15898,8 +15809,8 @@ function isHttpsUrl(value) {
   if (!value)
     return false;
   try {
-    const url2 = new URL(value);
-    return url2.protocol === "https:" && url2.pathname !== "/";
+    const url = new URL(value);
+    return url.protocol === "https:" && url.pathname !== "/";
   } catch {
     return false;
   }
@@ -15969,13 +15880,13 @@ async function discoverOAuthProtectedResourceMetadata(serverUrl, opts, fetchFn =
   }
   return OAuthProtectedResourceMetadataSchema.parse(await response.json());
 }
-async function fetchWithCorsRetry(url2, headers, fetchFn = fetch) {
+async function fetchWithCorsRetry(url, headers, fetchFn = fetch) {
   try {
-    return await fetchFn(url2, { headers });
+    return await fetchFn(url, { headers });
   } catch (error) {
     if (error instanceof TypeError) {
       if (headers) {
-        return fetchWithCorsRetry(url2, void 0, fetchFn);
+        return fetchWithCorsRetry(url, void 0, fetchFn);
       } else {
         return void 0;
       }
@@ -15989,11 +15900,11 @@ function buildWellKnownPath(wellKnownPrefix, pathname = "", options = {}) {
   }
   return options.prependPathname ? `${pathname}/.well-known/${wellKnownPrefix}` : `/.well-known/${wellKnownPrefix}${pathname}`;
 }
-async function tryMetadataDiscovery(url2, protocolVersion, fetchFn = fetch) {
+async function tryMetadataDiscovery(url, protocolVersion, fetchFn = fetch) {
   const headers = {
     "MCP-Protocol-Version": protocolVersion
   };
-  return await fetchWithCorsRetry(url2, headers, fetchFn);
+  return await fetchWithCorsRetry(url, headers, fetchFn);
 }
 function shouldAttemptFallback(response, pathname) {
   return !response || response.status >= 400 && response.status < 500 && pathname !== "/";
@@ -16001,15 +15912,15 @@ function shouldAttemptFallback(response, pathname) {
 async function discoverMetadataWithFallback(serverUrl, wellKnownType, fetchFn, opts) {
   const issuer = new URL(serverUrl);
   const protocolVersion = opts?.protocolVersion ?? LATEST_PROTOCOL_VERSION;
-  let url2;
+  let url;
   if (opts?.metadataUrl) {
-    url2 = new URL(opts.metadataUrl);
+    url = new URL(opts.metadataUrl);
   } else {
     const wellKnownPath = buildWellKnownPath(wellKnownType, issuer.pathname);
-    url2 = new URL(wellKnownPath, opts?.metadataServerUrl ?? issuer);
-    url2.search = issuer.search;
+    url = new URL(wellKnownPath, opts?.metadataServerUrl ?? issuer);
+    url.search = issuer.search;
   }
-  let response = await tryMetadataDiscovery(url2, protocolVersion, fetchFn);
+  let response = await tryMetadataDiscovery(url, protocolVersion, fetchFn);
   if (!opts?.metadataUrl && shouldAttemptFallback(response, issuer.pathname)) {
     const rootUrl = new URL(`/.well-known/${wellKnownType}`, issuer);
     response = await tryMetadataDiscovery(rootUrl, protocolVersion, fetchFn);
@@ -16017,34 +15928,34 @@ async function discoverMetadataWithFallback(serverUrl, wellKnownType, fetchFn, o
   return response;
 }
 function buildDiscoveryUrls(authorizationServerUrl) {
-  const url2 = typeof authorizationServerUrl === "string" ? new URL(authorizationServerUrl) : authorizationServerUrl;
-  const hasPath = url2.pathname !== "/";
+  const url = typeof authorizationServerUrl === "string" ? new URL(authorizationServerUrl) : authorizationServerUrl;
+  const hasPath = url.pathname !== "/";
   const urlsToTry = [];
   if (!hasPath) {
     urlsToTry.push({
-      url: new URL("/.well-known/oauth-authorization-server", url2.origin),
+      url: new URL("/.well-known/oauth-authorization-server", url.origin),
       type: "oauth"
     });
     urlsToTry.push({
-      url: new URL(`/.well-known/openid-configuration`, url2.origin),
+      url: new URL(`/.well-known/openid-configuration`, url.origin),
       type: "oidc"
     });
     return urlsToTry;
   }
-  let pathname = url2.pathname;
+  let pathname = url.pathname;
   if (pathname.endsWith("/")) {
     pathname = pathname.slice(0, -1);
   }
   urlsToTry.push({
-    url: new URL(`/.well-known/oauth-authorization-server${pathname}`, url2.origin),
+    url: new URL(`/.well-known/oauth-authorization-server${pathname}`, url.origin),
     type: "oauth"
   });
   urlsToTry.push({
-    url: new URL(`/.well-known/openid-configuration${pathname}`, url2.origin),
+    url: new URL(`/.well-known/openid-configuration${pathname}`, url.origin),
     type: "oidc"
   });
   urlsToTry.push({
-    url: new URL(`${pathname}/.well-known/openid-configuration`, url2.origin),
+    url: new URL(`${pathname}/.well-known/openid-configuration`, url.origin),
     type: "oidc"
   });
   return urlsToTry;
@@ -16208,7 +16119,7 @@ async function registerClient(authorizationServerUrl, { metadata, clientMetadata
   return OAuthClientInformationFullSchema.parse(await response.json());
 }
 
-// ../../StrandsAgentsSDKTypescript/node_modules/eventsource-parser/dist/index.js
+// ../../sdk-typescript/node_modules/eventsource-parser/dist/index.js
 var ParseError = class extends Error {
   constructor(message, options) {
     super(message), this.name = "ParseError", this.type = options.type, this.field = options.field, this.value = options.value, this.line = options.line;
@@ -16311,7 +16222,7 @@ function splitLines(chunk) {
   return [lines, incompleteLine];
 }
 
-// ../../StrandsAgentsSDKTypescript/node_modules/eventsource-parser/dist/stream.js
+// ../../sdk-typescript/node_modules/eventsource-parser/dist/stream.js
 var EventSourceParserStream = class extends TransformStream {
   constructor({ onError, onRetry, onComment } = {}) {
     let parser;
@@ -16335,7 +16246,7 @@ var EventSourceParserStream = class extends TransformStream {
   }
 };
 
-// ../../StrandsAgentsSDKTypescript/node_modules/@modelcontextprotocol/sdk/dist/esm/client/streamableHttp.js
+// ../../sdk-typescript/node_modules/@modelcontextprotocol/sdk/dist/esm/client/streamableHttp.js
 var DEFAULT_STREAMABLE_HTTP_RECONNECTION_OPTIONS = {
   initialReconnectionDelay: 1e3,
   maxReconnectionDelay: 3e4,
@@ -16349,9 +16260,9 @@ var StreamableHTTPError = class extends Error {
   }
 };
 var StreamableHTTPClientTransport = class {
-  constructor(url2, opts) {
+  constructor(url, opts) {
     this._hasCompletedAuthFlow = false;
-    this._url = url2;
+    this._url = url;
     this._resourceMetadataUrl = void 0;
     this._scope = void 0;
     this._requestInit = opts?.requestInit;
@@ -16751,5 +16662,7 @@ export {
   StreamableHTTPClientTransport,
   TextBlock,
   Tool,
-  ToolResultBlock
+  ToolResultBlock,
+  tool,
+  z
 };

@@ -35,13 +35,20 @@ const z = new Proxy(schema(), {
 });
 export default z;
 export { z };
+
+// Named schema constructors — needed for `import * as z from 'zod/v4'` (MCP SDK auth)
+export const string = schema, number = schema, boolean = schema, object = schema, array = schema;
+export const record = schema, tuple = schema, union = schema, intersection = schema;
+export const literal = schema, lazy = schema, any = schema, unknown = schema;
+export const optional = schema, nullable = schema, never = schema;
+export const enum_ = schema; export { enum_ as enum };
+export const void_ = schema; export { void_ as void };
+
 export const ZodType = class {};
 export const ZodObject = class {};
 export const ZodString = class {};
-export const ZodError = class extends Error { constructor(issues) { super('ZodError'); this.issues = issues || []; } };
-
-// Named exports that various consumers import
 export const ZodVoid = class {};
+export const ZodError = class extends Error { constructor(issues) { super('ZodError'); this.issues = issues || []; } };
 export const ZodFirstPartyTypeKind = new Proxy({}, { get: (_, p) => p });
 export const ZodIssueCode = new Proxy({}, { get: (_, p) => p });
 export const ZodParsedType = new Proxy({}, { get: (_, p) => p });
