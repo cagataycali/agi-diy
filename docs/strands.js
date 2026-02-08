@@ -2975,6 +2975,8 @@ var BedrockRuntimeClient = class {
     this._region = region;
     this._credentials = opts.credentials || null;
     this._token = opts.token || null;
+    this._middleware = [];
+    this.middlewareStack = { add: (fn, opts2) => this._middleware.push(fn) };
   }
   async send(command) {
     const region = typeof this._region === "function" ? await this._region() : this._region;
@@ -2997,6 +2999,10 @@ var BedrockRuntimeClient = class {
         body: bodyStr
       });
       Object.assign(headers, signed.headers);
+    }
+    const request = { headers, method: command.method, hostname: `bedrock-runtime.${region}.amazonaws.com`, path: command.path, body: bodyStr };
+    for (const mw of this._middleware) {
+      await mw((args) => args)({ request });
     }
     const response = await fetch(url, { method: command.method, headers, body: bodyStr });
     if (!response.ok) throw new Error(`Bedrock ${response.status}: ${await response.text()}`);

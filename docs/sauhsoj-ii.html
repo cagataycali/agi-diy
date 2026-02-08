@@ -1420,7 +1420,7 @@
     </script>
 
     <script type="module">
-    import { Agent, tool, Model, z, BeforeModelCallEvent, AfterInvocationEvent, SlidingWindowConversationManager } from './strands.js';
+    import { Agent, tool, Model, z, BeforeModelCallEvent, AfterInvocationEvent, SlidingWindowConversationManager, BedrockModel } from './strands.js';
     
     // ╔═══════════════════════════════════════════════════════════════════════════╗
     // ║  agi.html — Multi-Agent System                                          ║
@@ -1806,118 +1806,6 @@
         }
     }
     
-    class BedrockModel extends Model {
-        constructor(config) {
-            super();
-            this.config = config;
-        }
-        async *stream(messages, options) {
-            const { apiKey, region, modelId, maxTokens, additionalRequestFields } = this.config;
-            if (!apiKey) throw new Error('Bedrock API key not set');
-            
-            const formatBlock = b => {
-                if (b.type === 'textBlock') {
-                    // Skip empty text blocks - Bedrock rejects blank text fields
-                    if (!b.text || b.text.trim() === '') return null;
-                    return { text: b.text };
-                }
-                if (b.type === 'toolUseBlock') return { toolUse: { toolUseId: b.toolUseId, name: b.name, input: b.input } };
-                if (b.type === 'toolResultBlock') {
-                    const content = b.content.map(c => {
-                        if (c.type === 'textBlock') {
-                            // Skip empty text in tool results too
-                            if (!c.text || c.text.trim() === '') return null;
-                            return { text: c.text };
-                        }
-                        return { json: c.json || c };
-                    }).filter(Boolean);
-                    // Ensure tool result has at least some content
-                    if (content.length === 0) content.push({ text: '(empty result)' });
-                    return { toolResult: { toolUseId: b.toolUseId, content } };
-                }
-                const str = String(b);
-                if (!str || str.trim() === '') return null;
-                return { text: str };
-            };
-            
-            // Format messages, filtering out null blocks and ensuring each message has content
-            const formattedMessages = messages.map(m => {
-                const content = m.content.map(formatBlock).filter(Boolean);
-                // If message has no content after filtering, add placeholder
-                if (content.length === 0) {
-                    content.push({ text: '(continue)' });
-                }
-                return { role: m.role, content };
-            });
-            
-            const body = {
-                messages: formattedMessages,
-                inferenceConfig: { maxTokens }
-            };
-            if (options?.systemPrompt) body.system = [{ text: typeof options.systemPrompt === 'string' ? options.systemPrompt : options.systemPrompt.map(b => b.text).join('\n') }];
-            if (options?.toolSpecs?.length) {
-                body.toolConfig = { tools: options.toolSpecs.map(s => ({ toolSpec: { name: s.name, description: s.description, inputSchema: { json: s.inputSchema } } })) };
-                if (options.toolChoice) body.toolConfig.toolChoice = options.toolChoice;
-            }
-            
-            // Add additional request fields (thinking, etc.)
-            if (additionalRequestFields) {
-                // Thinking conflicts with forced toolChoice - strip it
-                if (options?.toolChoice) {
-                    const { thinking, ...rest } = additionalRequestFields;
-                    if (Object.keys(rest).length > 0) body.additionalModelRequestFields = rest;
-                } else {
-                    body.additionalModelRequestFields = additionalRequestFields;
-                }
-            }
-            
-            const response = await fetch(`https://bedrock-runtime.${region}.amazonaws.com/model/${encodeURIComponent(modelId)}/converse-stream`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-                body: JSON.stringify(body)
-            });
-            if (!response.ok) throw new Error(`Bedrock error: ${await response.text()}`);
-            
-            const reader = response.body.getReader();
-            let buffer = new Uint8Array(0);
-            const decoder = new TextDecoder();
-            
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                const newBuffer = new Uint8Array(buffer.length + value.length);
-                newBuffer.set(buffer);
-                newBuffer.set(value, buffer.length);
-                buffer = newBuffer;
-                
-                while (buffer.length >= 12) {
-                    const totalLength = (buffer[0] << 24) | (buffer[1] << 16) | (buffer[2] << 8) | buffer[3];
-                    const headersLength = (buffer[4] << 24) | (buffer[5] << 16) | (buffer[6] << 8) | buffer[7];
-                    if (totalLength < 16 || totalLength > 1024 * 1024) { buffer = buffer.slice(1); continue; }
-                    if (buffer.length < totalLength) break;
-                    
-                    const payloadStart = 12 + headersLength;
-                    const payloadEnd = totalLength - 4;
-                    if (payloadEnd > payloadStart) {
-                        try {
-                            const event = JSON.parse(decoder.decode(buffer.slice(payloadStart, payloadEnd)));
-                            if (event.role) yield { type: 'modelMessageStartEvent', role: event.role };
-                            else if (event.start?.toolUse) yield { type: 'modelContentBlockStartEvent', start: { type: 'toolUseStart', name: event.start.toolUse.name, toolUseId: event.start.toolUse.toolUseId } };
-                            else if (event.start !== undefined) yield { type: 'modelContentBlockStartEvent' };
-                            else if (event.delta?.text !== undefined) yield { type: 'modelContentBlockDeltaEvent', delta: { type: 'textDelta', text: event.delta.text } };
-                            else if (event.delta?.toolUse?.input) yield { type: 'modelContentBlockDeltaEvent', delta: { type: 'toolUseInputDelta', input: event.delta.toolUse.input } };
-                            else if (event.contentBlockIndex !== undefined && !event.delta && !event.stopReason) yield { type: 'modelContentBlockStopEvent' };
-                            else if (event.stopReason) {
-                                const map = { 'end_turn': 'endTurn', 'tool_use': 'toolUse', 'max_tokens': 'maxTokens' };
-                                yield { type: 'modelMessageStopEvent', stopReason: map[event.stopReason] || 'endTurn' };
-                            }
-                        } catch {}
-                    }
-                    buffer = buffer.slice(totalLength);
-                }
-            }
-        }
-    }
     
     function createModel(provider, customConfig = {}) {
         const creds = state.credentials[provider];
