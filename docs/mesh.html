@@ -165,6 +165,23 @@
         @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
         .connecting-txt{font-size:15px;color:var(--t2);margin-bottom:6px}.connecting-sub{font-size:11px;color:var(--t3)}
 
+        /* ── VOICE ── */
+        .mic-btn{width:50px;height:50px;border-radius:14px;background:var(--glass);border:1px solid var(--glass-b);color:var(--t3);font-size:18px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .2s;pointer-events:auto}
+        .mic-btn:hover{background:rgba(255,255,255,.1);color:var(--t1)}
+        .mic-btn.active{background:var(--blue);color:#fff;border-color:var(--blue);animation:mic-pulse 1.5s infinite}
+        .mic-btn.pending{background:var(--yellow);color:#000;border-color:var(--yellow);animation:pl 1s infinite}
+        .mic-btn:disabled{opacity:.3;cursor:not-allowed}
+        @keyframes mic-pulse{0%,100%{box-shadow:0 0 0 0 rgba(0,122,255,.4)}50%{box-shadow:0 0 0 10px rgba(0,122,255,0)}}
+        .voice-vis{height:28px;margin-bottom:8px;background:var(--glass);border-radius:8px;display:flex;align-items:center;justify-content:center;gap:2px;overflow:hidden;pointer-events:auto}
+        .voice-vis .bar{width:3px;background:var(--blue);border-radius:2px;animation:vbar .6s ease-in-out infinite alternate}
+        @keyframes vbar{from{height:4px}to{height:22px}}
+        .voice-transcript{font-size:10px;padding:6px 10px;margin-bottom:6px;border-radius:6px;pointer-events:auto;max-width:800px;margin-left:auto;margin-right:auto}
+        .voice-transcript.user{background:rgba(48,209,88,.1);border-left:2px solid var(--green)}
+        .voice-transcript.assistant{background:rgba(0,122,255,.1);border-left:2px solid var(--blue)}
+        .voice-cfg{display:flex;gap:6px;align-items:center;margin-bottom:6px;pointer-events:auto;max-width:800px;margin-left:auto;margin-right:auto}
+        .voice-cfg select{background:var(--glass);border:1px solid var(--glass-b);border-radius:6px;padding:4px 8px;color:var(--t2);font-size:9px;font-family:inherit}
+        .voice-cfg select:focus{outline:none;border-color:var(--accent)}
+
         @media(max-width:1200px){.ring{display:none}}
         @media(max-width:900px){.sb{width:250px}.panels{grid-template-columns:1fr}}
         @media(max-width:600px){.sb{display:none}}
@@ -215,7 +232,22 @@
     <!-- Floating chat input -->
     <div class="chat-input-wrap">
         <div class="chat-targets" id="chatTargets"></div>
+        <!-- Voice config bar (visible when voice active or configuring) -->
+        <div class="voice-cfg" id="voiceCfg" style="display:none">
+            <span style="font-size:9px;color:var(--t3)">🎤 Provider:</span>
+            <select id="voiceProvider" onchange="voiceCfgChanged()">
+                <option value="novasonic">Nova Sonic (AWS)</option>
+                <option value="gemini_live">Gemini Live</option>
+                <option value="openai">OpenAI Realtime</option>
+            </select>
+            <select id="voiceSelect" onchange="voiceCfgChanged()"></select>
+        </div>
+        <!-- Voice transcript -->
+        <div id="voiceTranscript" style="display:none"></div>
+        <!-- Voice visualizer -->
+        <div class="voice-vis" id="voiceVis" style="display:none"></div>
         <div class="chat-input-row">
+            <button class="mic-btn" id="micBtn" onclick="toggleVoice()" title="Start/Stop Voice">🎤</button>
             <textarea class="chat-in" id="chatInput" placeholder="Message selected agents..." rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();chatSend()}" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,150)+'px'"></textarea>
             <button class="chat-send" id="chatSendBtn" onclick="chatSend()">→</button>
         </div>
@@ -248,6 +280,7 @@
         <div class="fg"><label class="fl">OpenAI API Key (for browser agents)</label><input type="password" class="fi" id="sOpenaiKey" placeholder="sk-..."></div>
         <div class="fg"><label class="fl">Bedrock Bearer Token (for browser agents)</label><input type="password" class="fi" id="sBedrockKey" placeholder="Bearer token"><div class="fhint">From Bedrock API Keys console</div></div>
         <div class="fg"><label class="fl">Bedrock Region</label><input class="fi" id="sBedrockRegion" value="us-east-1" placeholder="us-east-1"><div class="fhint">For Bedrock browser agents</div></div>
+        <div class="fg"><label class="fl">Gemini API Key (for voice)</label><input type="password" class="fi" id="sGeminiKey" placeholder="AIza..."><div class="fhint">For Gemini Live voice provider</div></div>
         <div class="btn-row"><button class="mbtn" onclick="closeModal('settingsModal')">Cancel</button><button class="mbtn pri" onclick="saveSettings()">Save & Reconnect</button></div>
     </div>
 </div>
@@ -437,7 +470,8 @@ const S={
     cfg:{
         localPort:10001, relayPort:10000,
         token:'', repos:['cagataycali/strands-coder'], region:'us-west-2',
-        anthropicKey:'', openaiKey:'', bedrockKey:'', bedrockRegion:'us-east-1',
+        anthropicKey:'', openaiKey:'', bedrockKey:'', bedrockRegion:'us-east-1', geminiKey:'',
+        voiceProvider:'novasonic', voiceVoice:'tiffany',
         virtualAgents:[], // {id,name,color,systemPrompt,tools,model}
         browserAgents:[], // {id,name,color,provider,modelId,systemPrompt}
     },
@@ -466,7 +500,7 @@ window.openSettings=()=>{
     E('sLocalPort').value=S.cfg.localPort;E('sToken').value=S.cfg.token||'';
     E('sRepos').value=(S.cfg.repos||[]).join(',');E('sRegion').value=S.cfg.region;
     E('sRelayPort').value=S.cfg.relayPort;
-    E('sAnthropicKey').value=S.cfg.anthropicKey||'';E('sOpenaiKey').value=S.cfg.openaiKey||'';E('sBedrockKey').value=S.cfg.bedrockKey||'';E('sBedrockRegion').value=S.cfg.bedrockRegion||'us-east-1';
+    E('sAnthropicKey').value=S.cfg.anthropicKey||'';E('sOpenaiKey').value=S.cfg.openaiKey||'';E('sBedrockKey').value=S.cfg.bedrockKey||'';E('sBedrockRegion').value=S.cfg.bedrockRegion||'us-east-1';E('sGeminiKey').value=S.cfg.geminiKey||'';
     E('settingsModal').classList.add('active');
 };
 window.saveSettings=()=>{
@@ -479,6 +513,7 @@ window.saveSettings=()=>{
     S.cfg.openaiKey=E('sOpenaiKey').value.trim();
     S.cfg.bedrockKey=E('sBedrockKey').value.trim();
     S.cfg.bedrockRegion=E('sBedrockRegion').value.trim()||'us-east-1';
+    S.cfg.geminiKey=E('sGeminiKey').value.trim();
     saveCfg();
     // 🔑 Sync to AgentMesh unified credentials
     if(window.AgentMesh?.setCredentials){
@@ -1284,7 +1319,7 @@ function connectLocalPatched(){
 }
 
 connectRelay();
-connectLocalPatched();
+connectLocalWithVoice();
 
 // 🔑 Delayed credential sync after AgentMesh initializes (agent-mesh.js loads after this module)
 setTimeout(()=>{
@@ -1304,6 +1339,262 @@ setTimeout(()=>{
 },600);
 
 window.S=S;window.toast=toast;
+
+// ═══════════════════════════════════════════════════════════════
+// VOICE — Speech-to-Speech via Local DevDuck WS (port 10001)
+// ═══════════════════════════════════════════════════════════════
+const VOICE_PROVIDERS={
+    novasonic:{label:'Nova Sonic',voices:[{id:'tiffany',label:'Tiffany'},{id:'matthew',label:'Matthew'},{id:'amy',label:'Amy'}]},
+    gemini_live:{label:'Gemini Live',voices:[{id:'Kore',label:'Kore'},{id:'Puck',label:'Puck'},{id:'Charon',label:'Charon'}]},
+    openai:{label:'OpenAI',voices:[{id:'alloy',label:'Alloy'},{id:'echo',label:'Echo'},{id:'shimmer',label:'Shimmer'}]},
+};
+
+const V={
+    active:false, pending:false,
+    audioCtx:null, mediaStream:null, processor:null,
+    playCtx:null, workletNode:null, workletReady:false,
+};
+
+// AudioWorklet processor
+const AUDIO_WORKLET_CODE=`
+class AudioProcessor extends AudioWorkletProcessor {
+  constructor(){super();this.buffer=new Float32Array(0);this.port.onmessage=(e)=>{if(e.data.type==='audio'){const n=new Float32Array(this.buffer.length+e.data.samples.length);n.set(this.buffer);n.set(e.data.samples,this.buffer.length);this.buffer=n}else if(e.data.type==='clear'){this.buffer=new Float32Array(0)}}}
+  process(i,o){const out=o[0][0];const n=out.length;if(this.buffer.length>=n){out.set(this.buffer.subarray(0,n));this.buffer=this.buffer.slice(n)}else if(this.buffer.length>0){out.set(this.buffer);for(let i=this.buffer.length;i<n;i++)out[i]=0;this.buffer=new Float32Array(0)}else{out.fill(0)}return true}
+}
+registerProcessor('audio-processor',AudioProcessor);
+`;
+
+// Populate voice select dropdown
+function populateVoices(){
+    const sel=E('voiceSelect');if(!sel)return;
+    const prov=E('voiceProvider')?.value||S.cfg.voiceProvider||'novasonic';
+    const voices=VOICE_PROVIDERS[prov]?.voices||[];
+    sel.innerHTML=voices.map(v=>`<option value="${v.id}"${v.id===S.cfg.voiceVoice?' selected':''}>${v.label}</option>`).join('');
+}
+window.voiceCfgChanged=function(){
+    S.cfg.voiceProvider=E('voiceProvider')?.value||'novasonic';
+    populateVoices();
+    S.cfg.voiceVoice=E('voiceSelect')?.value||'';
+    saveCfg();
+};
+
+// Show/hide voice UI
+function setVoiceUI(state){
+    const btn=E('micBtn');const vis=E('voiceVis');const cfg=E('voiceCfg');
+    if(!btn)return;
+    if(state==='active'){
+        btn.className='mic-btn active';btn.textContent='🎤';
+        vis.style.display='flex';vis.innerHTML=Array.from({length:20}).map((_,i)=>`<div class="bar" style="animation-delay:${i*30}ms"></div>`).join('');
+        cfg.style.display='flex';
+    }else if(state==='pending'){
+        btn.className='mic-btn pending';btn.textContent='⏳';
+        vis.style.display='none';cfg.style.display='flex';
+    }else{
+        btn.className='mic-btn';btn.textContent='🎤';
+        vis.style.display='none';
+        E('voiceTranscript').style.display='none';
+        // Keep cfg visible so user can pick provider before starting
+        cfg.style.display='flex';
+    }
+}
+
+function showTranscript(text,role){
+    const el=E('voiceTranscript');if(!el)return;
+    el.style.display='block';
+    el.className=`voice-transcript ${role}`;
+    el.textContent=`${role==='user'?'🎤':'🔊'} ${text}`;
+}
+
+// Mic capture AudioWorklet processor
+const MIC_WORKLET_CODE=`
+class MicCaptureProcessor extends AudioWorkletProcessor {
+  constructor(){super();this.active=true;this.port.onmessage=(e)=>{if(e.data.type==='stop')this.active=false}}
+  process(inputs){
+    if(!this.active)return false;
+    const input=inputs[0]?.[0];
+    if(input&&input.length>0){this.port.postMessage({type:'audio',samples:new Float32Array(input)})}
+    return true;
+  }
+}
+registerProcessor('mic-capture-processor',MicCaptureProcessor);
+`;
+
+// Start mic capture using AudioWorklet (no deprecated ScriptProcessorNode)
+async function startAudioCapture(){
+    V.audioCtx=new AudioContext({sampleRate:16000});
+    V.mediaStream=await navigator.mediaDevices.getUserMedia({audio:{sampleRate:16000,channelCount:1,echoCancellation:true,noiseSuppression:true}});
+    const source=V.audioCtx.createMediaStreamSource(V.mediaStream);
+    // Load mic capture worklet
+    const blob=new Blob([MIC_WORKLET_CODE],{type:'application/javascript'});
+    const url=URL.createObjectURL(blob);
+    try{await V.audioCtx.audioWorklet.addModule(url)}finally{URL.revokeObjectURL(url)}
+    V.micWorklet=new AudioWorkletNode(V.audioCtx,'mic-capture-processor');
+    // Buffer samples and send in chunks for efficiency
+    let pendingSamples=new Float32Array(0);
+    const CHUNK_SIZE=4096;
+    V.micWorklet.port.onmessage=(e)=>{
+        if(e.data.type!=='audio'||!V.active||!S.localWs||S.localWs.readyState!==1)return;
+        const samples=e.data.samples;
+        const merged=new Float32Array(pendingSamples.length+samples.length);
+        merged.set(pendingSamples);merged.set(samples,pendingSamples.length);
+        pendingSamples=merged;
+        while(pendingSamples.length>=CHUNK_SIZE){
+            const chunk=pendingSamples.subarray(0,CHUNK_SIZE);
+            pendingSamples=pendingSamples.slice(CHUNK_SIZE);
+            const pcm16=new Int16Array(chunk.length);
+            for(let i=0;i<chunk.length;i++)pcm16[i]=Math.max(-32768,Math.min(32767,chunk[i]*32768));
+            const b64=btoa(String.fromCharCode(...new Uint8Array(pcm16.buffer)));
+            S.localWs.send(JSON.stringify({type:'audio_chunk',audio:b64,sample_rate:16000}));
+        }
+    };
+    source.connect(V.micWorklet);V.micWorklet.connect(V.audioCtx.destination);
+}
+
+function stopAudioCapture(){
+    if(V.micWorklet){V.micWorklet.port.postMessage({type:'stop'});V.micWorklet.disconnect();V.micWorklet=null}
+    if(V.processor){V.processor.disconnect();V.processor=null}
+    if(V.mediaStream){V.mediaStream.getTracks().forEach(t=>t.stop());V.mediaStream=null}
+    if(V.audioCtx&&V.audioCtx.state!=='closed'){V.audioCtx.close().catch(()=>{})}
+    V.audioCtx=null;
+}
+
+function stopPlayback(){
+    if(V.workletNode){V.workletNode.disconnect();V.workletNode=null}
+    if(V.playCtx&&V.playCtx.state!=='closed'){V.playCtx.close().catch(()=>{})}
+    V.playCtx=null;V.workletReady=false;
+}
+
+async function playAudioChunk(b64Audio,sampleRate){
+    try{
+        if(!V.playCtx||V.playCtx.state==='closed'){
+            V.playCtx=new AudioContext({sampleRate});
+            const blob=new Blob([AUDIO_WORKLET_CODE],{type:'application/javascript'});
+            const url=URL.createObjectURL(blob);
+            try{await V.playCtx.audioWorklet.addModule(url);V.workletNode=new AudioWorkletNode(V.playCtx,'audio-processor');V.workletNode.connect(V.playCtx.destination);V.workletReady=true}finally{URL.revokeObjectURL(url)}
+        }
+        if(!V.workletReady||!V.workletNode)return;
+        const bin=atob(b64Audio);const bytes=new Uint8Array(bin.length);
+        for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+        const int16=new Int16Array(bytes.buffer);
+        const float32=new Float32Array(int16.length);
+        for(let i=0;i<int16.length;i++)float32[i]=int16[i]/32768;
+        V.workletNode.port.postMessage({type:'audio',samples:float32});
+    }catch(err){console.error('Playback error:',err)}
+}
+
+function clearAudioBuffer(){
+    if(V.workletNode)V.workletNode.port.postMessage({type:'clear'});
+}
+
+// Toggle voice
+window.toggleVoice=async function(){
+    if(!S.localWs||S.localWs.readyState!==1){toast('Local DevDuck not connected','err');return}
+
+    if(V.active||V.pending){
+        // Stop
+        V.active=false;V.pending=false;
+        S.localWs.send(JSON.stringify({type:'audio_stop'}));
+        stopAudioCapture();stopPlayback();
+        setVoiceUI('idle');
+    }else{
+        // Start
+        V.pending=true;setVoiceUI('pending');
+        try{
+            await startAudioCapture();
+            const prov=E('voiceProvider')?.value||S.cfg.voiceProvider||'novasonic';
+            const voice=E('voiceSelect')?.value||S.cfg.voiceVoice||'';
+            S.localWs.send(JSON.stringify({
+                type:'audio_start',
+                provider:prov,
+                voice:voice,
+                // Send config for API keys
+                geminiKey:S.cfg.geminiKey||'',
+                openaiKey:S.cfg.openaiKey||'',
+                bedrockRegion:S.cfg.bedrockRegion||'us-east-1',
+            }));
+            // V.active will be set when we get audio_started back
+        }catch(err){
+            console.error('Voice start error:',err);
+            V.pending=false;stopAudioCapture();
+            setVoiceUI('idle');toast('Mic access denied','err');
+        }
+    }
+};
+
+// Hook into local WS messages for voice events
+const _origLocalMsgHandler=handleLocalMsgV2;
+function handleLocalMsgWithVoice(msg){
+    // Handle voice-specific messages
+    switch(msg.type){
+        case 'audio_started':
+            V.active=true;V.pending=false;
+            setVoiceUI('active');
+            toast('🎤 Voice active ('+( msg.provider||'?')+')','ok');
+            addRing('voice','browser','🎤 Voice session started ('+( msg.provider||'')+')');
+            return;
+        case 'audio_stopped':
+            V.active=false;V.pending=false;
+            stopAudioCapture();stopPlayback();
+            setVoiceUI('idle');
+            return;
+        case 'audio_chunk':
+            playAudioChunk(msg.audio,msg.sample_rate||16000);
+            return;
+        case 'transcript':
+            showTranscript(msg.text,msg.role);
+            if(msg.is_final){
+                const emoji=msg.role==='user'?'🎤':'🔊';
+                addRing('voice:'+msg.role,'browser',emoji+' '+msg.text?.slice(0,150));
+            }
+            return;
+        case 'interruption':
+            clearAudioBuffer();
+            return;
+        case 'bidi_connection_start':case 'response_start':case 'response_complete':case 'usage':
+            return; // Silently consume bidi lifecycle events
+        case 'config_updated':
+            return;
+    }
+    // Pass non-voice messages to original handler
+    _origLocalMsgHandler(msg);
+}
+
+// Patch local WS to also send config (voice API keys) on connect
+const _origConnectLocalPatched=connectLocalPatched;
+function connectLocalWithVoice(){
+    const port=S.cfg.localPort||10001;
+    const ws=new WebSocket(`ws://localhost:${port}`);
+    ws.onopen=()=>{
+        S.localWs=ws;S.localOk=true;
+        registerAgent({id:'local:devduck',type:'local',name:'🦆 Local DevDuck',status:'ready',description:`ws://localhost:${port}`});
+        // Send config with API keys for voice
+        ws.send(JSON.stringify({
+            type:'config',
+            voiceProvider:S.cfg.voiceProvider||'novasonic',
+            voice:S.cfg.voiceVoice||'tiffany',
+            geminiKey:S.cfg.geminiKey||'',
+            openaiKey:S.cfg.openaiKey||'',
+            bedrockRegion:S.cfg.bedrockRegion||'us-east-1',
+        }));
+        updateStatus();updateUI();
+    };
+    ws.onmessage=e=>{try{const msg=JSON.parse(e.data);handleLocalMsgWithVoice(msg)}catch(err){console.warn('Local WS non-JSON:',e.data?.slice?.(0,100))}};
+    ws.onerror=()=>{};
+    ws.onclose=()=>{
+        S.localOk=false;S.localWs=null;
+        if(V.active||V.pending){V.active=false;V.pending=false;stopAudioCapture();stopPlayback();setVoiceUI('idle')}
+        const a=S.agents.get('local:devduck');if(a)a.status='offline';
+        updateStatus();updateUI();setTimeout(connectLocalWithVoice,5000);
+    };
+}
+
+// Initialize voice UI
+populateVoices();
+E('voiceProvider').value=S.cfg.voiceProvider||'novasonic';
+populateVoices();
+E('voiceCfg').style.display='flex'; // Always show voice config
+setVoiceUI('idle');
+
 </script>
 </body>
 </html>
