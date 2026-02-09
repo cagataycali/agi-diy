@@ -311,14 +311,32 @@ docs/
 
 ### Fork Strategy
 
-`sauhsoj-ii.html` is a fork of `agi.html` for experimental refactoring (structured transcripts, improved agent messaging). Both files share the same codebase origin.
+This repository contains both the stable production interface and experimental development versions:
 
-- **`agi.html`** — tracks upstream (`cagataycali/agi-diy`), receives upstream changes directly
-- **`sauhsoj-ii.html`** — diverges from `agi.html` at a recorded baseline commit, evolves independently
+- **`agi.html`** — Production stable version, receives direct commits and PRs
+- **`sauhsoj-ii.html`** — Experimental fork for structural refactoring (structured transcripts, improved messaging architecture)
 
-Baseline commits are recorded in a comment at the top of `sauhsoj-ii.html`. To incorporate upstream changes, diff `agi.html` from the recorded baseline to HEAD and apply to `sauhsoj-ii.html`.
+#### For Contributors Working on Experimental Features
 
-> **Note:** Mechanical patching/rebasing will rarely work cleanly due to structural divergence. Review each upstream change by its intention and re-implement it in the context of `sauhsoj-ii.html`'s architecture. Update the baseline comment after incorporating.
+If you're working on `sauhsoj-ii.html` or similar experimental forks:
+
+1. **Track the baseline**: Each fork records its divergence point from `agi.html` in a comment at the top
+2. **Incorporating upstream changes**: Don't rebase/merge mechanically. Instead:
+   - Diff `agi.html` from your recorded baseline to current HEAD  
+   - Review each change by intention, not line-by-line
+   - Re-implement the change in your fork's architectural context
+   - Update your baseline comment after incorporating
+3. **Submitting PRs**: Fork-specific improvements should target the main branch and be applicable to `agi.html`
+
+#### Why This Approach?
+
+Experimental forks often have structural differences that make mechanical merging impossible. This strategy allows:
+- ✅ Rapid experimentation without breaking production
+- ✅ Clear tracking of divergence points  
+- ✅ Intentional integration of upstream improvements
+- ✅ Clean contribution path back to main codebase
+
+The baseline commit system ensures contributors can always see what's changed upstream and make informed decisions about integration.
 
 ### Navigating agi.html
 
