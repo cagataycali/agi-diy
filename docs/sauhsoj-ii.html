@@ -3855,6 +3855,18 @@ ${getRingContext()}`;
             showToast('Schedule deleted');
         }
     };
+
+    window.createSchedule = async function() {
+        const name = document.getElementById('scheduleName').value.trim();
+        const agentId = document.getElementById('scheduleAgent').value;
+        const prompt = document.getElementById('schedulePrompt').value.trim();
+        const type = document.getElementById('scheduleType').value;
+        const delay = parseInt(document.getElementById('scheduleDelay').value) || 60;
+        const cron = document.getElementById('scheduleCron').value.trim();
+        if (!name || !agentId || !prompt) { showToast('Fill in all required fields'); return; }
+        const result = await schedulerTool.callback({ action: 'create', name, agentId, prompt, type, delay: type === 'once' ? delay : undefined, cron: type === 'cron' ? cron : undefined });
+        if (result.success) { showToast(`Schedule "${name}" created`); closeModal('scheduleModal'); } else { showToast(result.error || 'Failed'); }
+    };
     
     // Auto-create default agent if none exist and credentials are available
     async function autoCreateDefaultAgent() {
