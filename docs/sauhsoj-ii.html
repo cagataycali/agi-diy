@@ -1149,6 +1149,8 @@
                         <option value="bedrock">Amazon Bedrock</option>
                         <option value="anthropic">Anthropic (Claude)</option>
                         <option value="openai">OpenAI (GPT)</option>
+                        <option value="openai_compatible">OpenAI-Compatible (Ollama, Groq, etc.)</option>
+                        <option value="webllm">WebLLM (Local, Offline)</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -1241,6 +1243,27 @@
                         <label class="form-label">GitHub Token (PAT or Device Flow)</label>
                         <input type="password" class="form-input" id="githubToken" placeholder="ghp_... or click Authenticate">
                         <button class="btn" onclick="githubDeviceFlow()" style="margin-top:4px;font-size:11px;">🔑 Authenticate via Device Flow</button>
+                    </div>
+                    <hr style="border-color:rgba(255,255,255,0.1);margin:16px 0">
+                    <div class="form-group">
+                        <label class="form-label">OpenAI-Compatible Endpoint (Ollama, LM Studio, Groq, etc.)</label>
+                        <input type="text" class="form-input" id="compatBaseUrl" placeholder="http://localhost:11434/v1">
+                        <input type="password" class="form-input" id="compatKey" placeholder="API key (optional)" style="margin-top:4px">
+                        <input type="text" class="form-input" id="compatModel" placeholder="Model name (e.g. llama3.2)" style="margin-top:4px">
+                    </div>
+                    <hr style="border-color:rgba(255,255,255,0.1);margin:16px 0">
+                    <div class="form-group">
+                        <label class="form-label">🧠 WebLLM (Local, Offline)</label>
+                        <select class="form-input" id="webllmModel">
+                            <option value="Qwen2.5-3B-Instruct-q4f16_1-MLC">Qwen 2.5 3B (recommended)</option>
+                            <option value="Qwen2.5-1.5B-Instruct-q4f16_1-MLC">Qwen 2.5 1.5B (faster)</option>
+                            <option value="Llama-3.2-3B-Instruct-q4f16_1-MLC">Llama 3.2 3B</option>
+                            <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">Llama 3.2 1B (smallest)</option>
+                            <option value="Hermes-2-Pro-Llama-3-8B-q4f16_1-MLC">Hermes Llama3 8B (best for tools)</option>
+                            <option value="Phi-3.5-mini-instruct-q4f16_1-MLC">Phi 3.5 Mini</option>
+                        </select>
+                        <div class="form-hint">Runs 100% locally via WebGPU. No API key needed. First load downloads model (~1-4GB). Chrome 113+.</div>
+                        <div id="webllmProgress" style="display:none;font-size:12px;color:var(--text-secondary);margin-top:8px;"></div>
                     </div>
                     <button class="btn btn-primary" onclick="saveCredentials()">Save Credentials</button>
                 </div>
@@ -1372,6 +1395,8 @@
                         <option value="bedrock">Amazon Bedrock</option>
                         <option value="anthropic">Anthropic (Claude)</option>
                         <option value="openai">OpenAI (GPT)</option>
+                        <option value="openai_compatible">OpenAI-Compatible (Ollama, Groq, etc.)</option>
+                        <option value="webllm">WebLLM (Local, Offline)</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -1466,6 +1491,7 @@
 
     <script type="module">
     import { Agent, tool, Model, z, BeforeModelCallEvent, AfterInvocationEvent, SlidingWindowConversationManager, BedrockModel, AnthropicModel, OpenAIModel, McpClient, StreamableHTTPClientTransport } from './strands.js?v=2';
+    import { WebLLMBrowserModel, WEBLLM_MODELS } from './webllm.js';
     
     // ╔═══════════════════════════════════════════════════════════════════════════╗
     // ║  agi.html — Multi-Agent System                                          ║
@@ -1507,6 +1533,8 @@
             anthropic: { apiKey: '', model: 'claude-opus-4-6' },
             openai: { apiKey: '', model: 'gpt-5.2-2025-12-11' },
             bedrock: { apiKey: '', region: 'us-east-1', model: 'global.anthropic.claude-opus-4-6-v1' },
+            openai_compatible: { apiKey: '', baseUrl: '', model: '' },
+            webllm: { model: 'Qwen2.5-3B-Instruct-q4f16_1-MLC' },
             github: { token: '' }
         },
         agentColors: ['#00ff88', '#00aaff', '#ff88ff', '#ffaa00', '#ff6666', '#88ffff'],
@@ -1663,6 +1691,8 @@
     // ═══════════════════════════════════════════════════════════════════════════
     
     
+    let webllmModelInstance = null;
+    
     function createModel(provider, customConfig = {}) {
         const creds = state.credentials[provider];
         const modelId = customConfig.modelId || creds?.model || DEFAULT_MODELS[provider];
@@ -1681,6 +1711,14 @@
                 modelId,
                 maxTokens: customConfig.maxTokens || DEFAULT_MAX_TOKENS
             });
+        } else if (provider === 'openai_compatible') {
+            if (!creds.baseUrl) throw new Error('OpenAI-compatible endpoint URL not set');
+            return new OpenAIModel({
+                apiKey: creds.apiKey || 'not-needed',
+                modelId,
+                maxTokens: customConfig.maxTokens || DEFAULT_MAX_TOKENS,
+                clientConfig: { baseURL: creds.baseUrl }
+            });
         } else if (provider === 'bedrock') {
             return new BedrockModel({
                 apiKey: creds.apiKey,
@@ -1689,6 +1727,19 @@
                 maxTokens: customConfig.maxTokens || DEFAULT_MAX_TOKENS,
                 additionalRequestFields: additionalFields
             });
+        } else if (provider === 'webllm') {
+            if (webllmModelInstance?.getConfig().modelId === modelId && webllmModelInstance._loaded) return webllmModelInstance;
+            const progressEl = document.getElementById('webllmProgress');
+            const m = new WebLLMBrowserModel({
+                modelId,
+                maxTokens: customConfig.maxTokens || 4096,
+                onProgress: (pct, txt) => {
+                    if (progressEl) { progressEl.style.display = 'block'; progressEl.textContent = `${txt || 'Loading'} ${pct}%`; }
+                }
+            });
+            // load() is async — will be called on first stream() automatically
+            webllmModelInstance = m;
+            return m;
         }
         throw new Error(`Unknown provider: ${provider}`);
     }
@@ -1697,7 +1748,9 @@
     const DEFAULT_MODELS = {
         bedrock: 'global.anthropic.claude-opus-4-6-v1',
         anthropic: 'claude-opus-4-6',
-        openai: 'gpt-5.2-2025-12-11'
+        openai: 'gpt-5.2-2025-12-11',
+        openai_compatible: '',
+        webllm: 'Qwen2.5-3B-Instruct-q4f16_1-MLC'
     };
     
     // Model catalog: autocomplete + per-model feature flags
@@ -4775,6 +4828,10 @@ ${getRingContext()}`;
         document.getElementById('bedrockKey').value = state.credentials.bedrock.apiKey;
         document.getElementById('bedrockRegion').value = state.credentials.bedrock.region;
         document.getElementById('githubToken').value = state.credentials.github?.token || '';
+        document.getElementById('compatBaseUrl').value = state.credentials.openai_compatible?.baseUrl || '';
+        document.getElementById('compatKey').value = state.credentials.openai_compatible?.apiKey || '';
+        document.getElementById('compatModel').value = state.credentials.openai_compatible?.model || '';
+        document.getElementById('webllmModel').value = state.credentials.webllm?.model || 'Qwen2.5-3B-Instruct-q4f16_1-MLC';
         // Load network settings
         document.getElementById('relayUrl').value = localStorage.getItem('mesh_relay_url') || '';
         document.getElementById('instanceId').value = agentMesh.instanceId || '';
@@ -4923,6 +4980,12 @@ ${getRingContext()}`;
         state.credentials.bedrock.region = document.getElementById('bedrockRegion').value;
         state.credentials.github = state.credentials.github || {};
         state.credentials.github.token = document.getElementById('githubToken').value.trim();
+        state.credentials.openai_compatible = state.credentials.openai_compatible || {};
+        state.credentials.openai_compatible.baseUrl = document.getElementById('compatBaseUrl').value.trim();
+        state.credentials.openai_compatible.apiKey = document.getElementById('compatKey').value.trim();
+        state.credentials.openai_compatible.model = document.getElementById('compatModel').value.trim();
+        state.credentials.webllm = state.credentials.webllm || {};
+        state.credentials.webllm.model = document.getElementById('webllmModel').value;
         saveState();
         if (window.AgentMesh?.setCredentials) window.AgentMesh.setCredentials({ anthropic: { apiKey: state.credentials.anthropic.apiKey }, openai: { apiKey: state.credentials.openai.apiKey }, bedrock: { apiKey: state.credentials.bedrock.apiKey, region: state.credentials.bedrock.region } });
         showToast('Credentials saved');
