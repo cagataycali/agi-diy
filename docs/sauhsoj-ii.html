@@ -1277,17 +1277,21 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label">Relay Server URL</label>
-                        <input type="text" class="form-input" id="relayUrl" placeholder="wss://your-relay.example.com">
-                        <div class="form-hint">WebSocket URL for cross-browser/device P2P</div>
+                        <input type="text" class="form-input" id="relayUrl" placeholder="wss://your-relay.example.com or auto-filled by AgentCore login">
+                        <div class="form-hint">WebSocket URL — enter directly or use AgentCore login below</div>
                     </div>
                     <div class="form-group">
                         <label class="form-label">AgentCore Relay</label>
                         <input type="text" class="form-input" id="agentcoreArn" placeholder="arn:aws:bedrock-agentcore:us-east-1:123456:runtime/relay-xxx" style="margin-bottom:6px;">
+                        <input type="text" class="form-input" id="cognitoDomain" placeholder="my-domain.auth.us-east-1.amazoncognito.com" style="margin-bottom:6px;">
+                        <input type="text" class="form-input" id="cognitoClientId" placeholder="Cognito App Client ID" style="margin-bottom:6px;">
+                        <input type="text" class="form-input" id="identityPoolId" placeholder="us-east-1:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" style="margin-bottom:6px;">
+                        <input type="text" class="form-input" id="cognitoProviderName" placeholder="cognito-idp.us-east-1.amazonaws.com/us-east-1_XXXXXXXXX" style="margin-bottom:6px;">
                         <div style="display:flex;gap:6px;">
-                            <button class="btn btn-secondary" id="generatePresignedUrl" style="font-size:11px;padding:4px 10px;">Generate Presigned URL</button>
+                            <button class="btn btn-secondary" id="agentcoreLoginBtn" style="font-size:11px;padding:4px 10px;">Login & Connect</button>
                             <span id="presignedStatus" style="font-size:11px;color:var(--text-tertiary);align-self:center;"></span>
                         </div>
-                        <div class="form-hint">Enter ARN → Generate → auto-fills Relay URL above. Requires <code>pip install bedrock-agentcore</code> locally or paste a presigned URL directly.</div>
+                        <div class="form-hint">Cognito login → temp AWS creds → SigV4 presigned WebSocket URL</div>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Instance ID</label>
@@ -4841,6 +4845,11 @@ ${getRingContext()}`;
         document.getElementById('webllmModel').value = state.credentials.webllm?.model || 'Qwen2.5-3B-Instruct-q4f16_1-MLC';
         // Load network settings
         document.getElementById('relayUrl').value = localStorage.getItem('mesh_relay_url') || '';
+        document.getElementById('agentcoreArn').value = localStorage.getItem('agentcore_arn') || '';
+        document.getElementById('cognitoDomain').value = localStorage.getItem('cognito_domain') || '';
+        document.getElementById('cognitoClientId').value = localStorage.getItem('cognito_client_id') || '';
+        document.getElementById('identityPoolId').value = localStorage.getItem('identity_pool_id') || '';
+        document.getElementById('cognitoProviderName').value = localStorage.getItem('cognito_provider_name') || '';
         document.getElementById('instanceId').value = agentMesh.instanceId || '';
         agentMesh.updateWsStatus(agentMesh.wsConnected);
         agentMesh.updateRemotePeersUI();
@@ -4999,6 +5008,122 @@ ${getRingContext()}`;
         closeModal('settingsModal');
     };
     
+    // ═══ AgentCore SigV4 Presigned URL Generation ═══
+    const _enc = new TextEncoder();
+    async function _hmac(key, data) {
+        const k = key instanceof ArrayBuffer ? key : _enc.encode(key);
+        const cryptoKey = await crypto.subtle.importKey('raw', k, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+        return crypto.subtle.sign('HMAC', cryptoKey, typeof data === 'string' ? _enc.encode(data) : data);
+    }
+    async function _sha256hex(data) {
+        const buf = await crypto.subtle.digest('SHA-256', typeof data === 'string' ? _enc.encode(data) : data);
+        return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+    async function generateAgentCorePresignedUrl(accessKeyId, secretAccessKey, sessionToken, region, runtimeArn, expires = 300) {
+        const service = 'bedrock-agentcore';
+        const host = `${service}.${region}.amazonaws.com`;
+        const encodedArn = encodeURIComponent(runtimeArn);
+        const path = `/runtimes/${encodedArn}/ws`;
+        const sessionId = crypto.randomUUID();
+        const now = new Date();
+        const dateStamp = now.toISOString().replace(/[-:]/g, '').slice(0, 8);
+        const amzDate = dateStamp + 'T' + now.toISOString().replace(/[-:]/g, '').slice(9, 15) + 'Z';
+        const credential = `${accessKeyId}/${dateStamp}/${region}/${service}/aws4_request`;
+        // Query params (must be sorted)
+        const params = new URLSearchParams();
+        params.set('X-Amz-Algorithm', 'AWS4-HMAC-SHA256');
+        params.set('X-Amz-Credential', credential);
+        params.set('X-Amz-Date', amzDate);
+        params.set('X-Amz-Expires', String(expires));
+        if (sessionToken) params.set('X-Amz-Security-Token', sessionToken);
+        params.set('X-Amz-SignedHeaders', 'host');
+        params.set('X-Amzn-Bedrock-AgentCore-Runtime-Session-Id', sessionId);
+        params.sort();
+        const canonicalQs = params.toString().replace(/\+/g, '%20');
+        // Canonical request
+        const canonical = `GET\n${path}\n${canonicalQs}\nhost:${host}\n\nhost\n${'UNSIGNED-PAYLOAD'}`;
+        const canonicalHash = await _sha256hex(canonical);
+        const stringToSign = `AWS4-HMAC-SHA256\n${amzDate}\n${dateStamp}/${region}/${service}/aws4_request\n${canonicalHash}`;
+        // Signing key
+        let key = await _hmac('AWS4' + secretAccessKey, dateStamp);
+        key = await _hmac(key, region);
+        key = await _hmac(key, service);
+        key = await _hmac(key, 'aws4_request');
+        const sig = [...new Uint8Array(await _hmac(key, stringToSign))].map(b => b.toString(16).padStart(2, '0')).join('');
+        return `wss://${host}${path}?${canonicalQs}&X-Amz-Signature=${sig}`;
+    }
+
+    async function agentCoreLogin() {
+        const status = document.getElementById('presignedStatus');
+        const arn = document.getElementById('agentcoreArn').value.trim();
+        const domain = document.getElementById('cognitoDomain').value.trim();
+        const clientId = document.getElementById('cognitoClientId').value.trim();
+        const poolId = document.getElementById('identityPoolId').value.trim();
+        const provider = document.getElementById('cognitoProviderName').value.trim();
+        if (!arn || !domain || !clientId || !poolId || !provider) {
+            showToast('Fill in all AgentCore fields'); return;
+        }
+        // Save settings
+        localStorage.setItem('agentcore_arn', arn);
+        localStorage.setItem('cognito_domain', domain);
+        localStorage.setItem('cognito_client_id', clientId);
+        localStorage.setItem('identity_pool_id', poolId);
+        localStorage.setItem('cognito_provider_name', provider);
+        // Extract region from identity pool id
+        const idpRegion = poolId.split(':')[0];
+        const arnRegion = arn.split(':')[3];
+        status.textContent = '🔐 Opening login...';
+        // Open Cognito hosted UI popup
+        const callbackUrl = window.location.origin + window.location.pathname;
+        const authUrl = `https://${domain}/oauth2/authorize?response_type=token&client_id=${clientId}&redirect_uri=${encodeURIComponent(callbackUrl)}&scope=openid`;
+        const popup = window.open(authUrl, 'cognito_login', 'width=500,height=600');
+        // Poll for redirect with token
+        const idToken = await new Promise((resolve, reject) => {
+            const timer = setInterval(() => {
+                try {
+                    if (popup.closed) { clearInterval(timer); reject(new Error('Login cancelled')); return; }
+                    const hash = popup.location.hash;
+                    if (hash && hash.includes('id_token')) {
+                        clearInterval(timer);
+                        popup.close();
+                        resolve(new URLSearchParams(hash.substring(1)).get('id_token'));
+                    }
+                } catch(e) { /* cross-origin, keep polling */ }
+            }, 500);
+            setTimeout(() => { clearInterval(timer); popup?.close(); reject(new Error('Login timeout')); }, 120000);
+        });
+        status.textContent = '🔑 Getting credentials...';
+        // Exchange id_token for AWS credentials via Identity Pool
+        const idResp = await fetch(`https://cognito-identity.${idpRegion}.amazonaws.com/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-amz-json-1.1', 'X-Amz-Target': 'AWSCognitoIdentityService.GetId' },
+            body: JSON.stringify({ IdentityPoolId: poolId, Logins: { [provider]: idToken } })
+        });
+        const { IdentityId } = await idResp.json();
+        const credsResp = await fetch(`https://cognito-identity.${idpRegion}.amazonaws.com/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-amz-json-1.1', 'X-Amz-Target': 'AWSCognitoIdentityService.GetCredentialsForIdentity' },
+            body: JSON.stringify({ IdentityId, Logins: { [provider]: idToken } })
+        });
+        const { Credentials } = await credsResp.json();
+        status.textContent = '🔗 Signing URL...';
+        const presignedUrl = await generateAgentCorePresignedUrl(
+            Credentials.AccessKeyId, Credentials.SecretKey, Credentials.SessionToken, arnRegion, arn
+        );
+        document.getElementById('relayUrl').value = presignedUrl;
+        status.textContent = '✅ Connected!';
+        // Auto-connect
+        agentMesh.connectRelay(presignedUrl);
+        showToast('Relay connected via AgentCore!');
+    }
+
+    document.getElementById('agentcoreLoginBtn')?.addEventListener('click', () => {
+        agentCoreLogin().catch(e => {
+            document.getElementById('presignedStatus').textContent = '❌ ' + e.message;
+            showToast('Login failed: ' + e.message);
+        });
+    });
+
     // Network relay functions
     window.connectRelay = function() {
         const url = document.getElementById('relayUrl').value.trim();
