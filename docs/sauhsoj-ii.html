@@ -1287,8 +1287,11 @@
                         <input type="text" class="form-input" id="cognitoClientId" placeholder="Cognito App Client ID" style="margin-bottom:6px;">
                         <input type="text" class="form-input" id="identityPoolId" placeholder="us-east-1:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" style="margin-bottom:6px;">
                         <input type="text" class="form-input" id="cognitoProviderName" placeholder="cognito-idp.us-east-1.amazonaws.com/us-east-1_XXXXXXXXX" style="margin-bottom:6px;">
-                        <div style="display:flex;gap:6px;">
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;">
                             <button class="btn btn-secondary" id="agentcoreLoginBtn" style="font-size:11px;padding:4px 10px;">Login & Connect</button>
+                            <button class="btn btn-secondary" id="relayConfigImportBtn" style="font-size:11px;padding:4px 10px;">📂 Import JSON</button>
+                            <button class="btn btn-secondary" id="relayConfigExportBtn" style="font-size:11px;padding:4px 10px;">📋 Template</button>
+                            <input type="file" id="relayConfigFile" accept=".json" style="display:none;">
                             <span id="presignedStatus" style="font-size:11px;color:var(--text-tertiary);align-self:center;"></span>
                         </div>
                         <div class="form-hint">Cognito login → temp AWS creds → SigV4 presigned WebSocket URL</div>
@@ -5122,6 +5125,33 @@ ${getRingContext()}`;
             document.getElementById('presignedStatus').textContent = '❌ ' + e.message;
             showToast('Login failed: ' + e.message);
         });
+    });
+
+    const RELAY_CONFIG_FIELDS = ['agentcoreArn', 'cognitoDomain', 'cognitoClientId', 'identityPoolId', 'cognitoProviderName'];
+    const RELAY_CONFIG_KEYS = ['agentcore_arn', 'cognito_domain', 'cognito_client_id', 'identity_pool_id', 'cognito_provider_name'];
+
+    document.getElementById('relayConfigExportBtn')?.addEventListener('click', () => {
+        const template = { agentcoreArn: '', cognitoDomain: '', cognitoClientId: '', identityPoolId: '', cognitoProviderName: '' };
+        RELAY_CONFIG_FIELDS.forEach(id => { template[id] = document.getElementById(id)?.value || ''; });
+        const blob = new Blob([JSON.stringify(template, null, 2)], { type: 'application/json' });
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+        a.download = 'relay-config.json'; a.click(); URL.revokeObjectURL(a.href);
+    });
+
+    document.getElementById('relayConfigImportBtn')?.addEventListener('click', () => {
+        document.getElementById('relayConfigFile').click();
+    });
+
+    document.getElementById('relayConfigFile')?.addEventListener('change', async (e) => {
+        const file = e.target.files[0]; if (!file) return;
+        try {
+            const cfg = JSON.parse(await file.text());
+            RELAY_CONFIG_FIELDS.forEach((id, i) => {
+                if (cfg[id]) { document.getElementById(id).value = cfg[id]; localStorage.setItem(RELAY_CONFIG_KEYS[i], cfg[id]); }
+            });
+            showToast('Relay config imported');
+        } catch(err) { showToast('Invalid JSON: ' + err.message); }
+        e.target.value = '';
     });
 
     // Network relay functions

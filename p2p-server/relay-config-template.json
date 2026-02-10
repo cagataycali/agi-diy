@@ -1,0 +1,7 @@
+{
+  "agentcoreArn": "arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/relay-XXXXXXXXXX",
+  "cognitoDomain": "my-domain.auth.us-east-1.amazoncognito.com",
+  "cognitoClientId": "xxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "identityPoolId": "us-east-1:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+  "cognitoProviderName": "cognito-idp.us-east-1.amazonaws.com/us-east-1_XXXXXXXXX"
+}
