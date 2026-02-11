@@ -1020,6 +1020,7 @@
                         <option value="bedrock">Amazon Bedrock</option>
                         <option value="anthropic">Anthropic (Claude)</option>
                         <option value="openai">OpenAI (GPT)</option>
+                        <option value="perplexity">Perplexity (Sonar)</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -1089,6 +1090,10 @@
                             <option value="us-west-2">us-west-2</option>
                             <option value="eu-west-1">eu-west-1</option>
                         </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Perplexity API Key</label>
+                        <input type="password" class="form-input" id="perplexityKey" placeholder="pplx-...">
                     </div>
                     <button class="btn btn-primary" onclick="saveCredentials()">Save Credentials</button>
                 </div>
@@ -1220,6 +1225,7 @@
                         <option value="bedrock">Amazon Bedrock</option>
                         <option value="anthropic">Anthropic (Claude)</option>
                         <option value="openai">OpenAI (GPT)</option>
+                        <option value="perplexity">Perplexity (Sonar)</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -1319,7 +1325,8 @@
         credentials: {
             anthropic: { apiKey: '', model: 'claude-opus-4-6' },
             openai: { apiKey: '', model: 'gpt-5.2-2025-12-11' },
-            bedrock: { apiKey: '', region: 'us-east-1', model: 'global.anthropic.claude-opus-4-6-v1' }
+            bedrock: { apiKey: '', region: 'us-east-1', model: 'global.anthropic.claude-opus-4-6-v1' },
+            perplexity: { apiKey: '', model: 'sonar-pro' }
         },
         agentColors: ['#00ff88', '#00aaff', '#ff88ff', '#ffaa00', '#ff6666', '#88ffff'],
         colorIndex: 0
@@ -1517,7 +1524,90 @@
             }
         }
     }
-    
+
+    class PerplexityModel extends Model {
+        constructor(config) {
+            super();
+            this.config = config;
+        }
+        async *stream(messages, options) {
+            const { apiKey, modelId, maxTokens } = this.config;
+            if (!apiKey) throw new Error('Perplexity API key not set');
+
+            const openaiMessages = [];
+            if (options?.systemPrompt) {
+                const text = typeof options.systemPrompt === 'string' ? options.systemPrompt : options.systemPrompt.filter(b => b.type === 'textBlock').map(b => b.text).join('\n');
+                if (text) openaiMessages.push({ role: 'system', content: text });
+            }
+
+            for (const msg of messages) {
+                if (msg.role === 'user') {
+                    const toolResults = msg.content.filter(b => b.type === 'toolResultBlock');
+                    const other = msg.content.filter(b => b.type !== 'toolResultBlock');
+                    if (other.length) openaiMessages.push({ role: 'user', content: other.map(b => b.type === 'textBlock' ? { type: 'text', text: b.text } : { type: 'text', text: String(b) }) });
+                    for (const tr of toolResults) openaiMessages.push({ role: 'tool', tool_call_id: tr.toolUseId, content: tr.content.map(c => c.type === 'textBlock' ? c.text : JSON.stringify(c.json || c)).join('') });
+                } else {
+                    const toolCalls = [];
+                    const texts = [];
+                    for (const b of msg.content) {
+                        if (b.type === 'textBlock') texts.push(b.text);
+                        else if (b.type === 'toolUseBlock') toolCalls.push({ id: b.toolUseId, type: 'function', function: { name: b.name, arguments: JSON.stringify(b.input) } });
+                    }
+                    const m = { role: 'assistant', content: texts.join('') };
+                    if (toolCalls.length) m.tool_calls = toolCalls;
+                    openaiMessages.push(m);
+                }
+            }
+
+            const body = { model: modelId, max_tokens: maxTokens, messages: openaiMessages, stream: true };
+            if (options?.toolSpecs?.length) body.tools = options.toolSpecs.map(s => ({ type: 'function', function: { name: s.name, description: s.description, parameters: s.inputSchema } }));
+
+            const response = await fetch('https://api.perplexity.ai/chat/completions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                body: JSON.stringify(body)
+            });
+            if (!response.ok) throw new Error(`Perplexity error: ${await response.text()}`);
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+            let started = false;
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
+
+                for (const line of lines) {
+                    if (!line.startsWith('data: ') || line === 'data: [DONE]') continue;
+                    try {
+                        const chunk = JSON.parse(line.slice(6));
+                        if (!chunk.choices?.length) continue;
+                        const choice = chunk.choices[0];
+                        const delta = choice.delta;
+
+                        if (delta?.role && !started) { started = true; yield { type: 'modelMessageStartEvent', role: delta.role }; }
+                        if (delta?.content) yield { type: 'modelContentBlockDeltaEvent', delta: { type: 'textDelta', text: delta.content } };
+                        if (delta?.tool_calls) {
+                            for (const tc of delta.tool_calls) {
+                                if (tc.id && tc.function?.name) yield { type: 'modelContentBlockStartEvent', start: { type: 'toolUseStart', name: tc.function.name, toolUseId: tc.id } };
+                                if (tc.function?.arguments) yield { type: 'modelContentBlockDeltaEvent', delta: { type: 'toolUseInputDelta', input: tc.function.arguments } };
+                            }
+                        }
+                        if (choice.finish_reason) {
+                            yield { type: 'modelContentBlockStopEvent' };
+                            const map = { 'stop': 'endTurn', 'tool_calls': 'toolUse', 'length': 'maxTokens' };
+                            yield { type: 'modelMessageStopEvent', stopReason: map[choice.finish_reason] || 'endTurn' };
+                        }
+                    } catch {}
+                }
+            }
+        }
+    }
+
     class BedrockModel extends Model {
         constructor(config) {
             super();
@@ -1623,7 +1713,7 @@
     }
     
     function createModel(provider, customConfig = {}) {
-        const creds = state.credentials[provider];
+        const creds = state.credentials[provider] || {};
         if (provider === 'anthropic') {
             return new AnthropicModel({
                 apiKey: creds.apiKey,
@@ -1645,15 +1735,22 @@
                 maxTokens: customConfig.maxTokens || DEFAULT_MAX_TOKENS,
                 additionalRequestFields: customConfig.additionalRequestFields || DEFAULT_BEDROCK_ADDITIONAL_FIELDS
             });
+        } else if (provider === 'perplexity') {
+            return new PerplexityModel({
+                apiKey: creds.apiKey,
+                modelId: customConfig.modelId || creds.model || 'sonar-pro',
+                maxTokens: customConfig.maxTokens || DEFAULT_MAX_TOKENS
+            });
         }
         throw new Error(`Unknown provider: ${provider}`);
     }
-    
+
     // Default models per provider
     const DEFAULT_MODELS = {
         bedrock: 'global.anthropic.claude-opus-4-6-v1',
         anthropic: 'claude-opus-4-6',
-        openai: 'gpt-5.2-2025-12-11'
+        openai: 'gpt-5.2-2025-12-11',
+        perplexity: 'sonar-pro'
     };
     
     // Default additional request fields for bedrock (extended thinking)
@@ -1739,7 +1836,7 @@
         description: 'Create a sub-agent to handle a specific task. The sub-agent runs asynchronously.',
         inputSchema: z.object({
             agentId: z.string().describe('Unique ID for the sub-agent'),
-            provider: z.enum(['anthropic', 'openai', 'bedrock']).describe('Model provider'),
+            provider: z.enum(['anthropic', 'openai', 'bedrock', 'perplexity']).describe('Model provider'),
             systemPrompt: z.string().describe('System prompt for sub-agent'),
             prompt: z.string().describe('Initial prompt to send'),
             maxTokens: z.number().optional()
@@ -3417,9 +3514,10 @@ ${getRingContext()}`;
         
         // If no agents exist, try to create default agent first
         if (state.agents.size === 0) {
-            const hasAnyKey = state.credentials.anthropic.apiKey || 
-                              state.credentials.openai.apiKey || 
-                              state.credentials.bedrock.apiKey;
+            const hasAnyKey = state.credentials.anthropic?.apiKey ||
+                              state.credentials.openai?.apiKey ||
+                              state.credentials.bedrock?.apiKey ||
+                              state.credentials.perplexity?.apiKey;
             
             if (!hasAnyKey) {
                 showToast('Add API key in Settings first');
@@ -3949,6 +4047,7 @@ ${getRingContext()}`;
         document.getElementById('openaiKey').value = state.credentials.openai.apiKey;
         document.getElementById('bedrockKey').value = state.credentials.bedrock.apiKey;
         document.getElementById('bedrockRegion').value = state.credentials.bedrock.region;
+        document.getElementById('perplexityKey').value = state.credentials.perplexity?.apiKey || '';
         // Load network settings
         document.getElementById('relayUrl').value = localStorage.getItem('mesh_relay_url') || '';
         document.getElementById('instanceId').value = agentMesh.instanceId || '';
@@ -4052,12 +4151,14 @@ ${getRingContext()}`;
             if (data.anthropic) state.credentials.anthropic = { ...state.credentials.anthropic, ...data.anthropic };
             if (data.openai) state.credentials.openai = { ...state.credentials.openai, ...data.openai };
             if (data.bedrock) state.credentials.bedrock = { ...state.credentials.bedrock, ...data.bedrock };
-            
+            if (data.perplexity) state.credentials.perplexity = { ...(state.credentials.perplexity || { apiKey: '', model: 'sonar-pro' }), ...data.perplexity };
+
             // Update UI
             document.getElementById('anthropicKey').value = state.credentials.anthropic.apiKey || '';
             document.getElementById('openaiKey').value = state.credentials.openai.apiKey || '';
             document.getElementById('bedrockKey').value = state.credentials.bedrock.apiKey || '';
             document.getElementById('bedrockRegion').value = state.credentials.bedrock.region || 'us-east-1';
+            document.getElementById('perplexityKey').value = state.credentials.perplexity?.apiKey || '';
             
             saveState();
             showToast('Settings imported!');
@@ -4094,13 +4195,16 @@ ${getRingContext()}`;
         state.credentials.openai.apiKey = document.getElementById('openaiKey').value.trim();
         state.credentials.bedrock.apiKey = document.getElementById('bedrockKey').value.trim();
         state.credentials.bedrock.region = document.getElementById('bedrockRegion').value;
-        
+        if (!state.credentials.perplexity) state.credentials.perplexity = { apiKey: '', model: 'sonar-pro' };
+        state.credentials.perplexity.apiKey = document.getElementById('perplexityKey').value.trim();
+
         // 🔑 Sync to AgentMesh unified credentials (cross-tab)
         if (window.AgentMesh?.setCredentials) {
             window.AgentMesh.setCredentials({
                 anthropic: { apiKey: state.credentials.anthropic.apiKey, model: state.credentials.anthropic.model },
                 openai: { apiKey: state.credentials.openai.apiKey, model: state.credentials.openai.model },
-                bedrock: { apiKey: state.credentials.bedrock.apiKey, region: state.credentials.bedrock.region, model: state.credentials.bedrock.model }
+                bedrock: { apiKey: state.credentials.bedrock.apiKey, region: state.credentials.bedrock.region, model: state.credentials.bedrock.model },
+                perplexity: { apiKey: state.credentials.perplexity.apiKey, model: state.credentials.perplexity.model }
             });
         }
         
@@ -4158,6 +4262,7 @@ ${getRingContext()}`;
             
             const data = JSON.parse(stored);
             state.credentials = data.credentials || state.credentials;
+            if (!state.credentials.perplexity) state.credentials.perplexity = { apiKey: '', model: 'sonar-pro' };
             state.ringBuffer = data.ringBuffer || [];
             
             // 🔑 Merge with AgentMesh unified credentials
@@ -4172,8 +4277,12 @@ ${getRingContext()}`;
                 if (meshCreds.bedrock?.apiKey && !state.credentials.bedrock.apiKey) {
                     state.credentials.bedrock.apiKey = meshCreds.bedrock.apiKey;
                 }
+                if (meshCreds.perplexity?.apiKey && !state.credentials.perplexity?.apiKey) {
+                    if (!state.credentials.perplexity) state.credentials.perplexity = { apiKey: '', model: 'sonar-pro' };
+                    state.credentials.perplexity.apiKey = meshCreds.perplexity.apiKey;
+                }
             }
-            
+
             for (const agentData of data.agents || []) {
                 try {
                     const model = createModel(agentData.config.provider, agentData.config);
@@ -4237,6 +4346,7 @@ ${getRingContext()}`;
             const data = JSON.parse(text);
             
             state.credentials = data.credentials || state.credentials;
+            if (!state.credentials.perplexity) state.credentials.perplexity = { apiKey: '', model: 'sonar-pro' };
             state.ringBuffer = data.ringBuffer || [];
             
             for (const agentData of data.agents || []) {
@@ -4438,6 +4548,11 @@ ${getRingContext()}`;
             }
             if (meshCreds.bedrock?.apiKey && !state.credentials.bedrock.apiKey) {
                 state.credentials.bedrock.apiKey = meshCreds.bedrock.apiKey;
+                updated = true;
+            }
+            if (meshCreds.perplexity?.apiKey && !state.credentials.perplexity?.apiKey) {
+                if (!state.credentials.perplexity) state.credentials.perplexity = { apiKey: '', model: 'sonar-pro' };
+                state.credentials.perplexity.apiKey = meshCreds.perplexity.apiKey;
                 updated = true;
             }
             if (updated) {

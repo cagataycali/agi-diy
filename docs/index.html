@@ -857,6 +857,7 @@
                             <option value="anthropic">Anthropic</option>
                             <option value="openai">OpenAI</option>
                             <option value="bedrock">Amazon Bedrock</option>
+                            <option value="perplexity">Perplexity</option>
                             <option value="webllm">WebLLM (Local)</option>
                         </select>
                     </div>
@@ -936,6 +937,30 @@
                         </div>
                     </div>
                     
+                    <div id="perplexityFields" style="display:none;">
+                        <div class="form-group">
+                            <label class="form-label">API Key</label>
+                            <input type="password" class="form-input" id="perplexityApiKey" placeholder="pplx-...">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Model</label>
+                            <input type="text" class="form-input" id="perplexityModel" placeholder="sonar-pro">
+                            <div style="font-size:11px;color:var(--text-tertiary);margin-top:4px;">Models: sonar, sonar-pro, sonar-reasoning, sonar-reasoning-pro, sonar-deep-research</div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Max Tokens</label>
+                            <input type="number" class="form-input" id="perplexityMaxTokens" placeholder="8096" min="1" max="128000">
+                            <div style="font-size:11px;color:var(--text-tertiary);margin-top:4px;">Maximum tokens for response (default: 8096)</div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Search Options (JSON)</label>
+                            <textarea class="form-input" id="perplexitySearchOptions" rows="3" placeholder='{"search_recency_filter": "week", "return_citations": true}'></textarea>
+                            <div style="font-size:11px;color:var(--text-tertiary);margin-top:4px;">
+                                Options: search_recency_filter (day/week/month/year), return_citations, return_related_questions, search_domain_filter
+                            </div>
+                        </div>
+                    </div>
+
                     <div id="webllmFields" style="display:none;">
                         <div class="form-group">
                             <label class="form-label">Local Model</label>
@@ -2022,6 +2047,255 @@ Version: ${VERSION}`;
                             }
 
                             // Finish reason
+                            if (choice.finish_reason) {
+                                if (textBlockStarted) {
+                                    yield { type: 'modelContentBlockStopEvent' };
+                                    textBlockStarted = false;
+                                }
+                                for (const [idx] of activeToolCalls) {
+                                    yield { type: 'modelContentBlockStopEvent' };
+                                    activeToolCalls.delete(idx);
+                                }
+
+                                const stopReasonMap = {
+                                    'stop': 'endTurn',
+                                    'tool_calls': 'toolUse',
+                                    'length': 'maxTokens',
+                                    'content_filter': 'contentFiltered'
+                                };
+                                yield {
+                                    type: 'modelMessageStopEvent',
+                                    stopReason: stopReasonMap[choice.finish_reason] || 'endTurn'
+                                };
+                            }
+                        } catch (e) {
+                            // Skip malformed events
+                        }
+                    }
+                }
+            } finally {
+                reader.releaseLock();
+            }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PERPLEXITY MODEL (OpenAI-compatible API with web search)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    class PerplexityBrowserModel extends Model {
+        constructor(config = {}) {
+            super();
+            this._config = {
+                apiKey: config.apiKey || '',
+                modelId: config.modelId || 'sonar-pro',
+                maxTokens: config.maxTokens || 8096,
+                temperature: config.temperature || 1.0,
+                searchOptions: config.searchOptions || {},
+            };
+        }
+
+        updateConfig(config) {
+            this._config = { ...this._config, ...config };
+        }
+
+        getConfig() {
+            return this._config;
+        }
+
+        async *stream(messages, options) {
+            const { apiKey, modelId, maxTokens, temperature, searchOptions } = this._config;
+
+            if (!apiKey) {
+                throw new Error('Perplexity API key not configured. Open settings to add your key.');
+            }
+
+            // Format messages for Perplexity (OpenAI-compatible)
+            const openaiMessages = [];
+
+            if (options?.systemPrompt) {
+                const systemText = typeof options.systemPrompt === 'string'
+                    ? options.systemPrompt
+                    : options.systemPrompt.filter(b => b.type === 'textBlock').map(b => b.text).join('\n');
+                if (systemText) {
+                    openaiMessages.push({ role: 'system', content: systemText });
+                }
+            }
+
+            for (const msg of messages) {
+                if (msg.role === 'user') {
+                    const toolResults = msg.content.filter(b => b.type === 'toolResultBlock');
+                    const otherContent = msg.content.filter(b => b.type !== 'toolResultBlock');
+
+                    if (otherContent.length > 0) {
+                        const parts = otherContent.map(block => {
+                            if (block.type === 'textBlock') return { type: 'text', text: block.text };
+                            if (block.type === 'documentBlock') {
+                                const textFormats = ['txt', 'md', 'csv', 'html'];
+                                if (block.source?.bytes && textFormats.includes(block.format)) {
+                                    const decoder = new TextDecoder();
+                                    const text = decoder.decode(block.source.bytes instanceof Uint8Array ? block.source.bytes : new Uint8Array(block.source.bytes));
+                                    return { type: 'text', text: `--- Document: ${block.name} ---\n${text}\n--- End Document ---` };
+                                }
+                                return { type: 'text', text: `[Document: ${block.name || 'unknown'}]` };
+                            }
+                            return { type: 'text', text: String(block) };
+                        });
+                        openaiMessages.push({ role: 'user', content: parts });
+                    }
+
+                    for (const tr of toolResults) {
+                        const content = tr.content.map(c => {
+                            if (c.type === 'textBlock') return c.text;
+                            if (c.type === 'jsonBlock') return JSON.stringify(c.json);
+                            return String(c);
+                        }).join('');
+                        openaiMessages.push({
+                            role: 'tool',
+                            tool_call_id: tr.toolUseId,
+                            content: tr.status === 'error' ? `[ERROR] ${content}` : content
+                        });
+                    }
+                } else {
+                    const toolCalls = [];
+                    const textParts = [];
+
+                    for (const block of msg.content) {
+                        if (block.type === 'textBlock') {
+                            textParts.push(block.text);
+                        } else if (block.type === 'toolUseBlock') {
+                            toolCalls.push({
+                                id: block.toolUseId,
+                                type: 'function',
+                                function: {
+                                    name: block.name,
+                                    arguments: JSON.stringify(block.input)
+                                }
+                            });
+                        }
+                    }
+
+                    const assistantMsg = { role: 'assistant', content: textParts.join('') };
+                    if (toolCalls.length > 0) assistantMsg.tool_calls = toolCalls;
+                    openaiMessages.push(assistantMsg);
+                }
+            }
+
+            const requestBody = {
+                model: modelId,
+                max_tokens: maxTokens,
+                temperature: temperature,
+                messages: openaiMessages,
+                stream: true,
+                ...searchOptions
+            };
+
+            if (options?.toolSpecs && options.toolSpecs.length > 0) {
+                requestBody.tools = options.toolSpecs.map(spec => ({
+                    type: 'function',
+                    function: {
+                        name: spec.name,
+                        description: spec.description,
+                        parameters: spec.inputSchema
+                    }
+                }));
+            }
+
+            const response = await fetch('https://api.perplexity.ai/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify(requestBody)
+            });
+
+            if (!response.ok) {
+                const error = await response.text();
+                throw new Error(`Perplexity API error: ${response.status} - ${error}`);
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            let messageStarted = false;
+            let textBlockStarted = false;
+            const activeToolCalls = new Map();
+
+            try {
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop() || '';
+
+                    for (const line of lines) {
+                        if (!line.startsWith('data: ')) continue;
+
+                        const data = line.slice(6);
+                        if (data === '[DONE]') continue;
+
+                        try {
+                            const chunk = JSON.parse(data);
+
+                            if (!chunk.choices || chunk.choices.length === 0) {
+                                if (chunk.usage) {
+                                    yield {
+                                        type: 'modelMetadataEvent',
+                                        usage: {
+                                            inputTokens: chunk.usage.prompt_tokens || 0,
+                                            outputTokens: chunk.usage.completion_tokens || 0,
+                                            totalTokens: chunk.usage.total_tokens || 0
+                                        }
+                                    };
+                                }
+                                continue;
+                            }
+
+                            const choice = chunk.choices[0];
+                            const delta = choice.delta;
+
+                            if (delta?.role && !messageStarted) {
+                                messageStarted = true;
+                                yield { type: 'modelMessageStartEvent', role: delta.role };
+                            }
+
+                            if (delta?.content && delta.content.length > 0) {
+                                if (!textBlockStarted) {
+                                    textBlockStarted = true;
+                                    yield { type: 'modelContentBlockStartEvent' };
+                                }
+                                yield {
+                                    type: 'modelContentBlockDeltaEvent',
+                                    delta: { type: 'textDelta', text: delta.content }
+                                };
+                            }
+
+                            if (delta?.tool_calls) {
+                                for (const tc of delta.tool_calls) {
+                                    if (tc.id && tc.function?.name) {
+                                        yield {
+                                            type: 'modelContentBlockStartEvent',
+                                            start: {
+                                                type: 'toolUseStart',
+                                                name: tc.function.name,
+                                                toolUseId: tc.id
+                                            }
+                                        };
+                                        activeToolCalls.set(tc.index, true);
+                                    }
+                                    if (tc.function?.arguments) {
+                                        yield {
+                                            type: 'modelContentBlockDeltaEvent',
+                                            delta: { type: 'toolUseInputDelta', input: tc.function.arguments }
+                                        };
+                                    }
+                                }
+                            }
+
                             if (choice.finish_reason) {
                                 if (textBlockStarted) {
                                     yield { type: 'modelContentBlockStopEvent' };
@@ -3509,6 +3783,26 @@ Example - create a tool that gets weather:
             }
             
             model = new BedrockBrowserModel({ apiKey, region, modelId, maxTokens, additionalRequestFields });
+        } else if (provider === 'perplexity') {
+            const apiKey = meshCreds?.perplexity?.apiKey || localStorage.getItem('perplexity_api_key');
+            const modelId = localStorage.getItem('perplexity_model') || 'sonar-pro';
+            const maxTokensStr = localStorage.getItem('perplexity_max_tokens');
+            const searchOptionsStr = localStorage.getItem('perplexity_search_options');
+
+            if (!apiKey) {
+                setStatus('no key');
+                return false;
+            }
+
+            const maxTokens = maxTokensStr ? parseInt(maxTokensStr) : 8096;
+            let searchOptions = {};
+            try {
+                if (searchOptionsStr) searchOptions = JSON.parse(searchOptionsStr);
+            } catch (e) {
+                console.warn('Invalid search options JSON:', e);
+            }
+
+            model = new PerplexityBrowserModel({ apiKey, modelId, maxTokens, searchOptions });
         } else if (provider === 'webllm') {
             const modelId = localStorage.getItem('webllm_model') || 'Qwen2.5-3B-Instruct-q4f16_1-MLC';
             
@@ -4244,6 +4538,7 @@ Example - create a tool that gets weather:
         document.getElementById('anthropicFields').style.display = provider === 'anthropic' ? 'block' : 'none';
         document.getElementById('openaiFields').style.display = provider === 'openai' ? 'block' : 'none';
         document.getElementById('bedrockFields').style.display = provider === 'bedrock' ? 'block' : 'none';
+        document.getElementById('perplexityFields').style.display = provider === 'perplexity' ? 'block' : 'none';
         document.getElementById('webllmFields').style.display = provider === 'webllm' ? 'block' : 'none';
     };
 
@@ -4276,6 +4571,14 @@ Example - create a tool that gets weather:
             localStorage.setItem('bedrock_additional_fields', document.getElementById('bedrockAdditionalFields').value || '');
             // 🔑 Sync to unified credentials
             if (window.AgentMesh?.setApiKey) window.AgentMesh.setApiKey('bedrock', apiKey);
+        } else if (provider === 'perplexity') {
+            const apiKey = document.getElementById('perplexityApiKey').value;
+            localStorage.setItem('perplexity_api_key', apiKey);
+            localStorage.setItem('perplexity_model', document.getElementById('perplexityModel').value || 'sonar-pro');
+            localStorage.setItem('perplexity_max_tokens', document.getElementById('perplexityMaxTokens').value || '');
+            localStorage.setItem('perplexity_search_options', document.getElementById('perplexitySearchOptions').value || '');
+            // 🔑 Sync to unified credentials
+            if (window.AgentMesh?.setApiKey) window.AgentMesh.setApiKey('perplexity', apiKey);
         } else if (provider === 'webllm') {
             localStorage.setItem('webllm_model', document.getElementById('webllmModel').value);
         }
@@ -4790,6 +5093,7 @@ Example - create a tool that gets weather:
             if (creds.anthropic?.apiKey) localStorage.setItem('anthropic_api_key', creds.anthropic.apiKey);
             if (creds.openai?.apiKey) localStorage.setItem('openai_api_key', creds.openai.apiKey);
             if (creds.bedrock?.apiKey) localStorage.setItem('bedrock_api_key', creds.bedrock.apiKey);
+            if (creds.perplexity?.apiKey) localStorage.setItem('perplexity_api_key', creds.perplexity.apiKey);
         }
         
         document.getElementById('provider').value = localStorage.getItem('provider') || 'anthropic';
@@ -4806,6 +5110,10 @@ Example - create a tool that gets weather:
         document.getElementById('bedrockModel').value = localStorage.getItem('bedrock_model') || 'global.anthropic.claude-opus-4-6-v1';
         document.getElementById('bedrockMaxTokens').value = localStorage.getItem('bedrock_max_tokens') || '';
         document.getElementById('bedrockAdditionalFields').value = localStorage.getItem('bedrock_additional_fields') || '';
+        document.getElementById('perplexityApiKey').value = localStorage.getItem('perplexity_api_key') || '';
+        document.getElementById('perplexityModel').value = localStorage.getItem('perplexity_model') || 'sonar-pro';
+        document.getElementById('perplexityMaxTokens').value = localStorage.getItem('perplexity_max_tokens') || '';
+        document.getElementById('perplexitySearchOptions').value = localStorage.getItem('perplexity_search_options') || '';
         document.getElementById('webllmModel').value = localStorage.getItem('webllm_model') || 'Qwen2.5-3B-Instruct-q4f16_1-MLC';
         document.getElementById('systemPrompt').value = localStorage.getItem('system_prompt') || DEFAULT_SYSTEM_PROMPT;
         
@@ -4829,12 +5137,14 @@ Example - create a tool that gets weather:
             if (creds.anthropic?.apiKey) document.getElementById('anthropicApiKey').value = creds.anthropic.apiKey;
             if (creds.openai?.apiKey) document.getElementById('openaiApiKey').value = creds.openai.apiKey;
             if (creds.bedrock?.apiKey) document.getElementById('bedrockApiKey').value = creds.bedrock.apiKey;
+            if (creds.perplexity?.apiKey) document.getElementById('perplexityApiKey').value = creds.perplexity.apiKey;
             console.log('[agi.diy] Credentials synced from another tab');
             // Trigger agent reinit with new credentials if we don't have a key yet
             const provider = localStorage.getItem('provider') || 'anthropic';
             const currentKey = provider === 'anthropic' ? localStorage.getItem('anthropic_api_key') :
                                provider === 'openai' ? localStorage.getItem('openai_api_key') :
-                               provider === 'bedrock' ? localStorage.getItem('bedrock_api_key') : null;
+                               provider === 'bedrock' ? localStorage.getItem('bedrock_api_key') :
+                               provider === 'perplexity' ? localStorage.getItem('perplexity_api_key') : null;
             if (!currentKey && creds[provider]?.apiKey) {
                 window._agentNeedsReinit = true;
                 initializeAgent().then(success => {

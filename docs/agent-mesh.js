@@ -37,7 +37,8 @@
         anthropic: { apiKey: '', model: 'claude-sonnet-4-20250514' },
         openai: { apiKey: '', model: 'gpt-4o' },
         bedrock: { apiKey: '', region: 'us-east-1', model: 'us.anthropic.claude-sonnet-4-20250514-v1:0' },
-        google: { apiKey: '', model: 'gemini-2.0-flash' }
+        google: { apiKey: '', model: 'gemini-2.0-flash' },
+        perplexity: { apiKey: '', model: 'sonar-pro' }
     };
     
     function getCredentials() {
@@ -52,14 +53,16 @@
             const openaiKey = localStorage.getItem('openai_api_key');
             const bedrockKey = localStorage.getItem('bedrock_api_key');
             const googleKey = localStorage.getItem('google_api_key');
-            
-            if (anthropicKey || openaiKey || bedrockKey || googleKey) {
+            const perplexityKey = localStorage.getItem('perplexity_api_key');
+
+            if (anthropicKey || openaiKey || bedrockKey || googleKey || perplexityKey) {
                 const migrated = { ...defaultCredentials };
                 if (anthropicKey) migrated.anthropic.apiKey = anthropicKey;
                 if (openaiKey) migrated.openai.apiKey = openaiKey;
                 if (bedrockKey) migrated.bedrock.apiKey = bedrockKey;
                 if (googleKey) migrated.google.apiKey = googleKey;
-                
+                if (perplexityKey) migrated.perplexity.apiKey = perplexityKey;
+
                 // Save migrated credentials
                 setCredentials(migrated);
                 console.log('[AgentMesh] Migrated credentials to unified storage');
@@ -89,6 +92,9 @@
             }
             if (credentials.google?.apiKey) {
                 localStorage.setItem('google_api_key', credentials.google.apiKey);
+            }
+            if (credentials.perplexity?.apiKey) {
+                localStorage.setItem('perplexity_api_key', credentials.perplexity.apiKey);
             }
             
             // Broadcast to other tabs
