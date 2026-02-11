@@ -195,6 +195,103 @@ const claimTaskTool = tool({
 
 const TASK_TOOLS = [createTaskTool, updateTaskTool, listTasksTool, claimTaskTool];
 
+// ═══ ORCHESTRATION ═══
+const spawnAgentTool = tool({
+  name: 'spawn_agent',
+  description: 'Spawn a new agent to work on tasks. Returns the agent ID.',
+  inputSchema: z.object({
+    agentId: z.string().describe('Unique agent ID'),
+    role: z.string().describe('Agent role description for system prompt'),
+    provider: z.string().optional().describe('Model provider: anthropic, openai, bedrock'),
+  }),
+  callback: (input) => {
+    const provider = input.provider || detectProvider();
+    if (!provider) return JSON.stringify({ error: 'No API key configured' });
+    const color = COLORS[state.colorIndex++ % COLORS.length];
+    state.agents.set(input.agentId, { id: input.agentId, model: provider, status: 'ready', color, role: input.role });
+    if (window.AgentMesh?.registerAgent) window.AgentMesh.registerAgent(input.agentId, 'browser', { model: provider });
+    refreshUI();
+    return JSON.stringify({ agentId: input.agentId, status: 'ready' });
+  }
+});
+
+const delegateTaskTool = tool({
+  name: 'delegate_task',
+  description: 'Delegate a task to an agent. The agent will work on it asynchronously and update the task status/worklog.',
+  inputSchema: z.object({
+    taskId: z.string(),
+    agentId: z.string(),
+    instructions: z.string().describe('Detailed instructions for the agent'),
+  }),
+  callback: async (input) => {
+    const task = state.tasks.get(input.taskId);
+    if (!task) return JSON.stringify({ error: 'Task not found' });
+    const agentData = state.agents.get(input.agentId);
+    if (!agentData) return JSON.stringify({ error: 'Agent not found' });
+
+    // Claim the task
+    task.agentId = input.agentId; task.status = 'in-progress';
+    task.worklog.push({ ts: Date.now(), agentId: input.agentId, msg: `Delegated: ${input.instructions.slice(0, 100)}` });
+    agentData.status = 'processing';
+    refreshUI(); saveTasks();
+
+    // Run agent asynchronously (don't await — fire and forget for parallelism)
+    runDelegatedAgent(input.agentId, input.taskId, input.instructions);
+    return JSON.stringify({ taskId: input.taskId, agentId: input.agentId, status: 'delegated' });
+  }
+});
+
+async function runDelegatedAgent(agentId, taskId, instructions) {
+  const task = state.tasks.get(taskId);
+  const agentData = state.agents.get(agentId);
+  const provider = detectProvider();
+  if (!provider || !task) return;
+
+  try {
+    const model = createModel(provider, { maxTokens: 4096 });
+    const agent = new Agent({
+      model,
+      tools: [updateTaskTool, createTaskTool],
+      systemPrompt: `You are agent "${agentId}". You are working on task "${task.title}" (ID: ${taskId}). Use update_task to report progress (add worklog entries) and mark complete when done. If the task needs sub-tasks, use create_task with parentId="${taskId}". Be thorough but concise.`,
+      printer: false,
+    });
+
+    let result = '';
+    for await (const event of agent.stream(instructions)) {
+      if (event?.type === 'modelContentBlockDeltaEvent' && event.delta?.type === 'textDelta') {
+        result += event.delta.text;
+      }
+    }
+
+    // Mark complete if agent didn't already
+    if (task.status === 'in-progress') {
+      task.status = 'complete';
+      task.worklog.push({ ts: Date.now(), agentId, msg: result.slice(0, 300) || 'Completed' });
+    }
+
+    // Ring buffer
+    state.ringBuffer.push({ agentId, content: `[${task.title}] ${result.slice(0, 200)}`, ts: Date.now() });
+    if (window.AgentMesh?.addToRingContext) window.AgentMesh.addToRingContext(agentId, 'browser', `[${task.title}] ${result.slice(0, 500)}`);
+  } catch (e) {
+    task.status = 'failed';
+    task.worklog.push({ ts: Date.now(), agentId, msg: `Error: ${e.message}` });
+  }
+
+  if (agentData) agentData.status = 'ready';
+  refreshUI(); saveTasks();
+}
+
+const ORCHESTRATOR_TOOLS = [...TASK_TOOLS, spawnAgentTool, delegateTaskTool];
+
+const ORCHESTRATOR_PROMPT = `You are an orchestrator agent in a multi-agent mesh dashboard. Your job:
+1. When given a goal, decompose it into tasks using create_task (use parentId for sub-tasks)
+2. Spawn agents with spawn_agent for different roles (researcher, coder, writer, etc.)
+3. Delegate tasks to agents with delegate_task — they run in parallel automatically
+4. Maximize parallelism: delegate multiple tasks at once to minimize wall-clock time
+5. Monitor progress with list_tasks and update_task
+
+Be concise. Act immediately — create tasks and delegate them, don't just describe what you'd do.`;
+
 function saveTasks() { try { localStorage.setItem('dashboard_tasks', JSON.stringify([...state.tasks.values()])); } catch(e) {} }
 function loadTasks() { try { const d = JSON.parse(localStorage.getItem('dashboard_tasks')); if (d?.length) { state.tasks.clear(); d.forEach(t => state.tasks.set(t.id, t)); return true; } } catch(e) {} return false; }
 // ═══════════════════════════════════════════════════════════════
@@ -326,7 +423,7 @@ function ensureChatAgent() {
   if (!provider) return false;
   if (state.chatAgent) return true;
   const model = createModel(provider, { maxTokens: 8192 });
-  state.chatAgent = new Agent({ model, tools: TASK_TOOLS, systemPrompt: `You are a chat agent in a multi-agent mesh dashboard. You can create, update, list, and claim tasks. Use create_task to decompose goals into sub-tasks (set parentId). Use update_task to change status and add worklog entries. Use claim_task to assign agents. Be concise.`, printer: false });
+  state.chatAgent = new Agent({ model, tools: ORCHESTRATOR_TOOLS, systemPrompt: ORCHESTRATOR_PROMPT, printer: false });
   // Register in mesh
   if (window.AgentMesh?.registerAgent) window.AgentMesh.registerAgent('dashboard-chat', 'browser', { model: provider });
   state.agents.set('dashboard-chat', { id: 'dashboard-chat', model: provider, status: 'ready', color: COLORS[state.colorIndex++ % COLORS.length] });
@@ -365,7 +462,7 @@ async function sendChatMessage(text, blockId) {
     // Fresh agent per message for parallelism
     const provider = detectProvider();
     const model = createModel(provider, { maxTokens: 8192 });
-    const agent = new Agent({ model, tools: TASK_TOOLS, systemPrompt: `You are a chat agent in a multi-agent mesh dashboard. You can create, update, list, and claim tasks. Use create_task to decompose goals into sub-tasks (set parentId). Use update_task to change status and add worklog entries. Use claim_task to assign agents. Be concise.`, printer: false });
+    const agent = new Agent({ model, tools: ORCHESTRATOR_TOOLS, systemPrompt: ORCHESTRATOR_PROMPT, printer: false });
     // Inject history
     for (const m of state.chatMessages.slice(-20)) {
       agent.messages.push({ role: m.role, content: [{ type: 'textBlock', text: m.content }] });
