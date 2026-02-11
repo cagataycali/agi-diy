@@ -1,0 +1,11 @@
+{
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build-strands.mjs",
+    "build:analyze": "node build-strands.mjs --analyze"
+  },
+  "devDependencies": {
+    "esbuild": "^0.27.3"
+  }
+}

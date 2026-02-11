@@ -857,6 +857,7 @@
                             <option value="anthropic">Anthropic</option>
                             <option value="openai">OpenAI</option>
                             <option value="bedrock">Amazon Bedrock</option>
+                            <option value="openai_compatible">OpenAI-Compatible (Ollama, Groq, etc.)</option>
                             <option value="webllm">WebLLM (Local)</option>
                         </select>
                     </div>
@@ -932,6 +933,27 @@
                             <div style="font-size:11px;color:var(--text-tertiary);margin-top:4px;">
                                 Extended thinking, betas, etc. Example:<br>
                                 <code style="font-size:10px;">{"anthropic_beta": ["interleaved-thinking-2025-05-14"], "thinking": {"type": "enabled", "budget_tokens": 2048}}</code>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="compatFields" style="display:none;">
+                        <div class="form-group">
+                            <label class="form-label">Endpoint URL</label>
+                            <input type="text" class="form-input" id="compatBaseUrl" placeholder="http://localhost:11434/v1">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">API Key (optional)</label>
+                            <input type="password" class="form-input" id="compatApiKey" placeholder="API key if required">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Model Name</label>
+                            <input type="text" class="form-input" id="compatModel" placeholder="e.g. llama3.2, mixtral, etc.">
+                        </div>
+                        <div class="form-group">
+                            <div style="font-size:12px;color:var(--text-tertiary);line-height:1.6;">
+                                Works with Ollama, LM Studio, Groq, Together AI,<br>
+                                or any OpenAI-compatible endpoint.
                             </div>
                         </div>
                     </div>
@@ -1780,6 +1802,7 @@ Version: ${VERSION}`;
                 maxTokens: config.maxTokens || 8096,
                 temperature: config.temperature || 1.0,
                 customHeaders: config.customHeaders || {},
+                baseURL: config.baseURL || 'https://api.openai.com/v1',
             };
         }
 
@@ -1919,7 +1942,7 @@ Version: ${VERSION}`;
                 }));
             }
 
-            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            const response = await fetch(`${this._config.baseURL}/chat/completions`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -3509,6 +3532,12 @@ Example - create a tool that gets weather:
             }
             
             model = new BedrockBrowserModel({ apiKey, region, modelId, maxTokens, additionalRequestFields });
+        } else if (provider === 'openai_compatible') {
+            const baseURL = localStorage.getItem('compat_base_url') || '';
+            const apiKey = localStorage.getItem('compat_api_key') || 'not-needed';
+            const modelId = localStorage.getItem('compat_model') || '';
+            if (!baseURL) { setStatus('no endpoint'); addMessage('error', 'Set an endpoint URL in Settings.'); return false; }
+            model = new OpenAIBrowserModel({ apiKey, modelId, maxTokens: 4096, baseURL });
         } else if (provider === 'webllm') {
             const modelId = localStorage.getItem('webllm_model') || 'Qwen2.5-3B-Instruct-q4f16_1-MLC';
             
@@ -4244,6 +4273,7 @@ Example - create a tool that gets weather:
         document.getElementById('anthropicFields').style.display = provider === 'anthropic' ? 'block' : 'none';
         document.getElementById('openaiFields').style.display = provider === 'openai' ? 'block' : 'none';
         document.getElementById('bedrockFields').style.display = provider === 'bedrock' ? 'block' : 'none';
+        document.getElementById('compatFields').style.display = provider === 'openai_compatible' ? 'block' : 'none';
         document.getElementById('webllmFields').style.display = provider === 'webllm' ? 'block' : 'none';
     };
 
@@ -4276,6 +4306,10 @@ Example - create a tool that gets weather:
             localStorage.setItem('bedrock_additional_fields', document.getElementById('bedrockAdditionalFields').value || '');
             // 🔑 Sync to unified credentials
             if (window.AgentMesh?.setApiKey) window.AgentMesh.setApiKey('bedrock', apiKey);
+        } else if (provider === 'openai_compatible') {
+            localStorage.setItem('compat_base_url', document.getElementById('compatBaseUrl').value);
+            localStorage.setItem('compat_api_key', document.getElementById('compatApiKey').value);
+            localStorage.setItem('compat_model', document.getElementById('compatModel').value);
         } else if (provider === 'webllm') {
             localStorage.setItem('webllm_model', document.getElementById('webllmModel').value);
         }
