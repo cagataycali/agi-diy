@@ -2,6 +2,7 @@ sdk-typescript/
 node_modules/
 package-lock.json
 p2p-server/.bedrock_agentcore.yaml
+p2p-server/.bedrock_agentcore/
 p2p-server/__pycache__/
 p2p-server/.agentcore/
 *.local.json
