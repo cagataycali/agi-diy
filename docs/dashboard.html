@@ -137,7 +137,7 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); heig
   <button class="add-btn" onclick="addBlock('ring')">+ Ring</button>
   <button class="add-btn" onclick="addBlock('task-detail')">+ Task Detail</button>
 </div>
-<div class="wall-clock" id="wallClock">⏱ 0:00</div>
+<div class="wall-clock" id="wallClock"></div>
 
 <script src="agent-mesh.js"></script>
 <script>
@@ -236,7 +236,7 @@ const spawnAgentTool = tool({
     const provider = input.provider || detectProvider();
     if (!provider) return JSON.stringify({ error: 'No API key configured' });
     const color = COLORS[state.colorIndex++ % COLORS.length];
-    const agent = { id: input.agentId, model: provider, status: 'ready', color, role: input.role };
+    const agent = { id: input.agentId, model: provider, provider, modelId: state.credentials[provider]?.model, status: 'ready', color, role: input.role };
     state.agents.set(input.agentId, agent);
     if (window.AgentMesh?.registerAgent) window.AgentMesh.registerAgent(input.agentId, 'browser', { model: provider });
     notifyNewAgent(agent);
@@ -273,11 +273,10 @@ const delegateTaskTool = tool({
 async function runDelegatedAgent(agentId, taskId, instructions) {
   const task = state.tasks.get(taskId);
   const agentData = state.agents.get(agentId);
-  const provider = detectProvider();
-  if (!provider || !task) return;
+  if (!agentData || !task) return;
 
   try {
-    const model = createModel(provider, { maxTokens: 4096 });
+    const model = createModel(agentData.provider || 'bedrock', { modelId: agentData.modelId, maxTokens: 4096 });
     const agent = new Agent({
       model,
       tools: [updateTaskTool, createTaskTool],
@@ -487,20 +486,25 @@ function findBlockCfg(id) {
 
 // ── Chat Agent ──
 function ensureChatAgent() {
-  const provider = detectProvider();
-  if (!provider) return false;
   if (state.chatAgent) return true;
-  const model = createModel(provider, { maxTokens: 8192 });
-  state.chatAgent = new Agent({ model, tools: ORCHESTRATOR_TOOLS, systemPrompt: ORCHESTRATOR_PROMPT, printer: false });
-  // Register in mesh
-  if (window.AgentMesh?.registerAgent) window.AgentMesh.registerAgent('dashboard-chat', 'browser', { model: provider });
-  state.agents.set('dashboard-chat', { id: 'dashboard-chat', model: provider, status: 'ready', color: COLORS[state.colorIndex++ % COLORS.length] });
-  return true;
+  const chatCfg = state.agents.get('chat');
+  if (!chatCfg) return false;
+  try {
+    const model = createModel(chatCfg.provider || 'bedrock', { modelId: chatCfg.modelId, maxTokens: 8192 });
+    state.chatAgent = new Agent({ model, tools: ORCHESTRATOR_TOOLS, systemPrompt: ORCHESTRATOR_PROMPT, printer: false });
+    if (window.AgentMesh?.registerAgent) window.AgentMesh.registerAgent('chat', 'browser', { model: chatCfg.modelId });
+    return true;
+  } catch (e) { console.error('Failed to create chat agent:', e); return false; }
+}
+
+function startWallClock() {
+  if (!state.wallClockStart) state.wallClockStart = Date.now();
 }
 
 async function sendChatMessage(text, blockId) {
   if (!text.trim()) return;
-  if (!ensureChatAgent()) { alert('No API key configured. Set keys in another agi.diy tab (Settings).'); return; }
+  if (!ensureChatAgent()) { alert('Failed to create chat agent. Check Bedrock API key in Settings.'); return; }
+  startWallClock();
 
   const msgEl = document.querySelector(`#msg-${blockId}`);
   if (!msgEl) return;
@@ -513,23 +517,23 @@ async function sendChatMessage(text, blockId) {
   // Add to ring
   state.ringBuffer.push({ agentId: 'user', content: text.slice(0, 300), ts: Date.now() });
   notifyRingEntry(state.ringBuffer[state.ringBuffer.length - 1]);
-  if (window.AgentMesh?.addToRingContext) window.AgentMesh.addToRingContext('dashboard-chat', 'browser', `[User] ${text.slice(0, 300)}`);
+  if (window.AgentMesh?.addToRingContext) window.AgentMesh.addToRingContext('chat', 'browser', `[User] ${text.slice(0, 300)}`);
 
   // Update agent status
-  const agentData = state.agents.get('dashboard-chat');
-  if (agentData) { agentData.status = 'processing'; notifyAgentStatus('dashboard-chat'); }
+  const agentData = state.agents.get('chat');
+  if (agentData) { agentData.status = 'processing'; notifyAgentStatus('chat'); }
 
   // Stream response
   const streamDiv = document.createElement('div');
   streamDiv.className = 'msg assistant';
-  streamDiv.innerHTML = `<div class="msg-agent" style="color:${agentData?.color || 'var(--green)'}">dashboard-chat</div><span class="stream-text"></span>`;
+  streamDiv.innerHTML = `<div class="msg-agent" style="color:${agentData?.color || 'var(--green)'}">chat</div><span class="stream-text"></span>`;
   msgEl.appendChild(streamDiv);
 
   try {
     let currentText = '';
     // Fresh agent per message for parallelism
-    const provider = detectProvider();
-    const model = createModel(provider, { maxTokens: 8192 });
+    const chatCfg = state.agents.get('chat');
+    const model = createModel(chatCfg?.provider || 'bedrock', { modelId: chatCfg?.modelId, maxTokens: 8192 });
     const agent = new Agent({ model, tools: ORCHESTRATOR_TOOLS, systemPrompt: ORCHESTRATOR_PROMPT, printer: false });
     // Inject history
     for (const m of state.chatMessages.slice(-20)) {
@@ -549,15 +553,15 @@ async function sendChatMessage(text, blockId) {
     state.chatMessages.push({ role: 'user', content: text }, { role: 'assistant', content: currentText });
 
     // Ring buffer
-    state.ringBuffer.push({ agentId: 'dashboard-chat', content: currentText.slice(0, 500), ts: Date.now() });
+    state.ringBuffer.push({ agentId: 'chat', content: currentText.slice(0, 500), ts: Date.now() });
     notifyRingEntry(state.ringBuffer[state.ringBuffer.length - 1]);
-    if (window.AgentMesh?.addToRingContext) window.AgentMesh.addToRingContext('dashboard-chat', 'browser', currentText.slice(0, 500));
+    if (window.AgentMesh?.addToRingContext) window.AgentMesh.addToRingContext('chat', 'browser', currentText.slice(0, 500));
   } catch (e) {
     streamDiv.querySelector('.stream-text').textContent = `Error: ${e.message}`;
     streamDiv.style.color = 'var(--red)';
   }
 
-  if (agentData) { agentData.status = 'ready'; notifyAgentStatus('dashboard-chat'); }
+  if (agentData) { agentData.status = 'ready'; notifyAgentStatus('chat'); }
 }
 
 function escapeHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -568,44 +572,22 @@ function formatElapsed(start, end) {
   return `${Math.floor(s/60)}m${s%60}s`;
 }
 
-// ── Mock Data (fallback when no mesh) ──
-function loadMockData() {
-  [
-    { id:'orchestrator', model:'Claude Sonnet', status:'ready', color:COLORS[0] },
-    { id:'researcher', model:'Claude Haiku', status:'processing', color:COLORS[1] },
-    { id:'coder', model:'GPT-4o', status:'processing', color:COLORS[2] },
-    { id:'reviewer', model:'WebLLM Qwen 3B', status:'idle', color:COLORS[3] },
-  ].forEach(a => state.agents.set(a.id, a));
-  state.colorIndex = 4;
+// ── Default Agents (configurable) ──
+const DEFAULT_AGENTS = [
+  { id: 'chat', model: 'Bedrock · Nova 2 Lite', provider: 'bedrock', modelId: 'amazon.nova-2-lite-v1:0', color: COLORS[0], role: 'Default chat agent. Friendly, concise, helpful.' },
+  { id: 'orchestrator', model: 'Bedrock · Nova 2 Lite', provider: 'bedrock', modelId: 'amazon.nova-2-lite-v1:0', color: COLORS[1], role: 'Orchestrator. Decomposes goals into tasks, spawns agents, delegates work.' },
+  { id: 'researcher', model: 'Bedrock · Opus 4.6', provider: 'bedrock', modelId: 'global.anthropic.claude-opus-4-6-v1', color: COLORS[2], role: 'Deep researcher. Thorough analysis, finds information, synthesizes findings.' },
+  { id: 'coder', model: 'Bedrock · Opus 4.6', provider: 'bedrock', modelId: 'global.anthropic.claude-opus-4-6-v1', color: COLORS[3], role: 'Expert coder. Writes, reviews, and debugs code.' },
+  { id: 'reviewer', model: 'Bedrock · Sonnet 4.5', provider: 'bedrock', modelId: 'global.anthropic.claude-sonnet-4-5-20250929-v1:0', color: COLORS[4], role: 'Code reviewer. Reviews work for quality, correctness, and completeness.' },
+];
 
-  [
-    { id:'t1', title:'Build Space Minecraft (Browser)', status:'in-progress', agentId:'orchestrator', parentId:null, children:['t1a','t1b','t1c'], worklog:[
-      { ts:Date.now()-120000, agentId:'orchestrator', msg:'Decomposed into 3 sub-tasks' },
-    ]},
-    { id:'t1a', title:'Voxel world generation', status:'in-progress', agentId:'coder', parentId:'t1', children:[], worklog:[
-      { ts:Date.now()-90000, agentId:'coder', msg:'Implementing perlin noise terrain' },
-      { ts:Date.now()-30000, agentId:'coder', msg:'Terrain gen complete, adding biomes' },
-    ]},
-    { id:'t1b', title:'Player movement & controls', status:'waiting', agentId:null, parentId:'t1', children:[], worklog:[] },
-    { id:'t1c', title:'WebGL rendering pipeline', status:'pending', agentId:null, parentId:'t1', children:[], worklog:[] },
-    { id:'t2', title:'Triage Slack messages', status:'in-progress', agentId:'researcher', parentId:null, children:[], worklog:[
-      { ts:Date.now()-60000, agentId:'researcher', msg:'Scanning channels — 47 unread' },
-    ]},
-    { id:'t3', title:'Draft email responses', status:'pending', agentId:null, parentId:null, children:[], worklog:[] },
-    { id:'t4', title:'Fix auth bug in relay', status:'complete', agentId:'coder', parentId:null, children:[], worklog:[
-      { ts:Date.now()-300000, agentId:'coder', msg:'SigV4 signing fix — manual URI encoding' },
-      { ts:Date.now()-240000, agentId:'reviewer', msg:'LGTM, tested against ap-southeast-2' },
-    ]},
-  ].forEach(t => state.tasks.set(t.id, t));
-
-  state.ringBuffer = [
-    { agentId:'orchestrator', content:'Decomposed "Build Space Minecraft" into 3 parallel sub-tasks', ts:Date.now()-120000 },
-    { agentId:'coder', content:'Starting voxel world generation with perlin noise', ts:Date.now()-90000 },
-    { agentId:'researcher', content:'Scanning Slack channels — 47 unread messages found', ts:Date.now()-60000 },
-    { agentId:'coder', content:'Terrain generation complete. Adding biome color mapping.', ts:Date.now()-30000 },
-    { agentId:'orchestrator', content:'Auth bug fix verified. Moving coder to rendering next.', ts:Date.now()-10000 },
-  ];
-  state.wallClockStart = Date.now() - 135000;
+function loadDefaultAgents() {
+  DEFAULT_AGENTS.forEach(a => {
+    if (!state.agents.has(a.id)) {
+      state.agents.set(a.id, { ...a, status: 'ready' });
+    }
+  });
+  state.colorIndex = DEFAULT_AGENTS.length;
 }
 
 // ═══ RENDERERS ═══
@@ -809,12 +791,8 @@ function updateWallClock() {
 
 // ═══ INIT ═══
 loadCredentials();
-if (!loadTasks()) loadMockData(); // Persisted tasks or mock fallback
-else { // Still need mock agents for display
-  loadMockData();
-  // Re-load persisted tasks over mock
-  loadTasks();
-}
+loadDefaultAgents();
+loadTasks(); // Restore persisted tasks if any
 initialMeshSync();
 buildLayout();
 setInterval(updateWallClock, 1000);
