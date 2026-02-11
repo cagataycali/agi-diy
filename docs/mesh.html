@@ -280,6 +280,7 @@
         <div class="fg"><label class="fl">OpenAI API Key (for browser agents)</label><input type="password" class="fi" id="sOpenaiKey" placeholder="sk-..."></div>
         <div class="fg"><label class="fl">Bedrock Bearer Token (for browser agents)</label><input type="password" class="fi" id="sBedrockKey" placeholder="Bearer token"><div class="fhint">From Bedrock API Keys console</div></div>
         <div class="fg"><label class="fl">Bedrock Region</label><input class="fi" id="sBedrockRegion" value="us-east-1" placeholder="us-east-1"><div class="fhint">For Bedrock browser agents</div></div>
+        <div class="fg"><label class="fl">Perplexity API Key (for browser agents)</label><input type="password" class="fi" id="sPerplexityKey" placeholder="pplx-..."></div>
         <div class="fg"><label class="fl">Gemini API Key (for voice)</label><input type="password" class="fi" id="sGeminiKey" placeholder="AIza..."><div class="fhint">For Gemini Live voice provider</div></div>
         <div class="btn-row"><button class="mbtn" onclick="closeModal('settingsModal')">Cancel</button><button class="mbtn pri" onclick="saveSettings()">Save & Reconnect</button></div>
     </div>
@@ -306,7 +307,7 @@
         </div>
         <!-- Browser agent options -->
         <div id="browserOpts" style="display:none">
-            <div class="fg"><label class="fl">Provider</label><select class="fi" id="spawnProvider"><option value="anthropic">Anthropic</option><option value="openai">OpenAI</option><option value="bedrock">Amazon Bedrock</option></select></div>
+            <div class="fg"><label class="fl">Provider</label><select class="fi" id="spawnProvider"><option value="anthropic">Anthropic</option><option value="openai">OpenAI</option><option value="bedrock">Amazon Bedrock</option><option value="perplexity">Perplexity</option></select></div>
             <div class="fg"><label class="fl">Model ID (optional)</label><input class="fi" id="spawnModelId" placeholder="Leave empty for default"><div class="fhint" id="spawnModelHint">Default: claude-sonnet-4-20250514</div></div>
             <div class="fg"><label class="fl">System Prompt</label><textarea class="fi" id="spawnBrowserPrompt" rows="3" placeholder="You are a helpful assistant..."></textarea></div>
         </div>
@@ -332,7 +333,7 @@
         </div>
         <div class="fg" id="editProviderWrap" style="display:none">
             <label class="fl">Provider</label>
-            <select class="fi" id="editProvider"><option value="anthropic">Anthropic</option><option value="openai">OpenAI</option><option value="bedrock">Amazon Bedrock</option></select>
+            <select class="fi" id="editProvider"><option value="anthropic">Anthropic</option><option value="openai">OpenAI</option><option value="bedrock">Amazon Bedrock</option><option value="perplexity">Perplexity</option></select>
         </div>
         <div class="fg" id="editModelIdWrap" style="display:none">
             <label class="fl">Model ID</label><input class="fi" id="editModelId" placeholder="Leave empty for default">
@@ -411,6 +412,29 @@ class OpenAIBrowserModel extends Model {
     }
 }
 
+class PerplexityBrowserModel extends Model {
+    constructor(cfg={}){super();this._c={apiKey:cfg.apiKey||'',modelId:cfg.modelId||'sonar-pro',maxTokens:cfg.maxTokens||8096,temperature:cfg.temperature||1.0}}
+    getConfig(){return this._c}
+    async *stream(messages,options){
+        const{apiKey,modelId,maxTokens,temperature}=this._c;if(!apiKey)throw new Error('Perplexity API key not set. Configure in Settings.');
+        const oMsgs=[];
+        if(options?.systemPrompt){const st=typeof options.systemPrompt==='string'?options.systemPrompt:options.systemPrompt.filter(b=>b.type==='textBlock').map(b=>b.text).join('\n');if(st)oMsgs.push({role:'system',content:st})}
+        for(const msg of messages){if(msg.role==='user'){const trs=msg.content.filter(b=>b.type==='toolResultBlock');const other=msg.content.filter(b=>b.type!=='toolResultBlock');if(other.length)oMsgs.push({role:'user',content:other.map(b=>b.type==='textBlock'?{type:'text',text:b.text}:{type:'text',text:String(b)})});for(const tr of trs)oMsgs.push({role:'tool',tool_call_id:tr.toolUseId,content:tr.content.map(c=>c.type==='textBlock'?c.text:c.type==='jsonBlock'?JSON.stringify(c.json):String(c)).join('')})}else{const tcs=[];const txts=[];for(const b of msg.content){if(b.type==='textBlock')txts.push(b.text);else if(b.type==='toolUseBlock')tcs.push({id:b.toolUseId,type:'function',function:{name:b.name,arguments:JSON.stringify(b.input)}})}const am={role:'assistant',content:txts.join('')};if(tcs.length)am.tool_calls=tcs;oMsgs.push(am)}}
+        const body={model:modelId,max_tokens:maxTokens,temperature,stream:true,messages:oMsgs};
+        if(options?.toolSpecs?.length)body.tools=options.toolSpecs.map(s=>({type:'function',function:{name:s.name,description:s.description,parameters:s.inputSchema}}));
+        const res=await fetch('https://api.perplexity.ai/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${apiKey}`},body:JSON.stringify(body)});
+        if(!res.ok)throw new Error(`Perplexity ${res.status}: ${await res.text()}`);
+        const reader=res.body.getReader();const dec=new TextDecoder();let buf='',started=false,txtStarted=false;const atc=new Map();
+        try{while(true){const{done,value}=await reader.read();if(done)break;buf+=dec.decode(value,{stream:true});const lines=buf.split('\n');buf=lines.pop()||'';
+        for(const ln of lines){if(!ln.startsWith('data: '))continue;const d=ln.slice(6);if(d==='[DONE]')continue;try{const ch=JSON.parse(d);if(!ch.choices?.length){if(ch.usage)yield{type:'modelMetadataEvent',usage:{inputTokens:ch.usage.prompt_tokens||0,outputTokens:ch.usage.completion_tokens||0}};continue}
+        const c=ch.choices[0],dl=c.delta;if(dl?.role&&!started){started=true;yield{type:'modelMessageStartEvent',role:dl.role}}
+        if(dl?.content?.length){if(!txtStarted){txtStarted=true;yield{type:'modelContentBlockStartEvent'}}yield{type:'modelContentBlockDeltaEvent',delta:{type:'textDelta',text:dl.content}}}
+        if(dl?.tool_calls){for(const tc of dl.tool_calls){if(tc.id&&tc.function?.name)yield{type:'modelContentBlockStartEvent',start:{type:'toolUseStart',name:tc.function.name,toolUseId:tc.id}};if(tc.function?.arguments)yield{type:'modelContentBlockDeltaEvent',delta:{type:'toolUseInputDelta',input:tc.function.arguments}}}}
+        if(c.finish_reason){if(txtStarted){yield{type:'modelContentBlockStopEvent'};txtStarted=false}for(const[i] of atc){yield{type:'modelContentBlockStopEvent'};atc.delete(i)}const sm={'stop':'endTurn','tool_calls':'toolUse','length':'maxTokens'};yield{type:'modelMessageStopEvent',stopReason:sm[c.finish_reason]||'endTurn'}}
+        }catch(e){}}}}finally{reader.releaseLock()}
+    }
+}
+
 class BedrockBrowserModel extends Model {
     constructor(cfg={}){super();this._c={apiKey:cfg.apiKey||'',region:cfg.region||'us-east-1',modelId:cfg.modelId||'us.anthropic.claude-sonnet-4-20250514-v1:0',maxTokens:cfg.maxTokens||8096}}
     getConfig(){return this._c}
@@ -438,7 +462,7 @@ class BedrockBrowserModel extends Model {
     }
 }
 
-window._BrowserModels={AnthropicBrowserModel,OpenAIBrowserModel,BedrockBrowserModel};
+window._BrowserModels={AnthropicBrowserModel,OpenAIBrowserModel,PerplexityBrowserModel,BedrockBrowserModel};
 
 // ═══════════════════════════════════════════════════════════════
 // BROWSER TOOLS for browser agents
@@ -460,7 +484,7 @@ console.log('✅ Strands SDK loaded for browser agents');
 // ═══════════════════════════════════════════════════════════════
 const STORAGE='devduck_one_v2';
 const ICONS={github:'🐙',agentcore:'☁️',zenoh:'🔗',local:'💻',browser:'🧠',virtual:'🤖'};
-const DEFAULT_MODELS={anthropic:'claude-sonnet-4-20250514',openai:'gpt-4o',bedrock:'us.anthropic.claude-sonnet-4-20250514-v1:0'};
+const DEFAULT_MODELS={anthropic:'claude-sonnet-4-20250514',openai:'gpt-4o',bedrock:'us.anthropic.claude-sonnet-4-20250514-v1:0',perplexity:'sonar-pro'};
 
 const S={
     relay:null, relayOk:false,
@@ -470,7 +494,7 @@ const S={
     cfg:{
         localPort:10001, relayPort:10000,
         token:'', repos:['cagataycali/strands-coder'], region:'us-west-2',
-        anthropicKey:'', openaiKey:'', bedrockKey:'', bedrockRegion:'us-east-1', geminiKey:'',
+        anthropicKey:'', openaiKey:'', bedrockKey:'', bedrockRegion:'us-east-1', perplexityKey:'', geminiKey:'',
         voiceProvider:'novasonic', voiceVoice:'tiffany',
         virtualAgents:[], // {id,name,color,systemPrompt,tools,model}
         browserAgents:[], // {id,name,color,provider,modelId,systemPrompt}
@@ -492,6 +516,7 @@ function loadCfg(){
         if(meshCreds.openai?.apiKey&&!S.cfg.openaiKey)S.cfg.openaiKey=meshCreds.openai.apiKey;
         if(meshCreds.bedrock?.apiKey&&!S.cfg.bedrockKey)S.cfg.bedrockKey=meshCreds.bedrock.apiKey;
         if(meshCreds.bedrock?.region&&!S.cfg.bedrockRegion)S.cfg.bedrockRegion=meshCreds.bedrock.region;
+        if(meshCreds.perplexity?.apiKey&&!S.cfg.perplexityKey)S.cfg.perplexityKey=meshCreds.perplexity.apiKey;
     }
 }
 function saveCfg(){try{localStorage.setItem(STORAGE,JSON.stringify(S.cfg))}catch(e){}}
@@ -500,7 +525,7 @@ window.openSettings=()=>{
     E('sLocalPort').value=S.cfg.localPort;E('sToken').value=S.cfg.token||'';
     E('sRepos').value=(S.cfg.repos||[]).join(',');E('sRegion').value=S.cfg.region;
     E('sRelayPort').value=S.cfg.relayPort;
-    E('sAnthropicKey').value=S.cfg.anthropicKey||'';E('sOpenaiKey').value=S.cfg.openaiKey||'';E('sBedrockKey').value=S.cfg.bedrockKey||'';E('sBedrockRegion').value=S.cfg.bedrockRegion||'us-east-1';E('sGeminiKey').value=S.cfg.geminiKey||'';
+    E('sAnthropicKey').value=S.cfg.anthropicKey||'';E('sOpenaiKey').value=S.cfg.openaiKey||'';E('sBedrockKey').value=S.cfg.bedrockKey||'';E('sBedrockRegion').value=S.cfg.bedrockRegion||'us-east-1';E('sPerplexityKey').value=S.cfg.perplexityKey||'';E('sGeminiKey').value=S.cfg.geminiKey||'';
     E('settingsModal').classList.add('active');
 };
 window.saveSettings=()=>{
@@ -513,6 +538,7 @@ window.saveSettings=()=>{
     S.cfg.openaiKey=E('sOpenaiKey').value.trim();
     S.cfg.bedrockKey=E('sBedrockKey').value.trim();
     S.cfg.bedrockRegion=E('sBedrockRegion').value.trim()||'us-east-1';
+    S.cfg.perplexityKey=E('sPerplexityKey').value.trim();
     S.cfg.geminiKey=E('sGeminiKey').value.trim();
     saveCfg();
     // 🔑 Sync to AgentMesh unified credentials
@@ -520,7 +546,8 @@ window.saveSettings=()=>{
         window.AgentMesh.setCredentials({
             anthropic:{apiKey:S.cfg.anthropicKey,model:'anthropic.claude-opus-4-6-v1'},
             openai:{apiKey:S.cfg.openaiKey,model:'gpt-5.2-2025-12-11'},
-            bedrock:{apiKey:S.cfg.bedrockKey,region:S.cfg.bedrockRegion,model:'global.anthropic.claude-opus-4-6-v1'}
+            bedrock:{apiKey:S.cfg.bedrockKey,region:S.cfg.bedrockRegion,model:'global.anthropic.claude-opus-4-6-v1'},
+            perplexity:{apiKey:S.cfg.perplexityKey,model:'sonar-pro'}
         });
     }
     closeModal('settingsModal');
@@ -816,6 +843,7 @@ async function runBrowserAgent(a,txt){
     if(provider==='anthropic')apiKey=S.cfg.anthropicKey;
     else if(provider==='openai')apiKey=S.cfg.openaiKey;
     else if(provider==='bedrock')apiKey=S.cfg.bedrockKey;
+    else if(provider==='perplexity')apiKey=S.cfg.perplexityKey;
     if(!apiKey){a.messages.push({role:'assistant',content:`❌ No ${provider} API key configured. Open Settings to add it.`});updateUI();return}
     // Create or reuse agent instance
     let inst=_browserAgentInstances.get(a.id);
@@ -826,6 +854,7 @@ async function runBrowserAgent(a,txt){
         if(provider==='anthropic')model=new Models.AnthropicBrowserModel({apiKey,modelId:modelId||'claude-sonnet-4-20250514'});
         else if(provider==='openai')model=new Models.OpenAIBrowserModel({apiKey,modelId:modelId||'gpt-4o'});
         else if(provider==='bedrock')model=new Models.BedrockBrowserModel({apiKey,region:S.cfg.bedrockRegion||'us-east-1',modelId:modelId||'us.anthropic.claude-sonnet-4-20250514-v1:0'});
+        else if(provider==='perplexity')model=new Models.PerplexityBrowserModel({apiKey,modelId:modelId||'sonar-pro'});
         else{a.messages.push({role:'assistant',content:`❌ Unknown provider: ${provider}`});updateUI();return}
         const agent=new window._StrandsAgent({model,tools:window._BrowserTools||[],systemPrompt:cfg.systemPrompt||`You are ${a.name}, a helpful AI assistant running in the browser.`,printer:false});
         inst={agent,model};_browserAgentInstances.set(a.id,inst);
@@ -1147,7 +1176,7 @@ function getMeshAgent(){
 function ensureMeshAgent(){
     if(getMeshAgent())return;
     // Auto-create a mesh browser agent if we have any API key configured
-    const provider=S.cfg.bedrockKey?'bedrock':S.cfg.anthropicKey?'anthropic':S.cfg.openaiKey?'openai':null;
+    const provider=S.cfg.bedrockKey?'bedrock':S.cfg.anthropicKey?'anthropic':S.cfg.openaiKey?'openai':S.cfg.perplexityKey?'perplexity':null;
     if(!provider)return; // No API key, can't create
     const id='browser:mesh-chat';
     const cfg={id,name:'🕸️ mesh',color:'#00d4ff',type:'browser',provider,
@@ -1276,11 +1305,13 @@ window.addEventListener('agimesh:credentials',(e)=>{
     if(creds.openai?.apiKey)S.cfg.openaiKey=creds.openai.apiKey;
     if(creds.bedrock?.apiKey)S.cfg.bedrockKey=creds.bedrock.apiKey;
     if(creds.bedrock?.region)S.cfg.bedrockRegion=creds.bedrock.region;
+    if(creds.perplexity?.apiKey)S.cfg.perplexityKey=creds.perplexity.apiKey;
     // Update settings form if open
     const ak=E('sAnthropicKey');if(ak)ak.value=S.cfg.anthropicKey||'';
     const ok=E('sOpenaiKey');if(ok)ok.value=S.cfg.openaiKey||'';
     const bk=E('sBedrockKey');if(bk)bk.value=S.cfg.bedrockKey||'';
     const br=E('sBedrockRegion');if(br)br.value=S.cfg.bedrockRegion||'us-east-1';
+    const pk=E('sPerplexityKey');if(pk)pk.value=S.cfg.perplexityKey||'';
     _browserAgentInstances.clear();// Re-create agents with new keys
     ensureMeshAgent();
     toast('Credentials synced from another tab','ok');

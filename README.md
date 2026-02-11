@@ -139,6 +139,7 @@ graph TD
 | **Anthropic** | Claude Opus, Sonnet, Haiku | Quality reasoning |
 | **OpenAI** | GPT-4o, GPT-4, GPT-3.5 | General tasks |
 | **Amazon Bedrock** | Claude + extended thinking | Deep analysis |
+| **Perplexity** | Sonar, Sonar Pro, Sonar Reasoning | Web search + answers |
 
 ### Local Models (free, offline)
 
@@ -245,6 +246,7 @@ Agent thinks while you're away.
 - **Anthropic:** [console.anthropic.com](https://console.anthropic.com)
 - **OpenAI:** [platform.openai.com](https://platform.openai.com)
 - **Bedrock:** [AWS Console](https://console.aws.amazon.com/bedrock) → API Keys
+- **Perplexity:** [perplexity.ai/settings/api](https://www.perplexity.ai/settings/api)
 
 ### Extended Thinking (Bedrock)
 Paste in Settings → API → Additional Request Fields:
@@ -299,6 +301,8 @@ agiContext.scanBluetooth()   // Find nearby devices
 docs/
 ├── index.html      # Single agent mode
 ├── agi.html        # Multi-agent mode
+├── mesh.html       # Cross-tab agent mesh
+├── agent-mesh.js   # Cross-tab communication & credential sync
 ├── strands.js      # Strands SDK bundle
 ├── vision.js       # Screen capture, ambient mode
 ├── webllm.js       # Local model inference

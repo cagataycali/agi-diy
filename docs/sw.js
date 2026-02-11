@@ -3,7 +3,7 @@
  * Enables PWA functionality, offline support, and background notifications
  */
 
-const CACHE_NAME = 'agi-diy-v2';
+const CACHE_NAME = 'agi-diy-v3';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
