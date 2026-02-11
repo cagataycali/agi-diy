@@ -164,7 +164,7 @@ const createTaskTool = tool({
     const task = { id, title: input.title, status: 'pending', agentId: input.agentId || null, parentId: input.parentId || null, children: [], worklog: [], source: input.source || 'manual' };
     state.tasks.set(id, task);
     if (input.parentId) { const p = state.tasks.get(input.parentId); if (p) p.children.push(id); }
-    refreshUI(); saveTasks();
+    notify('tasks'); saveTasks();
     return JSON.stringify({ id, title: task.title, status: task.status });
   }
 });
@@ -184,7 +184,7 @@ const updateTaskTool = tool({
     if (input.status) t.status = input.status;
     if (input.agentId) t.agentId = input.agentId;
     if (input.worklog) t.worklog.push({ ts: Date.now(), agentId: input.agentId || t.agentId || 'system', msg: input.worklog });
-    refreshUI(); saveTasks();
+    notify('tasks'); saveTasks();
     return JSON.stringify({ id: t.id, status: t.status, agentId: t.agentId });
   }
 });
@@ -216,7 +216,7 @@ const claimTaskTool = tool({
     if (!t) return JSON.stringify({ error: 'Task not found' });
     t.agentId = input.agentId; t.status = 'in-progress';
     t.worklog.push({ ts: Date.now(), agentId: input.agentId, msg: `Claimed by ${input.agentId}` });
-    refreshUI(); saveTasks();
+    notify('tasks'); saveTasks();
     return JSON.stringify({ id: t.id, status: t.status, agentId: t.agentId });
   }
 });
@@ -236,9 +236,10 @@ const spawnAgentTool = tool({
     const provider = input.provider || detectProvider();
     if (!provider) return JSON.stringify({ error: 'No API key configured' });
     const color = COLORS[state.colorIndex++ % COLORS.length];
-    state.agents.set(input.agentId, { id: input.agentId, model: provider, status: 'ready', color, role: input.role });
+    const agent = { id: input.agentId, model: provider, status: 'ready', color, role: input.role };
+    state.agents.set(input.agentId, agent);
     if (window.AgentMesh?.registerAgent) window.AgentMesh.registerAgent(input.agentId, 'browser', { model: provider });
-    refreshUI();
+    notifyNewAgent(agent);
     return JSON.stringify({ agentId: input.agentId, status: 'ready' });
   }
 });
@@ -261,7 +262,7 @@ const delegateTaskTool = tool({
     task.agentId = input.agentId; task.status = 'in-progress';
     task.worklog.push({ ts: Date.now(), agentId: input.agentId, msg: `Delegated: ${input.instructions.slice(0, 100)}` });
     agentData.status = 'processing';
-    refreshUI(); saveTasks();
+    notify('tasks'); notifyAgentStatus(input.agentId); saveTasks();
 
     // Run agent asynchronously (don't await — fire and forget for parallelism)
     runDelegatedAgent(input.agentId, input.taskId, input.instructions);
@@ -299,14 +300,15 @@ async function runDelegatedAgent(agentId, taskId, instructions) {
 
     // Ring buffer
     state.ringBuffer.push({ agentId, content: `[${task.title}] ${result.slice(0, 200)}`, ts: Date.now() });
+    notifyRingEntry(state.ringBuffer[state.ringBuffer.length - 1]);
     if (window.AgentMesh?.addToRingContext) window.AgentMesh.addToRingContext(agentId, 'browser', `[${task.title}] ${result.slice(0, 500)}`);
   } catch (e) {
     task.status = 'failed';
     task.worklog.push({ ts: Date.now(), agentId, msg: `Error: ${e.message}` });
   }
 
-  if (agentData) agentData.status = 'ready';
-  refreshUI(); saveTasks();
+  if (agentData) { agentData.status = 'ready'; notifyAgentStatus(agentId); }
+  notify('tasks'); saveTasks();
 }
 
 const ORCHESTRATOR_TOOLS = [...TASK_TOOLS, spawnAgentTool, delegateTaskTool];
@@ -393,8 +395,8 @@ function detectProvider() {
   return null;
 }
 
-// ── Mesh Sync ──
-function syncAgentsFromMesh() {
+// ── One-time mesh sync at startup ──
+function initialMeshSync() {
   if (!window.AgentMesh) return;
   const meshAgents = window.AgentMesh.getAllMeshAgents?.() || [];
   for (const ma of meshAgents) {
@@ -405,37 +407,74 @@ function syncAgentsFromMesh() {
         color: COLORS[state.colorIndex++ % COLORS.length],
         remote: true,
       });
-    } else {
-      const a = state.agents.get(ma.agentId);
-      if (ma.status) a.status = ma.status;
     }
+  }
+  if (window.AgentMesh.getRingContext) {
+    for (const entry of window.AgentMesh.getRingContext()) {
+      const isDup = state.ringBuffer.some(e => e.agentId === entry.agentId && Math.abs(e.ts - entry.timestamp) < 5000);
+      if (!isDup) state.ringBuffer.push({ agentId: entry.agentId, content: entry.text, ts: entry.timestamp, mesh: true });
+    }
+    if (state.ringBuffer.length > 100) state.ringBuffer.splice(0, state.ringBuffer.length - 100);
   }
 }
 
-function syncRingFromMesh() {
-  if (!window.AgentMesh?.getRingContext) return;
-  const meshRing = window.AgentMesh.getRingContext();
-  for (const entry of meshRing) {
-    const isDup = state.ringBuffer.some(e => e.agentId === entry.agentId && Math.abs(e.ts - entry.timestamp) < 5000);
-    if (!isDup) {
-      state.ringBuffer.push({ agentId: entry.agentId, content: entry.text, ts: entry.timestamp, mesh: true });
-    }
-  }
-  if (state.ringBuffer.length > 100) state.ringBuffer.splice(0, state.ringBuffer.length - 100);
-}
-
-function refreshUI() {
-  syncAgentsFromMesh();
-  syncRingFromMesh();
-  // Re-render agent and ring blocks in-place
+// ── Granular DOM Updates (no innerHTML replacement) ──
+function notify(type) {
   document.querySelectorAll('.block').forEach(bl => {
     const cfg = findBlockCfg(bl.id);
-    if (!cfg) return;
+    if (!cfg || cfg.type !== type) return;
     const body = bl.querySelector('.block-body');
-    if (cfg.type === 'agents') renderAgentsBlock(body);
-    else if (cfg.type === 'ring') renderRingBlock(body);
-    else if (cfg.type === 'tasks') renderTasksBlock(body);
+    RENDERERS[cfg.type]?.(body, cfg);
   });
+}
+
+// Targeted updaters for individual elements
+function notifyAgentStatus(agentId) {
+  document.querySelectorAll(`.agent-card[data-agent="${agentId}"]`).forEach(card => {
+    const a = state.agents.get(agentId);
+    if (!a) return;
+    const dot = card.querySelector('.agent-dot');
+    const badge = card.querySelector('.agent-badge');
+    dot.className = `agent-dot ${a.status === 'processing' ? 'pulse' : ''}`;
+    badge.style.color = a.status === 'processing' ? a.color : 'var(--text-muted)';
+    badge.innerHTML = a.status === 'processing' ? '<span class="typing-dots"><span></span><span></span><span></span></span>' : a.status;
+  });
+}
+
+function notifyNewAgent(agent) {
+  document.querySelectorAll('.agent-list').forEach(list => {
+    list.insertAdjacentHTML('beforeend', agentCardHTML(agent));
+  });
+  document.querySelectorAll('.block').forEach(bl => {
+    const cfg = findBlockCfg(bl.id);
+    if (cfg?.type === 'agents') bl.querySelector('.block-title').textContent = `Agents (${state.agents.size})`;
+  });
+}
+
+function notifyRingEntry(entry) {
+  const agent = state.agents.get(entry.agentId);
+  const color = agent?.color || '#888';
+  const time = new Date(entry.ts).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const html = `<div class="ring-entry" style="border-left-color:${color}">
+    <div class="re-header"><span class="re-agent" style="color:${color}">${entry.agentId}</span><span class="re-time">${time}</span></div>
+    <div class="re-text">${(entry.content || '').slice(0,200)}</div>
+  </div>`;
+  document.querySelectorAll('.ring-entries').forEach(el => {
+    el.insertAdjacentHTML('afterbegin', html);
+    // Cap at 20 visible entries
+    while (el.children.length > 20) el.lastElementChild.remove();
+  });
+}
+
+function agentCardHTML(a) {
+  return `<div class="agent-card" data-agent="${a.id}">
+    <div class="agent-dot ${a.status==='processing'?'pulse':''}" style="background:${a.color}"></div>
+    <div class="agent-info">
+      <div class="agent-name">${a.id}</div>
+      <div class="agent-model">${a.model}</div>
+    </div>
+    <div class="agent-badge" style="color:${a.status==='processing'?a.color:'var(--text-muted)'}">${a.status === 'processing' ? '<span class="typing-dots"><span></span><span></span><span></span></span>' : a.status}</div>
+  </div>`;
 }
 
 function findBlockCfg(id) {
@@ -473,12 +512,12 @@ async function sendChatMessage(text, blockId) {
 
   // Add to ring
   state.ringBuffer.push({ agentId: 'user', content: text.slice(0, 300), ts: Date.now() });
+  notifyRingEntry(state.ringBuffer[state.ringBuffer.length - 1]);
   if (window.AgentMesh?.addToRingContext) window.AgentMesh.addToRingContext('dashboard-chat', 'browser', `[User] ${text.slice(0, 300)}`);
 
   // Update agent status
   const agentData = state.agents.get('dashboard-chat');
-  if (agentData) agentData.status = 'processing';
-  refreshUI();
+  if (agentData) { agentData.status = 'processing'; notifyAgentStatus('dashboard-chat'); }
 
   // Stream response
   const streamDiv = document.createElement('div');
@@ -511,14 +550,14 @@ async function sendChatMessage(text, blockId) {
 
     // Ring buffer
     state.ringBuffer.push({ agentId: 'dashboard-chat', content: currentText.slice(0, 500), ts: Date.now() });
+    notifyRingEntry(state.ringBuffer[state.ringBuffer.length - 1]);
     if (window.AgentMesh?.addToRingContext) window.AgentMesh.addToRingContext('dashboard-chat', 'browser', currentText.slice(0, 500));
   } catch (e) {
     streamDiv.querySelector('.stream-text').textContent = `Error: ${e.message}`;
     streamDiv.style.color = 'var(--red)';
   }
 
-  if (agentData) agentData.status = 'ready';
-  refreshUI();
+  if (agentData) { agentData.status = 'ready'; notifyAgentStatus('dashboard-chat'); }
 }
 
 function escapeHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -596,7 +635,7 @@ function renderTasksBlock(container) {
         <div class="task-meta">
           ${task.agentId ? `<span style="color:${color}">${task.agentId}</span>` : '<span>unassigned</span>'}
           ${task.worklog.length ? `<span>${task.worklog.length} logs</span>` : ''}
-          ${task.worklog.length ? `<span class="task-elapsed">${formatElapsed(task.worklog[0].ts, task.status === 'complete' ? task.worklog[task.worklog.length-1].ts : Date.now())}</span>` : ''}
+          ${task.worklog.length ? `<span class="task-elapsed" data-start="${task.worklog[0].ts}" data-end="${task.status === 'complete' ? task.worklog[task.worklog.length-1].ts : 0}">${formatElapsed(task.worklog[0].ts, task.status === 'complete' ? task.worklog[task.worklog.length-1].ts : Date.now())}</span>` : ''}
         </div>
       </div>
     </div>`);
@@ -776,17 +815,44 @@ else { // Still need mock agents for display
   // Re-load persisted tasks over mock
   loadTasks();
 }
-syncAgentsFromMesh();
-syncRingFromMesh();
+initialMeshSync();
 buildLayout();
 setInterval(updateWallClock, 1000);
-setInterval(refreshUI, 3000); // Poll mesh every 3s
 updateWallClock();
 
-// Subscribe to mesh events
+// Lightweight elapsed time updater (no DOM rebuild)
+setInterval(() => {
+  document.querySelectorAll('.task-elapsed[data-start]').forEach(el => {
+    const start = parseInt(el.dataset.start);
+    const end = parseInt(el.dataset.end) || Date.now();
+    el.textContent = formatElapsed(start, end);
+  });
+}, 1000);
+
+// Subscribe to mesh events — targeted updates, no polling
 if (window.AgentMesh) {
-  window.AgentMesh.subscribe?.('ring-update', () => { syncRingFromMesh(); refreshUI(); });
-  window.AgentMesh.subscribe?.('ping', () => { syncAgentsFromMesh(); refreshUI(); });
+  window.AgentMesh.subscribe?.('ring-update', (payload) => {
+    if (!payload) return;
+    const isDup = state.ringBuffer.some(e => e.agentId === payload.agentId && Math.abs(e.ts - payload.timestamp) < 5000);
+    if (!isDup) {
+      const entry = { agentId: payload.agentId, content: payload.text, ts: payload.timestamp, mesh: true };
+      state.ringBuffer.push(entry);
+      notifyRingEntry(entry);
+    }
+  });
+  window.AgentMesh.subscribe?.('ping', (payload, source) => {
+    if (!source?.agents) return;
+    for (const ma of source.agents) {
+      if (!state.agents.has(ma.agentId)) {
+        const agent = { id: ma.agentId, model: ma.model || ma.agentType || '?', status: ma.status || 'idle', color: COLORS[state.colorIndex++ % COLORS.length], remote: true };
+        state.agents.set(ma.agentId, agent);
+        notifyNewAgent(agent);
+      } else {
+        const a = state.agents.get(ma.agentId);
+        if (ma.status && ma.status !== a.status) { a.status = ma.status; notifyAgentStatus(ma.agentId); }
+      }
+    }
+  });
 }
 </script>
 </body>
