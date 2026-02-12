@@ -167,6 +167,13 @@ self.addEventListener('message', (event) => {
   if (event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
+
+  if (event.data.type === 'RECACHE') {
+    caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS_TO_CACHE)).then(() => {
+      event.source?.postMessage({ type: 'RECACHE_DONE' });
+      console.log('[SW] Re-cached all assets');
+    });
+  }
 });
 
 // Background sync (for queued messages)

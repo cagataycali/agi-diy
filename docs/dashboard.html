@@ -949,6 +949,13 @@ function injectAgentRosterChange(msg) {
   // Push into chat history so the orchestrator sees it on next message
   state.chatMessages.push({ role: 'user', content: `[System] ${msg}` });
 }
+
+// Register SW and re-cache assets on every page load
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').then(() => {
+    navigator.serviceWorker.ready.then(reg => reg.active?.postMessage({ type: 'RECACHE' }));
+  });
+}
 </script>
 </body>
 </html>
