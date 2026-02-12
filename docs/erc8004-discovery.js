@@ -11,6 +11,9 @@ if (!M) console.warn('[ERC8004] AgentMesh not found');
 // IPFS gateway — off by default, set via AgentMesh.erc8004.setIpfsGateway('https://ipfs.io/ipfs/')
 let ipfsGateway = localStorage.getItem('erc8004_ipfs_gateway') || '';
 
+// Trusted owners — only discover agents from these addresses (empty = all)
+let trustedOwners = JSON.parse(localStorage.getItem('erc8004_trusted_owners') || '[]');
+
 // ═══ Contract addresses (CREATE2 vanity — same on all chains) ═══
 const MAINNET = { identity: '0x8004A169FB4a3325136EB29fA0ceB6D2e539a432', reputation: '0x8004BAa17C55a88189AE136b182e5fdA19dE9b63' };
 const TESTNET = { identity: '0x8004A818BFB912233c491871b3d84c89A494BD9e', reputation: '0x8004B663056A597Dffe9eCcC1965A193B7388713' };
@@ -122,9 +125,10 @@ export async function discoverAgents(chain, maxAgents = 50) {
     }
 
     const agents = [];
+    const ownerSet = trustedOwners.length ? new Set(trustedOwners.map(o => o.toLowerCase())) : null;
     for (const aid of agentIds) {
         const a = await getAgent(chain, aid);
-        if (a) agents.push(a);
+        if (a && (!ownerSet || ownerSet.has(a.owner?.toLowerCase()))) agents.push(a);
     }
     return agents;
 }
@@ -158,6 +162,8 @@ if (M) {
         getAgent, discoverAgents, totalAgents, selector,
         get ipfsGateway() { return ipfsGateway; },
         setIpfsGateway(url) { ipfsGateway = url || ''; localStorage.setItem('erc8004_ipfs_gateway', ipfsGateway); },
+        get trustedOwners() { return trustedOwners; },
+        setTrustedOwners(addrs) { trustedOwners = addrs || []; localStorage.setItem('erc8004_trusted_owners', JSON.stringify(trustedOwners)); },
         async syncChain(chain) {
             console.log(`[ERC8004] Discovering agents on ${chain}...`);
             const agents = await discoverAgents(chain);
