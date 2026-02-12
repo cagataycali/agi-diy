@@ -373,6 +373,7 @@ const BLOCK_META = {
   ring:         { icon:'🔵', title:'Ring Buffer' },
   'task-detail':{ icon:'🔍', title:'Task Detail' },
   preview:      { icon:'🖼️', title:'Preview' },
+  mesh:         { icon:'🌐', title:'Mesh' },
 };
 
 const state = {
@@ -390,7 +391,10 @@ const state = {
       { id:'b-tasks', type:'tasks', flex:2 },
     ]},
     { id:'b-chat', type:'chat', flex:2 },
-    { id:'b-ring', type:'ring', flex:1 },
+    { id:'col-right', type:'col', flex:1, children:[
+      { id:'b-ring', type:'ring', flex:2 },
+      { id:'b-mesh', type:'mesh', flex:1 },
+    ]},
   ],
   blockCounter: 10,
   maximizedBlock: null,
@@ -618,6 +622,10 @@ async function loadDefaultAgents() {
     }
   });
   state.colorIndex = state.agents.size;
+  // Register all agents with AgentMesh for cross-page discovery
+  if (window.AgentMesh?.registerAgent) {
+    state.agents.forEach((a, id) => window.AgentMesh.registerAgent(id, 'browser', { model: a.model }));
+  }
 }
 
 // ═══ RENDERERS ═══
@@ -718,7 +726,24 @@ function renderTaskDetailBlock(container, blockCfg) {
   </div>`;
 }
 
-const RENDERERS = { agents: renderAgentsBlock, tasks: renderTasksBlock, chat: renderChatBlock, ring: renderRingBlock, 'task-detail': renderTaskDetailBlock };
+function renderMeshBlock(container) {
+  const M = window.AgentMesh;
+  const connected = M?.relayConnected || false;
+  const peers = M?.getRelayPeers() || [];
+  const url = localStorage.getItem('mesh_relay_url') || '';
+  container.innerHTML = `<div style="padding:8px;font-size:12px">
+    <div style="display:flex;gap:6px;margin-bottom:8px">
+      <input id="meshRelayUrl" value="${url}" placeholder="ws://localhost:10000" style="flex:1;background:var(--bg-secondary);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:4px;font-size:11px">
+      <button onclick="const u=document.getElementById('meshRelayUrl').value;if(u)window.AgentMesh?.connectRelay(u)" style="background:var(--green);color:#000;border:none;padding:4px 10px;border-radius:4px;font-size:11px;cursor:pointer">Connect</button>
+      <button onclick="window.AgentMesh?.disconnectRelay()" style="background:var(--bg-tertiary);color:var(--text);border:1px solid var(--border);padding:4px 10px;border-radius:4px;font-size:11px;cursor:pointer">✕</button>
+    </div>
+    <div style="margin-bottom:8px">Status: ${connected ? '<span style="color:var(--green)">● Connected</span>' : '<span style="color:var(--text-muted)">● Disconnected</span>'}</div>
+    <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Remote Peers (${peers.length})</div>
+    <div id="meshPeersList">${peers.length ? peers.map(p => `<div style="margin-bottom:4px"><span style="color:var(--green)">●</span> ${p.hostname||'?'} <span style="color:var(--text-muted)">(${p.agents?.length||0} agents)</span></div>`).join('') : '<div style="color:var(--text-muted)">None</div>'}</div>
+  </div>`;
+}
+
+const RENDERERS = { agents: renderAgentsBlock, tasks: renderTasksBlock, chat: renderChatBlock, ring: renderRingBlock, 'task-detail': renderTaskDetailBlock, mesh: renderMeshBlock };
 
 // ═══ BLOCKS ═══
 function makeBlockEl(cfg) {
@@ -863,6 +888,8 @@ if (window.AgentMesh) {
       }
     }
   });
+  window.AgentMesh.subscribe?.('relay-status', () => { const b = document.querySelector('#b-mesh .block-body'); if (b) renderMeshBlock(b); });
+  window.AgentMesh.subscribe?.('relay-peers', () => { const b = document.querySelector('#b-mesh .block-body'); if (b) renderMeshBlock(b); });
 }
 
 // Inject agent roster changes into the chat agent's conversation so it stays aware
