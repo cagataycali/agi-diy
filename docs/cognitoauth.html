@@ -1,0 +1,12 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>Authenticating…</title></head><body>
+<p>Authenticating…</p>
+<script>
+const h = new URLSearchParams(location.hash.slice(1));
+const q = new URLSearchParams(location.search);
+const token = h.get('id_token');
+const access = h.get('access_token');
+if (token) localStorage.setItem('cognito_id_token', token);
+if (access) localStorage.setItem('cognito_access_token', access);
+const ret = q.get('state') || h.get('state') || './dashboard.html';
+location.replace(ret);
+</script></body></html>

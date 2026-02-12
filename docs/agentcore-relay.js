@@ -151,8 +151,9 @@
                 const d = document.getElementById('acCogDomain').value.trim();
                 const c = document.getElementById('acCogClient').value.trim();
                 if (!d||!c) return alert('Cognito Domain and Client ID required');
-                const redir = encodeURIComponent(location.origin + location.pathname);
-                location.href = `https://${d}/oauth2/authorize?client_id=${c}&response_type=token&scope=openid+email+profile&redirect_uri=${redir}`;
+                const cb = encodeURIComponent(location.origin + '/cognitoauth.html');
+                const state = encodeURIComponent(location.href);
+                location.href = `https://${d}/oauth2/authorize?client_id=${c}&response_type=token&scope=openid+email+profile&redirect_uri=${cb}&state=${state}`;
             });
             document.getElementById('acSave')?.addEventListener('click', async () => {
                 const arn = document.getElementById('acArn').value.trim();
