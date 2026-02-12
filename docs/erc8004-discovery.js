@@ -2,7 +2,8 @@
 // Read-only on-chain agent discovery — no wallet needed.
 // Load AFTER agent-mesh.js. Safe to omit if on-chain discovery not needed.
 // Spec: https://eips.ethereum.org/EIPS/eip-8004
-import { keccak_256 } from 'https://cdn.jsdelivr.net/npm/@adraffy/keccak@1.0.4/+esm';
+import { KeccakHasher } from 'https://cdn.jsdelivr.net/npm/@adraffy/keccak@1.0.4/+esm';
+const keccak256 = data => KeccakHasher.unpadded().update(data).finalize().output;
 
 const M = window.AgentMesh;
 if (!M) console.warn('[ERC8004] AgentMesh not found');
@@ -142,7 +143,7 @@ export async function totalAgents(chain) {
 
 // ═══ Utility: compute selector from signature ═══
 export function selector(sig) {
-    const hash = keccak_256(new TextEncoder().encode(sig));
+    const hash = keccak256(new TextEncoder().encode(sig));
     return '0x' + [...hash.slice(0, 4)].map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
