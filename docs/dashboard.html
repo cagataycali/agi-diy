@@ -146,6 +146,7 @@ if (typeof Symbol.asyncDispose === 'undefined') Symbol.asyncDispose = Symbol('Sy
 </script>
 <script type="module">
 import { Agent, tool, z, AnthropicModel, OpenAIModel, BedrockModel } from './strands.js';
+import { WebLLMBrowserModel } from './webllm.js';
 
 // ═══ TASK TOOLS ═══
 let taskIdCounter = 100;
@@ -230,7 +231,7 @@ const spawnAgentTool = tool({
   inputSchema: z.object({
     agentId: z.string().describe('Unique agent ID'),
     role: z.string().describe('Agent role description for system prompt'),
-    provider: z.string().optional().describe('Model provider: anthropic, openai, bedrock'),
+    provider: z.string().optional().describe('Model provider: bedrock, anthropic, or webllm (local). Never use openai.'),
   }),
   callback: (input) => {
     const provider = input.provider || detectProvider();
@@ -383,15 +384,15 @@ function createModel(provider, cfg = {}) {
   if (provider === 'anthropic') return new AnthropicModel({ apiKey: creds.apiKey, modelId: cfg.modelId || creds.model || 'claude-sonnet-4-20250514', maxTokens: cfg.maxTokens || DEFAULT_MAX_TOKENS });
   if (provider === 'openai') return new OpenAIModel({ apiKey: creds.apiKey, modelId: cfg.modelId || creds.model || 'gpt-4o', maxTokens: cfg.maxTokens || DEFAULT_MAX_TOKENS });
   if (provider === 'bedrock') return new BedrockModel({ apiKey: creds.apiKey, region: creds.region || 'us-east-1', modelId: cfg.modelId || creds.model || 'global.anthropic.claude-sonnet-4-20250514-v1:0', maxTokens: cfg.maxTokens || DEFAULT_MAX_TOKENS });
+  if (provider === 'webllm') return new WebLLMBrowserModel({ modelId: cfg.modelId || 'Qwen2.5-3B-Instruct-q4f16_1-MLC', maxTokens: cfg.maxTokens || DEFAULT_MAX_TOKENS });
   throw new Error(`Unknown provider: ${provider}`);
 }
 
 function detectProvider() {
   const c = state.credentials;
-  if (c.anthropic?.apiKey) return 'anthropic';
-  if (c.openai?.apiKey) return 'openai';
   if (c.bedrock?.apiKey) return 'bedrock';
-  return null;
+  if (c.anthropic?.apiKey) return 'anthropic';
+  return 'webllm';
 }
 
 // ── One-time mesh sync at startup ──
