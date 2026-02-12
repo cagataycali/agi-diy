@@ -145,7 +145,7 @@ if (typeof Symbol.dispose === 'undefined') Symbol.dispose = Symbol('Symbol.dispo
 if (typeof Symbol.asyncDispose === 'undefined') Symbol.asyncDispose = Symbol('Symbol.asyncDispose');
 </script>
 <script type="module">
-import { Agent, tool, z, AnthropicModel, OpenAIModel, BedrockModel } from './strands.js';
+import { Agent, tool, z, AnthropicModel, OpenAIModel, BedrockModel, McpClient, StreamableHTTPClientTransport } from './strands.js';
 import { WebLLMBrowserModel } from './webllm.js';
 
 // ═══ TASK TOOLS ═══
@@ -224,6 +224,21 @@ const claimTaskTool = tool({
 
 const TASK_TOOLS = [createTaskTool, updateTaskTool, listTasksTool, claimTaskTool];
 
+// ═══ STORAGE TOOLS (for agents that need localStorage access) ═══
+const storageGetTool = tool({
+  name: 'storage_get',
+  description: 'Read a value from localStorage by key.',
+  inputSchema: z.object({ key: z.string().describe('localStorage key') }),
+  callback: (input) => JSON.stringify({ key: input.key, value: localStorage.getItem(input.key) })
+});
+const storageSetTool = tool({
+  name: 'storage_set',
+  description: 'Write a value to localStorage by key.',
+  inputSchema: z.object({ key: z.string().describe('localStorage key'), value: z.string().describe('Value to store') }),
+  callback: (input) => { localStorage.setItem(input.key, input.value); return JSON.stringify({ key: input.key, stored: true }); }
+});
+const EXTRA_TOOLS = { storage_get: storageGetTool, storage_set: storageSetTool };
+
 // ═══ ORCHESTRATION ═══
 const spawnAgentTool = tool({
   name: 'spawn_agent',
@@ -278,9 +293,24 @@ async function runDelegatedAgent(agentId, taskId, instructions) {
 
   try {
     const model = createModel(agentData.provider || 'bedrock', { modelId: agentData.modelId, maxTokens: 4096 });
+    const agentTools = [updateTaskTool, createTaskTool];
+
+    // Add extra named tools from agent config
+    if (agentData.tools) agentData.tools.forEach(n => { if (EXTRA_TOOLS[n]) agentTools.push(EXTRA_TOOLS[n]); });
+
+    // Connect MCP servers from agent config
+    if (agentData.mcp) {
+      for (const srv of agentData.mcp) {
+        const token = srv.tokenKey?.split('.').reduce((o, k) => o?.[k], state.credentials);
+        const opts = token ? { requestInit: { headers: { 'Authorization': `Bearer ${token}` } } } : {};
+        const client = new McpClient({ transport: new StreamableHTTPClientTransport(srv.url, opts) });
+        agentTools.push(client);
+      }
+    }
+
     const agent = new Agent({
       model,
-      tools: [updateTaskTool, createTaskTool],
+      tools: agentTools,
       systemPrompt: `You are agent "${agentId}". You are working on task "${task.title}" (ID: ${taskId}). Use update_task to report progress (add worklog entries) and mark complete when done. If the task needs sub-tasks, use create_task with parentId="${taskId}". Be thorough but concise.`,
       printer: false,
     });
@@ -574,22 +604,20 @@ function formatElapsed(start, end) {
   return `${Math.floor(s/60)}m${s%60}s`;
 }
 
-// ── Default Agents (configurable) ──
-const DEFAULT_AGENTS = [
-  { id: 'chat', model: 'Bedrock · Nova 2 Lite', provider: 'bedrock', modelId: 'global.amazon.nova-2-lite-v1:0', color: COLORS[0], role: 'Default chat agent. Friendly, concise, helpful.' },
-  { id: 'orchestrator', model: 'Bedrock · Nova 2 Lite', provider: 'bedrock', modelId: 'global.amazon.nova-2-lite-v1:0', color: COLORS[1], role: 'Orchestrator. Decomposes goals into tasks, spawns agents, delegates work.' },
-  { id: 'researcher', model: 'Bedrock · Opus 4.6', provider: 'bedrock', modelId: 'global.anthropic.claude-opus-4-6-v1', color: COLORS[2], role: 'Deep researcher. Thorough analysis, finds information, synthesizes findings.' },
-  { id: 'coder', model: 'Bedrock · Opus 4.6', provider: 'bedrock', modelId: 'global.anthropic.claude-opus-4-6-v1', color: COLORS[3], role: 'Expert coder. Writes, reviews, and debugs code.' },
-  { id: 'reviewer', model: 'Bedrock · Sonnet 4.5', provider: 'bedrock', modelId: 'global.anthropic.claude-sonnet-4-5-20250929-v1:0', color: COLORS[4], role: 'Code reviewer. Reviews work for quality, correctness, and completeness.' },
-];
+// ── Default Agents (loaded from agents.json) ──
+let DEFAULT_AGENTS = [];
 
-function loadDefaultAgents() {
-  DEFAULT_AGENTS.forEach(a => {
+async function loadDefaultAgents() {
+  try {
+    const resp = await fetch('./agents.json');
+    DEFAULT_AGENTS = await resp.json();
+  } catch (e) { console.warn('Failed to load agents.json, using empty defaults:', e); }
+  DEFAULT_AGENTS.forEach((a, i) => {
     if (!state.agents.has(a.id)) {
-      state.agents.set(a.id, { ...a, status: 'ready' });
+      state.agents.set(a.id, { ...a, color: a.color || COLORS[i % COLORS.length], status: 'ready' });
     }
   });
-  state.colorIndex = DEFAULT_AGENTS.length;
+  state.colorIndex = state.agents.size;
 }
 
 // ═══ RENDERERS ═══
@@ -793,8 +821,8 @@ function updateWallClock() {
 
 // ═══ INIT ═══
 loadCredentials();
-loadDefaultAgents();
-loadTasks(); // Restore persisted tasks if any
+await loadDefaultAgents();
+loadTasks();
 initialMeshSync();
 buildLayout();
 setInterval(updateWallClock, 1000);

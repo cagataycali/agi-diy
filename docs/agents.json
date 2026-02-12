@@ -1,0 +1,18 @@
+[
+  { "id": "chat", "model": "Bedrock · Nova 2 Lite", "provider": "bedrock", "modelId": "global.amazon.nova-2-lite-v1:0", "role": "Default chat agent. Friendly, concise, helpful." },
+  { "id": "orchestrator", "model": "Bedrock · Nova 2 Lite", "provider": "bedrock", "modelId": "global.amazon.nova-2-lite-v1:0", "role": "Orchestrator. Decomposes goals into tasks, spawns agents, delegates work." },
+  { "id": "researcher", "model": "Bedrock · Opus 4.6", "provider": "bedrock", "modelId": "global.anthropic.claude-opus-4-6-v1", "role": "Deep researcher. Thorough analysis, finds information, synthesizes findings." },
+  { "id": "coder", "model": "Bedrock · Opus 4.6", "provider": "bedrock", "modelId": "global.anthropic.claude-opus-4-6-v1", "role": "Expert coder. Writes, reviews, and debugs code." },
+  { "id": "reviewer", "model": "Bedrock · Sonnet 4.5", "provider": "bedrock", "modelId": "global.anthropic.claude-sonnet-4-5-20250929-v1:0", "role": "Code reviewer. Reviews work for quality, correctness, and completeness." },
+  {
+    "id": "github",
+    "model": "Bedrock · Sonnet 4.5",
+    "provider": "bedrock",
+    "modelId": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+    "role": "GitHub agent. Reads, creates, and commits files to GitHub repositories. Can store and retrieve file content from localStorage.",
+    "mcp": [
+      { "url": "https://api.githubcopilot.com/mcp/", "tokenKey": "github.token" }
+    ],
+    "tools": ["storage_get", "storage_set"]
+  }
+]
