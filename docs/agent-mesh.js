@@ -1630,6 +1630,8 @@
     let relayWs = null;
     let relayConnected = false;
     let relayHeartbeat = null;
+    let relayReconnectTimer = null;
+    let relayReconnectProvider = null; // set by agentcore-relay.js or other plugins
     const relayInstanceId = localStorage.getItem('mesh_instance_id') || (() => {
         const id = `agi-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,6)}`;
         localStorage.setItem('mesh_instance_id', id);
@@ -1670,12 +1672,22 @@
                 console.log('[AgentMesh] 🌐 Relay disconnected');
                 const handler = subscribers.get('relay-status');
                 if (handler) handler({ connected: false, url });
+                // Auto-reconnect via provider (e.g. agentcore-relay.js)
+                if (!relayReconnectTimer && relayReconnectProvider) {
+                    relayReconnectTimer = setTimeout(async () => {
+                        relayReconnectTimer = null;
+                        console.log('[AgentMesh] 🔄 Relay reconnect via provider...');
+                        try { await relayReconnectProvider(); } catch (e) { console.warn('[AgentMesh] Reconnect failed:', e); }
+                    }, 3000);
+                }
             };
             relayWs.onerror = (err) => console.error('[AgentMesh] Relay error:', err);
         } catch (err) { console.error('[AgentMesh] Failed to connect relay:', err); }
     }
 
     function disconnectRelay() {
+        if (relayReconnectTimer) { clearTimeout(relayReconnectTimer); relayReconnectTimer = null; }
+        relayReconnectProvider = null;
         if (relayWs) { relayWs.close(); relayWs = null; }
         relayConnected = false;
         remotePeers.clear();
@@ -1771,6 +1783,7 @@
         connectRelay,
         disconnectRelay,
         sendRelay,
+        setRelayReconnectProvider: (fn) => { relayReconnectProvider = fn; },
         get relayConnected() { return relayConnected; },
         getRelayPeers: () => [...remotePeers.values()],
         relayInstanceId,

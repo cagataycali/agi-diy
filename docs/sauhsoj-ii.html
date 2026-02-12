@@ -4996,14 +4996,16 @@ ${getRingContext()}`;
             body: JSON.stringify({ IdentityId, Logins: { [provider]: idToken } })
         });
         const { Credentials } = await credsResp.json();
-        status.textContent = '🔗 Signing URL...';
-        const presignedUrl = await generateAgentCorePresignedUrl(
-            Credentials.AccessKeyId, Credentials.SecretKey, Credentials.SessionToken, arnRegion, arn
-        );
-        document.getElementById('relayUrl').value = presignedUrl;
-        status.textContent = '✅ Connected!';
-        // Auto-connect
-        agentMesh.connectRelay(presignedUrl);
+        status.textContent = '🔗 Connecting...';
+        // Use AgentMesh centralized AgentCore relay (auto-renews presigned URLs)
+        await window.AgentMesh.connectAgentCoreRelay({
+            arn, region: arnRegion,
+            credentials: { accessKeyId: Credentials.AccessKeyId, secretAccessKey: Credentials.SecretKey,
+                sessionToken: Credentials.SessionToken, expiration: Credentials.Expiration },
+            cognito: { identityPoolId: poolId, providerName: provider },
+            idToken
+        });
+        status.textContent = '✅ Connected (auto-renewing)';
         showToast('Relay connected via AgentCore!');
     }
 
@@ -5534,5 +5536,6 @@ ${getRingContext()}`;
     connectVoiceWs();
     </script>
 <script src="agent-mesh.js"></script>
+<script src="agentcore-relay.js"></script>
 </body>
 </html>
