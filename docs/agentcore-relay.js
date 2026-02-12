@@ -140,8 +140,8 @@
                 <label>Provider Name<input type="text" id="acProvider" value="${provider}"></label>
                 <div style="margin-top:8px;color:var(--text-dim);font-size:11px">Or direct credentials</div>
                 <label>Access Key ID<input type="text" id="acAKID" value="${cfg.credentials?.accessKeyId||''}"></label>
-                <label>Secret Access Key<input type="text" id="acSAK" value="${cfg.credentials?.secretAccessKey||''}"></label>
-                <label>Session Token<input type="text" id="acST" value="${cfg.credentials?.sessionToken||''}"></label>
+                <label>Secret Access Key<input type="password" id="acSAK" value="${cfg.credentials?.secretAccessKey||''}"></label>
+                <label>Session Token<input type="password" id="acST" value="${cfg.credentials?.sessionToken||''}"></label>
                 <div style="display:flex;gap:8px;margin-top:10px">
                     ${cogDomain?'<button class="ms-btn primary" id="acCogLogin">Login via Cognito</button>':''}
                     <button class="ms-btn success" id="acSave">Save & Connect</button>
