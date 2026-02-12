@@ -854,6 +854,21 @@ await loadDefaultAgents();
 loadTasks();
 initialMeshSync();
 buildLayout();
+
+// Discover on-chain agents (non-blocking)
+if (window.AgentMesh?.erc8004) {
+  AgentMesh.erc8004.discoverAgents('sepolia', 20).then(agents => {
+    for (const a of agents) {
+      const id = a.registration?.name || `erc8004-${a.agentId}`;
+      if (state.agents.has(id)) continue;
+      const agent = { id, model: `ERC-8004 #${a.agentId} · Sepolia`, status: 'on-chain',
+        color: COLORS[state.colorIndex++ % COLORS.length], chain: 'sepolia', onChain: true,
+        owner: a.owner, services: a.registration?.services };
+      state.agents.set(id, agent);
+      notifyNewAgent(agent);
+    }
+  }).catch(e => console.warn('[ERC8004] Discovery failed:', e));
+}
 setInterval(updateWallClock, 1000);
 updateWallClock();
 
