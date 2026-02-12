@@ -382,7 +382,7 @@ function createModel(provider, cfg = {}) {
   const creds = state.credentials[provider] || {};
   if (provider === 'anthropic') return new AnthropicModel({ apiKey: creds.apiKey, modelId: cfg.modelId || creds.model || 'claude-sonnet-4-20250514', maxTokens: cfg.maxTokens || DEFAULT_MAX_TOKENS });
   if (provider === 'openai') return new OpenAIModel({ apiKey: creds.apiKey, modelId: cfg.modelId || creds.model || 'gpt-4o', maxTokens: cfg.maxTokens || DEFAULT_MAX_TOKENS });
-  if (provider === 'bedrock') return new BedrockModel({ apiKey: creds.apiKey, region: creds.region || 'us-east-1', modelId: cfg.modelId || creds.model || 'us.anthropic.claude-sonnet-4-20250514-v1:0', maxTokens: cfg.maxTokens || DEFAULT_MAX_TOKENS });
+  if (provider === 'bedrock') return new BedrockModel({ apiKey: creds.apiKey, region: creds.region || 'us-east-1', modelId: cfg.modelId || creds.model || 'global.anthropic.claude-sonnet-4-20250514-v1:0', maxTokens: cfg.maxTokens || DEFAULT_MAX_TOKENS });
   throw new Error(`Unknown provider: ${provider}`);
 }
 
@@ -574,8 +574,8 @@ function formatElapsed(start, end) {
 
 // ── Default Agents (configurable) ──
 const DEFAULT_AGENTS = [
-  { id: 'chat', model: 'Bedrock · Nova 2 Lite', provider: 'bedrock', modelId: 'amazon.nova-2-lite-v1:0', color: COLORS[0], role: 'Default chat agent. Friendly, concise, helpful.' },
-  { id: 'orchestrator', model: 'Bedrock · Nova 2 Lite', provider: 'bedrock', modelId: 'amazon.nova-2-lite-v1:0', color: COLORS[1], role: 'Orchestrator. Decomposes goals into tasks, spawns agents, delegates work.' },
+  { id: 'chat', model: 'Bedrock · Nova 2 Lite', provider: 'bedrock', modelId: 'global.amazon.nova-2-lite-v1:0', color: COLORS[0], role: 'Default chat agent. Friendly, concise, helpful.' },
+  { id: 'orchestrator', model: 'Bedrock · Nova 2 Lite', provider: 'bedrock', modelId: 'global.amazon.nova-2-lite-v1:0', color: COLORS[1], role: 'Orchestrator. Decomposes goals into tasks, spawns agents, delegates work.' },
   { id: 'researcher', model: 'Bedrock · Opus 4.6', provider: 'bedrock', modelId: 'global.anthropic.claude-opus-4-6-v1', color: COLORS[2], role: 'Deep researcher. Thorough analysis, finds information, synthesizes findings.' },
   { id: 'coder', model: 'Bedrock · Opus 4.6', provider: 'bedrock', modelId: 'global.anthropic.claude-opus-4-6-v1', color: COLORS[3], role: 'Expert coder. Writes, reviews, and debugs code.' },
   { id: 'reviewer', model: 'Bedrock · Sonnet 4.5', provider: 'bedrock', modelId: 'global.anthropic.claude-sonnet-4-5-20250929-v1:0', color: COLORS[4], role: 'Code reviewer. Reviews work for quality, correctness, and completeness.' },
