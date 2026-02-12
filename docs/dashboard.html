@@ -240,24 +240,11 @@ const storageSetTool = tool({
 const EXTRA_TOOLS = { storage_get: storageGetTool, storage_set: storageSetTool };
 
 // ═══ ORCHESTRATION ═══
-const spawnAgentTool = tool({
-  name: 'spawn_agent',
-  description: 'Spawn a new agent to work on tasks. Returns the agent ID.',
-  inputSchema: z.object({
-    agentId: z.string().describe('Unique agent ID'),
-    role: z.string().describe('Agent role description for system prompt'),
-    provider: z.string().optional().describe('Model provider: bedrock, anthropic, or webllm (local). Never use openai.'),
-  }),
-  callback: (input) => {
-    const provider = input.provider || detectProvider();
-    if (!provider) return JSON.stringify({ error: 'No API key configured' });
-    const color = COLORS[state.colorIndex++ % COLORS.length];
-    const agent = { id: input.agentId, model: provider, provider, modelId: state.credentials[provider]?.model, status: 'ready', color, role: input.role };
-    state.agents.set(input.agentId, agent);
-    if (window.AgentMesh?.registerAgent) window.AgentMesh.registerAgent(input.agentId, 'browser', { model: provider });
-    notifyNewAgent(agent);
-    return JSON.stringify({ agentId: input.agentId, status: 'ready' });
-  }
+const listAgentsTool = tool({
+  name: 'list_agents',
+  description: 'List all available agents with their roles and status.',
+  inputSchema: z.object({}),
+  callback: () => JSON.stringify([...state.agents.values()].map(a => ({ id: a.id, model: a.model, role: a.role, status: a.status })))
 });
 
 const delegateTaskTool = tool({
@@ -341,16 +328,22 @@ async function runDelegatedAgent(agentId, taskId, instructions) {
   notify('tasks'); saveTasks();
 }
 
-const ORCHESTRATOR_TOOLS = [...TASK_TOOLS, spawnAgentTool, delegateTaskTool];
+const ORCHESTRATOR_TOOLS = [...TASK_TOOLS, listAgentsTool, delegateTaskTool];
 
-const ORCHESTRATOR_PROMPT = `You are an orchestrator agent in a multi-agent mesh dashboard. Your job:
+function buildOrchestratorPrompt() {
+  const agents = [...state.agents.values()].map(a => `  - ${a.id}: ${a.role || a.model}`).join('\n');
+  return `You are an orchestrator agent in a multi-agent mesh dashboard. Your job:
 1. When given a goal, decompose it into tasks using create_task (use parentId for sub-tasks)
-2. Spawn agents with spawn_agent for different roles (researcher, coder, writer, etc.)
-3. Delegate tasks to agents with delegate_task — they run in parallel automatically
+2. Delegate tasks to available agents with delegate_task — they run in parallel automatically
+3. Use list_agents to check available agents and their status
 4. Maximize parallelism: delegate multiple tasks at once to minimize wall-clock time
 5. Monitor progress with list_tasks and update_task
 
+Available agents:
+${agents}
+
 Be concise. Act immediately — create tasks and delegate them, don't just describe what you'd do.`;
+}
 
 function saveTasks() { try { localStorage.setItem('dashboard_tasks', JSON.stringify([...state.tasks.values()])); } catch(e) {} }
 function loadTasks() { try { const d = JSON.parse(localStorage.getItem('dashboard_tasks')); if (d?.length) { state.tasks.clear(); d.forEach(t => state.tasks.set(t.id, t)); return true; } } catch(e) {} return false; }
@@ -523,7 +516,7 @@ function ensureChatAgent() {
   if (!chatCfg) return false;
   try {
     const model = createModel(chatCfg.provider || 'bedrock', { modelId: chatCfg.modelId, maxTokens: 8192 });
-    state.chatAgent = new Agent({ model, tools: ORCHESTRATOR_TOOLS, systemPrompt: ORCHESTRATOR_PROMPT, printer: false });
+    state.chatAgent = new Agent({ model, tools: ORCHESTRATOR_TOOLS, systemPrompt: buildOrchestratorPrompt(), printer: false });
     if (window.AgentMesh?.registerAgent) window.AgentMesh.registerAgent('chat', 'browser', { model: chatCfg.modelId });
     return true;
   } catch (e) { console.error('Failed to create chat agent:', e); return false; }
@@ -566,7 +559,7 @@ async function sendChatMessage(text, blockId) {
     // Fresh agent per message for parallelism
     const chatCfg = state.agents.get('chat');
     const model = createModel(chatCfg?.provider || 'bedrock', { modelId: chatCfg?.modelId, maxTokens: 8192 });
-    const agent = new Agent({ model, tools: ORCHESTRATOR_TOOLS, systemPrompt: ORCHESTRATOR_PROMPT, printer: false });
+    const agent = new Agent({ model, tools: ORCHESTRATOR_TOOLS, systemPrompt: buildOrchestratorPrompt(), printer: false });
     // Inject history
     for (const m of state.chatMessages.slice(-20)) {
       agent.messages.push({ role: m.role, content: [{ type: 'textBlock', text: m.content }] });
@@ -850,17 +843,27 @@ if (window.AgentMesh) {
   });
   window.AgentMesh.subscribe?.('ping', (payload, source) => {
     if (!source?.agents) return;
+    const before = new Set(state.agents.keys());
     for (const ma of source.agents) {
       if (!state.agents.has(ma.agentId)) {
         const agent = { id: ma.agentId, model: ma.model || ma.agentType || '?', status: ma.status || 'idle', color: COLORS[state.colorIndex++ % COLORS.length], remote: true };
         state.agents.set(ma.agentId, agent);
         notifyNewAgent(agent);
+        injectAgentRosterChange(`Agent "${ma.agentId}" joined the mesh.`);
       } else {
         const a = state.agents.get(ma.agentId);
         if (ma.status && ma.status !== a.status) { a.status = ma.status; notifyAgentStatus(ma.agentId); }
       }
     }
   });
+}
+
+// Inject agent roster changes into the chat agent's conversation so it stays aware
+function injectAgentRosterChange(msg) {
+  state.ringBuffer.push({ agentId: 'system', content: msg, ts: Date.now() });
+  notifyRingEntry(state.ringBuffer[state.ringBuffer.length - 1]);
+  // Push into chat history so the orchestrator sees it on next message
+  state.chatMessages.push({ role: 'user', content: `[System] ${msg}` });
 }
 </script>
 </body>
