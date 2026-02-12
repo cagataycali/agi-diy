@@ -392,6 +392,7 @@ function detectProvider() {
   const c = state.credentials;
   if (c.bedrock?.apiKey) return 'bedrock';
   if (c.anthropic?.apiKey) return 'anthropic';
+  if (c.openai?.apiKey) return 'openai';
   return 'webllm';
 }
 
