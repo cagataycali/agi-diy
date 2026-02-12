@@ -656,7 +656,9 @@ function renderAgentsBlock(container) {
 function renderTasksBlock(container) {
   const roots = [...state.tasks.values()].filter(t => !t.parentId);
   const html = [];
+  function isComplete(task) { return task.status === 'complete' && (task.children||[]).every(cid => { const c = state.tasks.get(cid); return c && isComplete(c); }); }
   function walk(task, depth) {
+    if (isComplete(task)) return;
     const agent = task.agentId ? state.agents.get(task.agentId) : null;
     const color = agent?.color || 'var(--text-muted)';
     html.push(`<div class="task-item d${depth}" data-task="${task.id}" data-status="${task.status}" style="border-left-color:${color}">
