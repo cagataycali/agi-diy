@@ -680,9 +680,21 @@ function renderTasksBlock(container) {
     (task.children||[]).forEach(cid => { const c = state.tasks.get(cid); if(c) walk(c, depth+1); });
   }
   roots.forEach(t => walk(t, 0));
-  container.innerHTML = '<div class="task-tree">' + html.join('') + '</div>';
+  const active = [...state.tasks.values()].filter(t => t.status !== 'complete');
+  container.innerHTML = '<div class="task-tree">' + html.join('') +
+    (active.length ? '<div style="padding:6px 8px;display:flex;gap:6px"><button class="stop-all-btn" style="font-size:10px;background:var(--red);color:#fff;border:none;border-radius:var(--radius);padding:3px 10px;cursor:pointer">⏹ Stop All</button><button class="clear-done-btn" style="font-size:10px;background:none;border:1px solid var(--border);color:var(--text-muted);border-radius:var(--radius);padding:3px 10px;cursor:pointer">Clear Done</button></div>' : '') +
+    '</div>';
   container.querySelectorAll('.task-item').forEach(el => {
     el.addEventListener('click', () => openTaskDetail(el.dataset.task));
+  });
+  container.querySelector('.stop-all-btn')?.addEventListener('click', () => {
+    state.tasks.forEach(t => { if (t.status !== 'complete') t.status = 'complete'; });
+    notify('tasks'); saveTasks();
+  });
+  container.querySelector('.clear-done-btn')?.addEventListener('click', () => {
+    [...state.tasks.entries()].forEach(([id, t]) => { if (t.status === 'complete') state.tasks.delete(id); });
+    state.tasks.forEach(t => { t.children = t.children.filter(c => state.tasks.has(c)); });
+    notify('tasks'); saveTasks();
   });
 }
 
@@ -694,6 +706,7 @@ function renderChatBlock(container) {
     <div class="input-area">
       <textarea placeholder="Message the mesh…" rows="1"></textarea>
       <button class="send-btn">Send</button>
+      <button class="clear-btn" title="Clear chat" style="background:none;border:1px solid var(--border);color:var(--text-muted);border-radius:var(--radius);padding:0 8px;cursor:pointer;font-size:11px">✕</button>
     </div>
   </div>`;
   const ta = container.querySelector('textarea');
@@ -708,6 +721,10 @@ function renderChatBlock(container) {
     if (e.key === 'ArrowDown' && ta.selectionStart === ta.value.length) { if (histIdx > 0) { histIdx--; ta.value = chatHistory[histIdx]; } else if (histIdx === 0) { histIdx = -1; ta.value = draft; } e.preventDefault(); }
   });
   container.querySelector('.send-btn').addEventListener('click', send);
+  container.querySelector('.clear-btn').addEventListener('click', () => {
+    const m = document.querySelector(`#msg-${blockId}`); if (m) m.innerHTML = '';
+    state.chatMessages.length = 0;
+  });
 }
 
 function renderRingBlock(container) {
