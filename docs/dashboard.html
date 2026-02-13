@@ -785,17 +785,28 @@ function renderTaskDetailBlock(container, blockCfg) {
 
 function renderMeshBlock(container) {
   const M = window.AgentMesh;
-  const connected = M?.relayConnected || false;
+  const config = M?.getRelayConfig() || { relays: [] };
+  const connections = M?.getRelayConnections() || [];
+  const connMap = new Map(connections.map(c => [c.id, c.connected]));
   const peers = M?.getRelayPeers() || [];
-  const url = localStorage.getItem('mesh_relay_url') || '';
-  const hasAC = !!window.AgentMesh?.getAgentCoreConfig?.();
-  container.innerHTML = `<div style="padding:8px;font-size:12px">
-    <div style="display:flex;gap:6px;margin-bottom:8px">
-      <input id="meshRelayUrl" value="${url}" placeholder="ws://localhost:10000" style="flex:1;background:var(--bg-secondary);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:4px;font-size:11px">
-      <button onclick="const u=document.getElementById('meshRelayUrl').value;if(u)window.AgentMesh?.connectRelay(u)" style="background:var(--green);color:#000;border:none;padding:4px 10px;border-radius:4px;font-size:11px;cursor:pointer">Connect</button>
-      <button onclick="window.AgentMesh?.disconnectRelay()" style="background:var(--bg-tertiary);color:var(--text);border:1px solid var(--border);padding:4px 10px;border-radius:4px;font-size:11px;cursor:pointer">✕</button>
+  
+  const enabledRelays = config.relays.filter(r => r.enabled);
+  const connectedCount = enabledRelays.filter(r => connMap.get(r.id)).length;
+  
+  const relayList = enabledRelays.map(r => {
+    const connected = connMap.get(r.id);
+    const icon = connected ? '●' : '○';
+    const color = connected ? 'var(--green)' : 'var(--text-muted)';
+    const label = r.type === 'websocket' ? r.url : `${r.id} (auto-renew)`;
+    return `<div style="margin-bottom:4px"><span style="color:${color}">${icon}</span> ${label}</div>`;
+  }).join('');
+  
+  container.innerHTML = `<div style="padding:12px;font-size:12px">
+    <div style="margin-bottom:12px">
+      <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Connected Relays (${connectedCount}/${enabledRelays.length})</div>
+      ${relayList || '<div style="color:var(--text-muted)">No relays configured</div>'}
     </div>
-    <div style="margin-bottom:8px">Status: ${connected ? '<span style="color:var(--green)">● Connected</span>' + (hasAC ? ' <span style="color:var(--text-muted)">(auto-renew)</span>' : '') : '<span style="color:var(--text-muted)">● Disconnected</span>'}</div>
+    <button onclick="AgentMesh.settings?.open('mesh')" style="background:var(--accent);color:#fff;border:none;padding:6px 12px;border-radius:4px;font-size:11px;cursor:pointer;width:100%;margin-bottom:12px">⚙ Configure in Settings</button>
     <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Remote Peers (${peers.length})</div>
     <div>${peers.length ? peers.map(p => `<div style="margin-bottom:4px"><span style="color:var(--green)">●</span> ${p.hostname||'?'} <span style="color:var(--text-muted)">(${p.agents?.length||0} agents)</span></div>`).join('') : '<div style="color:var(--text-muted)">None</div>'}</div>
   </div>`;

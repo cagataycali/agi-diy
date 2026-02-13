@@ -11,7 +11,7 @@
   localStorage.setItem('cognito_id_token', idToken);
   if (h.get('access_token')) localStorage.setItem('cognito_access_token', h.get('access_token'));
 
-  // Exchange id_token for AWS credentials via Identity Pool
+  // Exchange id_token for AWS credentials via Identity Pool (DO NOT STORE)
   const poolId = localStorage.getItem('identity_pool_id');
   const provider = localStorage.getItem('cognito_provider_name');
   if (poolId && provider) {
@@ -29,12 +29,11 @@
           headers: { ...hdrs, 'X-Amz-Target': 'AWSCognitoIdentityService.GetCredentialsForIdentity' },
           body: JSON.stringify({ IdentityId, Logins: logins }) })).json();
         if (Credentials) {
-          // Merge into existing relay config
+          // Update config with idToken and cognito info ONLY (no credentials)
           const key = 'mesh_agentcore_config';
           const cfg = JSON.parse(localStorage.getItem(key) || '{}');
           cfg.idToken = idToken;
-          cfg.credentials = { accessKeyId: Credentials.AccessKeyId, secretAccessKey: Credentials.SecretKey,
-            sessionToken: Credentials.SessionToken, expiration: Credentials.Expiration };
+          // DO NOT store credentials - they will be vended at runtime
           if (!cfg.cognito) cfg.cognito = {};
           cfg.cognito.identityPoolId = poolId;
           cfg.cognito.providerName = provider;
@@ -43,6 +42,7 @@
           if (!cfg.arn) { const a = localStorage.getItem('agentcore_arn'); if (a) cfg.arn = a; }
           if (!cfg.region && cfg.arn) cfg.region = (cfg.arn.match(/:([a-z0-9-]+):\d{12}:/)||[])[1] || 'us-east-1';
           localStorage.setItem(key, JSON.stringify(cfg));
+          console.log('[CognitoAuth] Stored idToken and config (credentials will be vended at runtime)');
         }
       }
     } catch (e) { console.warn('Credential exchange failed:', e); }

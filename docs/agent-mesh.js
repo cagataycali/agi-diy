@@ -1624,14 +1624,62 @@
     }
     
     // ═══════════════════════════════════════════════════════════════════════════
-    // WEBSOCKET RELAY
+    // RELAY CONFIGURATION
     // ═══════════════════════════════════════════════════════════════════════════
     
-    let relayWs = null;
-    let relayConnected = false;
-    let relayHeartbeat = null;
-    let relayReconnectTimer = null;
-    let relayReconnectProvider = null; // set by agentcore-relay.js or other plugins
+    const RELAY_CONFIG_KEY = 'agi_mesh_relay_config';
+    
+    function getRelayConfig() {
+        try {
+            const stored = localStorage.getItem(RELAY_CONFIG_KEY);
+            if (stored) return JSON.parse(stored);
+        } catch (e) { console.error('[AgentMesh] Error loading relay config:', e); }
+        return { relays: [] };
+    }
+    
+    function saveRelayConfig(config) {
+        try {
+            localStorage.setItem(RELAY_CONFIG_KEY, JSON.stringify(config));
+            broadcast('relay-config-updated', config);
+            return true;
+        } catch (e) {
+            console.error('[AgentMesh] Error saving relay config:', e);
+            return false;
+        }
+    }
+    
+    function addRelay(relay) {
+        const config = getRelayConfig();
+        if (!relay.id) relay.id = `relay-${Date.now()}`;
+        config.relays.push(relay);
+        saveRelayConfig(config);
+        return relay.id;
+    }
+    
+    function updateRelay(id, updates) {
+        const config = getRelayConfig();
+        const relay = config.relays.find(r => r.id === id);
+        if (relay) {
+            Object.assign(relay, updates);
+            saveRelayConfig(config);
+            return true;
+        }
+        return false;
+    }
+    
+    function deleteRelay(id) {
+        const config = getRelayConfig();
+        config.relays = config.relays.filter(r => r.id !== id);
+        saveRelayConfig(config);
+        disconnectRelayById(id);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // WEBSOCKET RELAY - Multi-connection support
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    const relayConnections = new Map(); // Map<relayId, {ws, connected, heartbeat, reconnectTimer}>
+    const relayReconnectProviders = new Map(); // Map<relayId, reconnectFn>
     const relayInstanceId = localStorage.getItem('mesh_instance_id') || (() => {
         const id = `agi-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,6)}`;
         localStorage.setItem('mesh_instance_id', id);
@@ -1639,67 +1687,90 @@
     })();
     const remotePeers = new Map();
 
-    function connectRelay(url) {
-        if (relayWs) disconnectRelay();
+    function connectRelay(url, relayId) {
+        if (!relayId) relayId = `temp-${Date.now()}`;
+        disconnectRelayById(relayId);
         try {
-            relayWs = new WebSocket(url);
-            relayWs.onopen = () => {
-                relayConnected = true;
-                console.log('[AgentMesh] 🌐 Relay connected:', url);
-                sendRelayPresence();
-                relayHeartbeat = setInterval(() => {
-                    if (!relayConnected) return;
-                    sendRelayPresence();
+            const ws = new WebSocket(url);
+            const conn = { ws, connected: false, heartbeat: null, reconnectTimer: null };
+            relayConnections.set(relayId, conn);
+            
+            ws.onopen = () => {
+                conn.connected = true;
+                console.log(`[AgentMesh] 🌐 Relay connected [${relayId}]:`, url);
+                sendRelayPresence(relayId);
+                conn.heartbeat = setInterval(() => {
+                    if (!conn.connected) return;
+                    sendRelayPresence(relayId);
                     const now = Date.now();
                     for (const [id, peer] of remotePeers) {
                         if (now - peer.lastSeen > 30000) remotePeers.delete(id);
                     }
                 }, 10000);
-                localStorage.setItem('mesh_relay_url', url);
+                broadcast('relay-connected', { relayId, url });
                 const handler = subscribers.get('relay-status');
-                if (handler) handler({ connected: true, url });
+                if (handler) handler({ connected: true, url, relayId });
             };
-            relayWs.onmessage = (e) => {
+            ws.onmessage = (e) => {
                 try {
                     const msg = JSON.parse(e.data);
                     if (msg.from === relayInstanceId) return;
-                    handleRelayMessage(msg);
-                } catch (err) { console.warn('[AgentMesh] Invalid relay message:', err); }
+                    handleRelayMessage(msg, relayId);
+                } catch (err) { console.warn(`[AgentMesh] Invalid relay message [${relayId}]:`, err); }
             };
-            relayWs.onclose = () => {
-                relayConnected = false;
-                if (relayHeartbeat) { clearInterval(relayHeartbeat); relayHeartbeat = null; }
-                console.log('[AgentMesh] 🌐 Relay disconnected');
+            ws.onclose = () => {
+                conn.connected = false;
+                if (conn.heartbeat) { clearInterval(conn.heartbeat); conn.heartbeat = null; }
+                console.log(`[AgentMesh] 🌐 Relay disconnected [${relayId}]`);
+                broadcast('relay-disconnected', { relayId });
                 const handler = subscribers.get('relay-status');
-                if (handler) handler({ connected: false, url });
-                // Auto-reconnect via provider (e.g. agentcore-relay.js)
-                if (!relayReconnectTimer && relayReconnectProvider) {
-                    relayReconnectTimer = setTimeout(async () => {
-                        relayReconnectTimer = null;
-                        console.log('[AgentMesh] 🔄 Relay reconnect via provider...');
-                        try { await relayReconnectProvider(); } catch (e) { console.warn('[AgentMesh] Reconnect failed:', e); }
+                if (handler) handler({ connected: false, url, relayId });
+                // Auto-reconnect if provider exists
+                const provider = relayReconnectProviders.get(relayId);
+                if (provider && !conn.reconnectTimer) {
+                    conn.reconnectTimer = setTimeout(async () => {
+                        conn.reconnectTimer = null;
+                        console.log(`[AgentMesh] 🔄 Relay reconnect [${relayId}]...`);
+                        try { await provider(); } catch (e) { console.warn(`[AgentMesh] Reconnect failed [${relayId}]:`, e); }
                     }, 3000);
                 }
             };
-            relayWs.onerror = (err) => console.error('[AgentMesh] Relay error:', err);
-        } catch (err) { console.error('[AgentMesh] Failed to connect relay:', err); }
+            ws.onerror = (err) => console.error(`[AgentMesh] Relay error [${relayId}]:`, err);
+        } catch (err) { console.error(`[AgentMesh] Failed to connect relay [${relayId}]:`, err); }
     }
 
+    function disconnectRelayById(relayId) {
+        const conn = relayConnections.get(relayId);
+        if (!conn) return;
+        if (conn.reconnectTimer) { clearTimeout(conn.reconnectTimer); conn.reconnectTimer = null; }
+        if (conn.ws) { conn.ws.close(); conn.ws = null; }
+        if (conn.heartbeat) { clearInterval(conn.heartbeat); conn.heartbeat = null; }
+        relayConnections.delete(relayId);
+        relayReconnectProviders.delete(relayId);
+        broadcast('relay-disconnected', { relayId });
+    }
+    
     function disconnectRelay() {
-        if (relayReconnectTimer) { clearTimeout(relayReconnectTimer); relayReconnectTimer = null; }
-        relayReconnectProvider = null;
-        if (relayWs) { relayWs.close(); relayWs = null; }
-        relayConnected = false;
+        // Legacy: disconnect all
+        for (const relayId of relayConnections.keys()) {
+            disconnectRelayById(relayId);
+        }
         remotePeers.clear();
-        if (relayHeartbeat) { clearInterval(relayHeartbeat); relayHeartbeat = null; }
-        localStorage.removeItem('mesh_relay_url');
     }
 
-    function sendRelay(msg) {
-        if (relayWs && relayConnected) relayWs.send(JSON.stringify(msg));
+    function sendRelay(msg, relayId) {
+        if (relayId) {
+            const conn = relayConnections.get(relayId);
+            if (conn?.ws && conn.connected) conn.ws.send(JSON.stringify(msg));
+        } else {
+            // Broadcast to all connected relays
+            for (const conn of relayConnections.values()) {
+                if (conn.ws && conn.connected) conn.ws.send(JSON.stringify(msg));
+            }
+        }
     }
 
-    function sendRelayPresence() {
+    function sendRelayPresence(relayId) {
         sendRelay({
             type: 'presence',
             from: relayInstanceId,
@@ -1709,13 +1780,13 @@
                 pageId: currentPage.id,
                 timestamp: Date.now()
             }
-        });
+        }, relayId);
     }
 
-    function handleRelayMessage(msg) {
+    function handleRelayMessage(msg, relayId) {
         const { type, from, data } = msg;
         if (type === 'presence' || type === 'heartbeat') {
-            remotePeers.set(from, { agents: data?.agents || [], hostname: data?.hostname, lastSeen: Date.now() });
+            remotePeers.set(from, { agents: data?.agents || [], hostname: data?.hostname, lastSeen: Date.now(), relayId });
             // Register remote agents
             if (data?.agents) {
                 for (const agentId of data.agents) {
@@ -1736,11 +1807,90 @@
             broadcast(type, data, false);
         }
     }
+    
+    function connectRelayById(relayId) {
+        const config = getRelayConfig();
+        const relay = config.relays.find(r => r.id === relayId);
+        if (!relay || !relay.enabled) return false;
+        
+        if (relay.type === 'websocket') {
+            connectRelay(relay.url, relayId);
+            return true;
+        } else if (relay.type === 'agentcore') {
+            // Delegate to agentcore-relay.js plugin
+            if (window.AgentMesh.connectAgentCoreRelayById) {
+                window.AgentMesh.connectAgentCoreRelayById(relayId);
+                return true;
+            }
+        }
+        return false;
+    }
 
-    // Auto-connect saved relay on init
+    // Auto-connect configured relays on init
+    function autoConnectConfiguredRelays() {
+        const config = getRelayConfig();
+        config.relays
+            .filter(r => r.enabled && r.autoConnect)
+            .forEach(relay => {
+                setTimeout(() => connectRelayById(relay.id), 1000);
+            });
+    }
+    
+    // Migration from old config
+    function migrateRelayConfig() {
+        // Migrate old mesh_relay_url
+        const oldUrl = localStorage.getItem('mesh_relay_url');
+        if (oldUrl) {
+            const config = getRelayConfig();
+            if (!config.relays.find(r => r.url === oldUrl)) {
+                config.relays.push({
+                    id: 'migrated-' + Date.now(),
+                    type: 'websocket',
+                    url: oldUrl,
+                    enabled: true,
+                    autoConnect: true
+                });
+                saveRelayConfig(config);
+                console.log('[AgentMesh] Migrated mesh_relay_url to relay config');
+            }
+            localStorage.removeItem('mesh_relay_url');
+        }
+
+        // Migrate AgentCore config, REMOVE credentials
+        const oldAC = localStorage.getItem('mesh_agentcore_config');
+        if (oldAC) {
+            try {
+                const ac = JSON.parse(oldAC);
+                if (ac.credentials) {
+                    delete ac.credentials;
+                    localStorage.setItem('mesh_agentcore_config', JSON.stringify(ac));
+                    console.log('[AgentMesh] Cleared stored AWS credentials - will re-vend from Cognito');
+                }
+                // Migrate to relay config if has arn
+                if (ac.arn) {
+                    const config = getRelayConfig();
+                    if (!config.relays.find(r => r.type === 'agentcore' && r.arn === ac.arn)) {
+                        config.relays.push({
+                            id: 'agentcore-' + Date.now(),
+                            type: 'agentcore',
+                            arn: ac.arn,
+                            region: ac.region,
+                            cognito: ac.cognito,
+                            enabled: true,
+                            autoConnect: true
+                        });
+                        saveRelayConfig(config);
+                        console.log('[AgentMesh] Migrated AgentCore config to relay config');
+                    }
+                }
+            } catch (e) { console.error('[AgentMesh] Migration error:', e); }
+        }
+    }
+
+    // Auto-connect saved relay on init (legacy support)
     function autoConnectRelay() {
-        const saved = localStorage.getItem('mesh_relay_url');
-        if (saved) setTimeout(() => connectRelay(saved), 1000);
+        migrateRelayConfig();
+        autoConnectConfiguredRelays();
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -1780,12 +1930,20 @@
         getPeers: () => [...connectedPeers.values()],
         
         // 🌐 WebSocket Relay
+        getRelayConfig,
+        saveRelayConfig,
+        addRelay,
+        updateRelay,
+        deleteRelay,
         connectRelay,
+        connectRelayById,
         disconnectRelay,
+        disconnectRelayById,
         sendRelay,
-        setRelayReconnectProvider: (fn) => { relayReconnectProvider = fn; },
-        get relayConnected() { return relayConnected; },
+        setRelayReconnectProvider: (relayId, fn) => { relayReconnectProviders.set(relayId, fn); },
+        get relayConnected() { return relayConnections.size > 0 && [...relayConnections.values()].some(c => c.connected); },
         getRelayPeers: () => [...remotePeers.values()],
+        getRelayConnections: () => Array.from(relayConnections.entries()).map(([id, conn]) => ({ id, connected: conn.connected })),
         relayInstanceId,
         
         // 🤖 Agent Registration (track agents across tabs)
