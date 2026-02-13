@@ -153,6 +153,10 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); heig
     <button class="add-btn" onclick="addBlock('task-detail')">+ Task Detail</button>
     <button class="add-btn" onclick="addBlock('mesh')">+ Mesh</button>
   </div>
+  <div style="display:flex;align-items:center;gap:6px">
+    <button class="add-btn" onclick="stopAllTasks()" style="background:var(--red);color:#fff" title="Stop all active tasks">⏹ Stop All</button>
+    <button class="add-btn" onclick="clearDoneTasks()" title="Clear completed tasks">🗑️ Clear Done</button>
+  </div>
   <button class="settings-btn" onclick="AgentMesh.settings?.open()" title="Settings">⚙</button>
 </div>
 <div class="wall-clock" id="wallClock"></div>
@@ -691,23 +695,22 @@ function renderTasksBlock(container) {
     (task.children||[]).forEach(cid => { const c = state.tasks.get(cid); if(c) walk(c, depth+1); });
   }
   roots.forEach(t => walk(t, 0));
-  const active = [...state.tasks.values()].filter(t => t.status !== 'complete');
-  container.innerHTML = '<div class="task-tree">' + html.join('') +
-    (active.length ? '<div style="padding:6px 8px;display:flex;gap:6px"><button class="stop-all-btn" style="font-size:10px;background:var(--red);color:#fff;border:none;border-radius:var(--radius);padding:3px 10px;cursor:pointer">⏹ Stop All</button><button class="clear-done-btn" style="font-size:10px;background:none;border:1px solid var(--border);color:var(--text-muted);border-radius:var(--radius);padding:3px 10px;cursor:pointer">Clear Done</button></div>' : '') +
-    '</div>';
+  container.innerHTML = '<div class="task-tree">' + html.join('') + '</div>';
   container.querySelectorAll('.task-item').forEach(el => {
     el.addEventListener('click', () => openTaskDetail(el.dataset.task));
   });
-  container.querySelector('.stop-all-btn')?.addEventListener('click', () => {
-    state.tasks.forEach(t => { if (t.status !== 'complete') t.status = 'complete'; });
-    notify('tasks'); saveTasks();
-  });
-  container.querySelector('.clear-done-btn')?.addEventListener('click', () => {
-    [...state.tasks.entries()].forEach(([id, t]) => { if (t.status === 'complete') state.tasks.delete(id); });
-    state.tasks.forEach(t => { t.children = t.children.filter(c => state.tasks.has(c)); });
-    notify('tasks'); saveTasks();
-  });
 }
+
+window.stopAllTasks = function() {
+  state.tasks.forEach(t => { if (t.status !== 'complete') t.status = 'complete'; });
+  notify('tasks'); saveTasks();
+};
+
+window.clearDoneTasks = function() {
+  [...state.tasks.entries()].forEach(([id, t]) => { if (t.status === 'complete') state.tasks.delete(id); });
+  state.tasks.forEach(t => { t.children = t.children.filter(c => state.tasks.has(c)); });
+  notify('tasks'); saveTasks();
+};
 
 function renderChatBlock(container) {
   if (container.querySelector('.chat-wrap')) return;
