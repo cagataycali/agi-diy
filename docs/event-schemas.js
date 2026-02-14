@@ -220,6 +220,86 @@ export const EventSchemas = {
     optional: ['url', 'metadata'],
     types: {
       id: 'string',
+      type: ['relay', 'mesh', 'peer', 'mcp'],
+      url: 'string',
+      metadata: 'object'
+    }
+  },
+  
+  'connection-lost': {
+    required: ['id', 'type'],
+    optional: ['reason'],
+    types: {
+      id: 'string',
+      type: ['relay', 'mesh', 'peer', 'mcp'],
+      reason: 'string'
+    }
+  },
+  
+  // ─── Relay Infrastructure Events ───
+  'relay-connected': {
+    required: ['relayId'],
+    optional: ['url'],
+    types: {
+      relayId: 'string',
+      url: 'string'
+    }
+  },
+  
+  'relay-disconnected': {
+    required: ['relayId'],
+    optional: [],
+    types: {
+      relayId: 'string'
+    }
+  },
+  
+  'relay-log': {
+    required: ['time', 'level', 'relayId', 'message'],
+    optional: ['data'],
+    types: {
+      time: 'number',
+      level: ['info', 'warn', 'error'],
+      relayId: 'string',
+      message: 'string',
+      data: ['string', 'object']
+    }
+  },
+  
+  'relay-capabilities': {
+    required: ['relayId'],
+    optional: ['agentCards', 'activeAgents', 'tools'],
+    types: {
+      relayId: 'string',
+      agentCards: 'array',
+      activeAgents: 'array',
+      tools: 'array'
+    }
+  },
+  
+  'presence': {
+    required: ['from'],
+    optional: ['data', 'timestamp'],
+    types: {
+      from: 'string',
+      data: 'object',
+      timestamp: 'number'
+    }
+  },
+  
+  'relay-config-updated': {
+    required: [],
+    optional: ['config'],
+    types: {
+      config: 'object'
+    }
+  }
+};
+
+// Legacy mapping removed - connection events now standard
+export const EventSchemas = EVENT_SCHEMAS;
+    types: {
+      id: 'string',
       type: ['relay', 'mcp', 'websocket', 'peer'],
       url: 'string',
       metadata: 'object'

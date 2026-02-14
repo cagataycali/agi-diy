@@ -125,6 +125,65 @@ EVENT_SCHEMAS = {
             "type": ["relay", "mcp", "websocket", "peer"],
             "reason": str
         }
+    },
+    
+    # Relay Infrastructure Events
+    "relay-connected": {
+        "required": ["relayId"],
+        "optional": ["url"],
+        "types": {
+            "relayId": str,
+            "url": str
+        }
+    },
+    
+    "relay-disconnected": {
+        "required": ["relayId"],
+        "optional": [],
+        "types": {
+            "relayId": str
+        }
+    },
+    
+    "relay-log": {
+        "required": ["time", "level", "relayId", "message"],
+        "optional": ["data"],
+        "types": {
+            "time": (int, float),
+            "level": ["info", "warn", "error"],
+            "relayId": str,
+            "message": str,
+            "data": (str, dict)
+        }
+    },
+    
+    "relay-capabilities": {
+        "required": ["relayId"],
+        "optional": ["agentCards", "activeAgents", "tools"],
+        "types": {
+            "relayId": str,
+            "agentCards": list,
+            "activeAgents": list,
+            "tools": list
+        }
+    },
+    
+    "presence": {
+        "required": ["from"],
+        "optional": ["data", "timestamp"],
+        "types": {
+            "from": str,
+            "data": dict,
+            "timestamp": (int, float)
+        }
+    },
+    
+    "relay-config-updated": {
+        "required": [],
+        "optional": ["config"],
+        "types": {
+            "config": dict
+        }
     }
 }
 

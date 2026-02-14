@@ -39,8 +39,8 @@ def load_config() -> dict:
 
 async def broadcast(msg: dict, *, exclude: Optional[str] = None):
     """Broadcast message to all connected peers except excluded one."""
-    # Validate event if enabled (skip relay-internal events)
-    if VALIDATE_EVENTS and "type" in msg and not msg["type"].startswith("relay-"):
+    # Validate event if enabled
+    if VALIDATE_EVENTS and "type" in msg:
         is_valid, errors = validate_event(msg["type"], msg.get("data", {}))
         if not is_valid:
             print(f"[Relay] Invalid event {msg['type']}: {errors}")
