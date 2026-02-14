@@ -16,8 +16,20 @@ export default new Widget({
   
   render(container) {
     const agents = window.AgentMesh?.erc8004?.discoveredAgents || [];
+    const logs = window.getERC8004Logs?.() || [];
+    const showLogs = container._showLogs || false;
     
-    if (!agents.length) {
+    const logList = logs.slice(-20).reverse().map(l => {
+      const color = l.level === 'error' ? 'var(--red)' : l.level === 'warn' ? 'var(--orange)' : 'var(--text-dim)';
+      const time = new Date(l.time).toLocaleTimeString();
+      const chain = l.chain ? '[' + l.chain + ']' : '';
+      return '<div style="font-size:10px;margin-bottom:2px;color:' + color + '">' + time + ' ' + chain + ' ' + l.message + '</div>';
+    }).join('');
+    
+    const toggleBtn = showLogs ? '▼' : '▶';
+    const logsSection = showLogs ? '<div style="margin-top:8px;max-height:200px;overflow-y:auto;background:var(--bg-card);padding:6px;border-radius:4px">' + (logList || '<div style="color:var(--text-muted);font-size:10px">No logs</div>') + '</div>' : '';
+    
+    if (!agents.length && !logs.length) {
       container.innerHTML = '<div style="padding:20px;color:var(--text-muted);text-align:center">No on-chain agents discovered</div>';
       return;
     }
@@ -60,7 +72,26 @@ export default new Widget({
           ` : ''}
         </div>
       `;
-    }).join('') + '</div>';
+    }).join('') + 
+    '<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:8px">' +
+    '<button class="erc8004-logs-toggle" style="background:none;border:1px solid var(--border);color:var(--text-dim);font-size:10px;padding:4px 8px;border-radius:4px;cursor:pointer;width:100%">' + toggleBtn + ' Logs (' + logs.length + ')</button>' +
+    logsSection +
+    '</div></div>';
+    
+    // Attach toggle handler
+    const btn = container.querySelector('.erc8004-logs-toggle');
+    if (btn) {
+      const widget = this;
+      btn.onclick = () => widget.toggleLogs();
+    }
+    
+    // Subscribe to updates
+    const M = window.AgentMesh;
+    if (M?.subscribe && !container._erc8004Subscribed) {
+      const update = () => this.render(container);
+      M.subscribe('erc8004-log', update);
+      container._erc8004Subscribed = true;
+    }
     
     // Add click handlers for linked agents
     container.querySelectorAll('.erc8004-agent-link').forEach(el => {
@@ -69,5 +100,13 @@ export default new Widget({
         if (window.openAgentDetail) window.openAgentDetail(agentId);
       });
     });
+  },
+  
+  toggleLogs() {
+    const container = document.querySelector('[data-widget-type="erc8004"]');
+    if (container) {
+      container._showLogs = !container._showLogs;
+      this.render(container);
+    }
   }
 });
