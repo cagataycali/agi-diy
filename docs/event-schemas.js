@@ -302,11 +302,12 @@ export const EventSchemas = {
   
   'presence': {
     description: 'Peer heartbeat announcing availability and status',
-    required: ['from'],
-    optional: ['data', 'timestamp'],
+    required: ['agents', 'hostname', 'pageId', 'timestamp'],
+    optional: [],
     types: {
-      from: 'string',
-      data: 'object',
+      agents: 'array',
+      hostname: 'string',
+      pageId: 'string',
       timestamp: 'number'
     }
   },

@@ -184,11 +184,12 @@ EVENT_SCHEMAS = {
     
     "presence": {
         "description": "Peer heartbeat announcing availability and status",
-        "required": ["from"],
-        "optional": ["data", "timestamp"],
+        "required": ["agents", "hostname", "pageId", "timestamp"],
+        "optional": [],
         "types": {
-            "from": str,
-            "data": dict,
+            "agents": list,
+            "hostname": str,
+            "pageId": str,
             "timestamp": (int, float)
         }
     },
