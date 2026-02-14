@@ -82,11 +82,21 @@
         const idResp = await fetch(base, { method: 'POST',
             headers: { ...hdrs, 'X-Amz-Target': 'AWSCognitoIdentityService.GetId' },
             body: JSON.stringify({ IdentityPoolId: identityPoolId, Logins: { [providerName]: cfg.idToken } }) });
+        if (!idResp.ok) {
+            const err = await idResp.text();
+            console.error('GetId failed:', idResp.status, err);
+            return null;
+        }
         const { IdentityId } = await idResp.json();
         if (!IdentityId) return null;
         const credsResp = await fetch(base, { method: 'POST',
             headers: { ...hdrs, 'X-Amz-Target': 'AWSCognitoIdentityService.GetCredentialsForIdentity' },
             body: JSON.stringify({ IdentityId, Logins: { [providerName]: cfg.idToken } }) });
+        if (!credsResp.ok) {
+            const err = await credsResp.text();
+            console.error('GetCredentialsForIdentity failed:', credsResp.status, err);
+            return null;
+        }
         const { Credentials } = await credsResp.json();
         if (!Credentials) return null;
         return { accessKeyId: Credentials.AccessKeyId, secretAccessKey: Credentials.SecretKey,
