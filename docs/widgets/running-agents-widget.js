@@ -147,5 +147,28 @@ export default new Widget({
     if (['agent-status', 'agent-spawned', 'agent-terminated'].includes(type)) {
       if (this.container) this.render(this.container);
     }
+    
+    if (type === 'relay-capabilities' && payload) {
+      const state = window.dashboardState;
+      if (!state || !payload.activeAgents) return;
+      
+      payload.activeAgents.forEach(agent => {
+        const id = `relay-${agent.id || agent.name}`;
+        if (!state.agents.has(id)) {
+          const COLORS = ['#00ff88', '#00d4ff', '#ff00ff', '#ffaa00', '#ff4444', '#44ff44'];
+          state.agents.set(id, {
+            id,
+            model: agent.model || 'AgentCore Runtime',
+            status: 'running',
+            color: COLORS[state.colorIndex++ % COLORS.length],
+            relay: payload.relayId,
+            instances: 1,
+            agentCard: agent
+          });
+        }
+      });
+      
+      if (this.container) this.render(this.container);
+    }
   }
 });
