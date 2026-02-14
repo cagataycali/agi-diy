@@ -2029,6 +2029,16 @@
                 }));
         },
         
+        // 🔗 ERC8004 Blockchain Agents
+        getERC8004Agents: () => {
+            // Placeholder - would integrate with erc8004-discovery.js
+            // Returns agents discovered via blockchain
+            if (window.erc8004Agents) {
+                return window.erc8004Agents;
+            }
+            return [];
+        },
+        
         // 🤖 Agent Registration (track agents across tabs)
         registerAgent,
         unregisterAgent,
