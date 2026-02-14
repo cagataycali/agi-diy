@@ -1,0 +1,13 @@
+# Brazil package configuration for AgentMeshStudio
+
+[package]
+name = AgentMeshStudio
+versionset = live
+type = StaticWebsite
+
+[build]
+# No build step needed - static files only
+
+[harmony-spaces]
+enabled = true
+contentPath = docs
