@@ -151,9 +151,12 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); heig
   <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px">
     <button class="add-btn" onclick="addBlock('chat')">+ Chat</button>
     <button class="add-btn" onclick="addBlock('agents')">+ Agents</button>
+    <button class="add-btn" onclick="addBlock('agent-detail')">+ Agent Detail</button>
     <button class="add-btn" onclick="addBlock('tasks')">+ Tasks</button>
+    <button class="add-btn" onclick="addBlock('task-flow')">+ Task Flow</button>
     <button class="add-btn" onclick="addBlock('ring')">+ Ring</button>
     <button class="add-btn" onclick="addBlock('task-detail')">+ Task Detail</button>
+    <button class="add-btn" onclick="addBlock('agent-chat')">+ Agent Chat</button>
     <button class="add-btn" onclick="addBlock('mesh')">+ Mesh</button>
   </div>
   <div style="display:flex;align-items:center;gap:6px">
@@ -173,6 +176,7 @@ if (typeof Symbol.dispose === 'undefined') Symbol.dispose = Symbol('Symbol.dispo
 if (typeof Symbol.asyncDispose === 'undefined') Symbol.asyncDispose = Symbol('Symbol.asyncDispose');
 </script>
 <script type="module">
+import widgetRegistry from './widgets/index.js';
 import { Agent, tool, z, AnthropicModel, OpenAIModel, BedrockModel, McpClient, StreamableHTTPClientTransport, SlidingWindowConversationManager, NullConversationManager, SummarizingConversationManager } from './strands.js';
 import { WebLLMBrowserModel } from './webllm.js';
 import './erc8004-discovery.js?v=2';
@@ -327,6 +331,14 @@ async function runDelegatedAgent(agentId, taskId, instructions) {
   const agentData = state.agents.get(agentId);
   if (!agentData || !task) return;
 
+  // Track instance
+  agentData.instances = (agentData.instances || 0) + 1;
+  agentData.workingOn = task.title;
+  notifyAgentStatus(agentId);
+  
+  // Initialize trace
+  task.trace = task.trace || [];
+
   try {
     const model = createModel(agentData.provider || detectProvider(), { modelId: agentData.modelId, maxTokens: 4096 });
     const agentTools = [updateTaskTool, createTaskTool];
@@ -356,6 +368,10 @@ async function runDelegatedAgent(agentId, taskId, instructions) {
     for await (const event of agent.stream(instructions)) {
       if (event?.type === 'modelContentBlockDeltaEvent' && event.delta?.type === 'textDelta') {
         result += event.delta.text;
+        task.trace.push({ type: 'thinking', content: event.delta.text, ts: Date.now() });
+      }
+      if (event?.type === 'modelContentBlockStartEvent' && event.contentBlock?.type === 'toolUse') {
+        task.trace.push({ type: 'tool', content: `${event.contentBlock.name}(${JSON.stringify(event.contentBlock.input).slice(0,100)})`, ts: Date.now() });
       }
     }
 
@@ -372,9 +388,15 @@ async function runDelegatedAgent(agentId, taskId, instructions) {
   } catch (e) {
     task.status = 'failed';
     task.worklog.push({ ts: Date.now(), agentId, msg: `Error: ${e.message}` });
+    task.trace.push({ type: 'error', content: e.message, ts: Date.now() });
   }
 
-  if (agentData) { agentData.status = 'ready'; notifyAgentStatus(agentId); }
+  if (agentData) { 
+    agentData.instances = Math.max(0, (agentData.instances || 1) - 1);
+    agentData.status = agentData.instances > 0 ? 'processing' : 'ready';
+    agentData.workingOn = null;
+    notifyAgentStatus(agentId);
+  }
   notify('tasks'); saveTasks();
 }
 
@@ -416,16 +438,6 @@ function loadTasks() { try { const d = JSON.parse(localStorage.getItem('dashboar
 const COLORS = ['#00ff88','#00aaff','#ff88ff','#ffaa00','#ff6666','#88ffff'];
 const STATUS_ICON = { pending:'⬜', 'in-progress':'🔵', waiting:'⏳', complete:'🟢', failed:'🔴' };
 const STATUS_LABEL = { pending:'Pending', 'in-progress':'In Progress', waiting:'Waiting', complete:'Complete', failed:'Failed' };
-const BLOCK_META = {
-  agents:       { icon:'👥', title:'Agents' },
-  tasks:        { icon:'📋', title:'Tasks' },
-  chat:         { icon:'💬', title:'Chat' },
-  ring:         { icon:'🔵', title:'Ring Buffer' },
-  'task-detail':{ icon:'🔍', title:'Task Detail' },
-  'agent-chat': { icon:'💬', title:'Agent Chat' },
-  preview:      { icon:'🖼️', title:'Preview' },
-  mesh:         { icon:'🌐', title:'Mesh' },
-};
 
 const state = {
   agents: new Map(),
@@ -450,6 +462,9 @@ const state = {
   blockCounter: 10,
   maximizedBlock: null,
 };
+
+window.dashboardState = state;
+window.widgetRegistry = widgetRegistry;
 
 const DEFAULT_MAX_TOKENS = 60000;
 
@@ -506,23 +521,16 @@ function initialMeshSync() {
 function notify(type) {
   document.querySelectorAll('.block').forEach(bl => {
     const cfg = findBlockCfg(bl.id);
-    if (!cfg || cfg.type !== type) return;
+    if (!cfg || (cfg.type !== type && !(type === 'tasks' && cfg.type === 'task-flow'))) return;
     const body = bl.querySelector('.block-body');
-    RENDERERS[cfg.type]?.(body, cfg);
+    widgetRegistry.render(cfg.type, body, cfg);
   });
+  widgetRegistry.emit(type, { type });
 }
 
 // Targeted updaters for individual elements
 function notifyAgentStatus(agentId) {
-  document.querySelectorAll(`.agent-card[data-agent="${agentId}"]`).forEach(card => {
-    const a = state.agents.get(agentId);
-    if (!a) return;
-    const dot = card.querySelector('.agent-dot');
-    const badge = card.querySelector('.agent-badge');
-    dot.className = `agent-dot ${a.status === 'processing' ? 'pulse' : ''}`;
-    badge.style.color = a.status === 'processing' ? a.color : 'var(--text-muted)';
-    badge.innerHTML = a.status === 'processing' ? '<span class="typing-dots"><span></span><span></span><span></span></span>' : a.status;
-  });
+  widgetRegistry.emit('agent-status', { agentId });
 }
 
 function notifyNewAgent(agent) {
@@ -536,6 +544,7 @@ function notifyNewAgent(agent) {
 }
 
 function notifyRingEntry(entry) {
+  widgetRegistry.emit('ring-entry', entry);
   const agent = state.agents.get(entry.agentId);
   const color = agent?.color || '#888';
   const time = new Date(entry.ts).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
@@ -548,17 +557,19 @@ function notifyRingEntry(entry) {
     el.firstElementChild?.addEventListener('dblclick', () => openAgentChat(entry.agentId, entry.ts));
     while (el.children.length > 20) el.lastElementChild.remove();
   });
-  // Update any open agent-chat blocks for this agent
-  function findCfg(nodes) { for (const n of nodes) { if (n.type === 'agent-chat' && n.agentId === entry.agentId) { const el = document.querySelector(`#${n.id} .block-body`); if (el) renderAgentChatBlock(el, n); } if (n.children) findCfg(n.children); } }
+  function findCfg(nodes) { for (const n of nodes) { if (n.type === 'agent-chat' && n.agentId === entry.agentId) { const el = document.querySelector(`#${n.id} .block-body`); if (el) widgetRegistry.render('agent-chat', el, n); } if (n.children) findCfg(n.children); } }
   findCfg(state.layout);
 }
 
 function agentCardHTML(a) {
+  const instances = a.instances || 1;
+  const working = a.workingOn ? `<div style="font-size:9px;color:var(--text-muted);margin-top:2px">${a.workingOn.slice(0,40)}...</div>` : '';
   return `<div class="agent-card" data-agent="${a.id}">
     <div class="agent-dot ${a.status==='processing'?'pulse':''}" style="background:${a.color}"></div>
     <div class="agent-info">
-      <div class="agent-name">${a.id}</div>
+      <div class="agent-name">${a.id}${instances>1?` (×${instances})`:''}</div>
       <div class="agent-model">${a.model}</div>
+      ${working}
     </div>
     <div class="agent-badge" style="color:${a.status==='processing'?a.color:'var(--text-muted)'}">${a.status === 'processing' ? '<span class="typing-dots"><span></span><span></span><span></span></span>' : a.status}</div>
   </div>`;
@@ -694,201 +705,43 @@ async function loadDefaultAgents() {
   }
 }
 
-// ═══ RENDERERS ═══
-function renderAgentsBlock(container) {
-  container.innerHTML = '<div class="agent-list">' + [...state.agents.values()].map(a => `
-    <div class="agent-card" data-agent="${a.id}">
-      <div class="agent-dot ${a.status==='processing'?'pulse':''}" style="background:${a.color}"></div>
-      <div class="agent-info">
-        <div class="agent-name">${a.id}</div>
-        <div class="agent-model">${a.model}</div>
-      </div>
-      <div class="agent-badge" style="color:${a.status==='processing'?a.color:'var(--text-muted)'}">${a.status === 'processing' ? '<span class="typing-dots"><span></span><span></span><span></span></span>' : a.status}</div>
-    </div>
-  `).join('') + '</div>';
-  container.querySelectorAll('.agent-card').forEach(el => el.addEventListener('dblclick', () => openAgentChat(el.dataset.agent)));
-}
+// All render functions moved to their respective widgets
 
-function renderTasksBlock(container) {
-  const roots = [...state.tasks.values()].filter(t => !t.parentId);
-  const html = [];
-  function isComplete(task) { return task.status === 'complete' && (task.children||[]).every(cid => { const c = state.tasks.get(cid); return c && isComplete(c); }); }
-  function walk(task, depth) {
-    if (isComplete(task)) return;
-    const agent = task.agentId ? state.agents.get(task.agentId) : null;
-    const color = agent?.color || 'var(--text-muted)';
-    html.push(`<div class="task-item d${depth}" data-task="${task.id}" data-status="${task.status}" style="border-left-color:${color}">
-      <span class="task-status">${STATUS_ICON[task.status]}</span>
-      <div class="task-info">
-        <div class="task-title">${task.title}</div>
-        <div class="task-meta">
-          ${task.agentId ? `<span style="color:${color}">${task.agentId}</span>` : '<span>unassigned</span>'}
-          ${task.worklog.length ? `<span>${task.worklog.length} logs</span>` : ''}
-          ${task.worklog.length ? `<span class="task-elapsed" data-start="${task.worklog[0].ts}" data-end="${task.status === 'complete' ? task.worklog[task.worklog.length-1].ts : 0}">${formatElapsed(task.worklog[0].ts, task.status === 'complete' ? task.worklog[task.worklog.length-1].ts : Date.now())}</span>` : ''}
-        </div>
-      </div>
-    </div>`);
-    (task.children||[]).forEach(cid => { const c = state.tasks.get(cid); if(c) walk(c, depth+1); });
-  }
-  roots.forEach(t => walk(t, 0));
-  container.innerHTML = '<div class="task-tree">' + html.join('') + '</div>';
-  container.querySelectorAll('.task-item').forEach(el => {
-    el.addEventListener('click', () => openTaskDetail(el.dataset.task));
-  });
-}
-
-window.stopAllTasks = function() {
-  state.tasks.forEach(t => { if (t.status !== 'complete') t.status = 'complete'; });
-  notify('tasks'); saveTasks();
-};
-
-window.clearDoneTasks = function() {
-  [...state.tasks.entries()].forEach(([id, t]) => { if (t.status === 'complete') state.tasks.delete(id); });
-  state.tasks.forEach(t => { t.children = t.children.filter(c => state.tasks.has(c)); });
-  notify('tasks'); saveTasks();
-};
-
-function renderChatBlock(container) {
-  if (container.querySelector('.chat-wrap')) return;
-  const blockId = container.closest('.block').id;
-  container.innerHTML = `<div class="chat-wrap">
-    <div class="messages" id="msg-${blockId}"></div>
-    <div class="input-area">
-      <textarea placeholder="Message the mesh…" rows="1"></textarea>
-      <button class="send-btn">Send</button>
-      <button class="clear-btn" title="Clear chat" style="background:none;border:1px solid var(--border);color:var(--text-muted);border-radius:var(--radius);padding:0 8px;cursor:pointer;font-size:11px">✕</button>
-    </div>
-  </div>`;
-  const ta = container.querySelector('textarea');
-  const chatHistory = JSON.parse(localStorage.getItem('mesh_chat_history') || '[]');
-  let histIdx = -1;
-  let draft = '';
-  const send = () => { const t = ta.value.trim(); if (!t) return; ta.value = ''; ta.style.height = 'auto'; chatHistory.unshift(t); if (chatHistory.length > 15) chatHistory.length = 15; localStorage.setItem('mesh_chat_history', JSON.stringify(chatHistory)); histIdx = -1; sendChatMessage(t, blockId); };
-  ta.addEventListener('input', () => { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; });
-  ta.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
-    if (e.key === 'ArrowUp' && ta.selectionStart === 0) { if (histIdx < 0) draft = ta.value; if (histIdx < chatHistory.length - 1) { histIdx++; ta.value = chatHistory[histIdx]; } e.preventDefault(); }
-    if (e.key === 'ArrowDown' && ta.selectionStart === ta.value.length) { if (histIdx > 0) { histIdx--; ta.value = chatHistory[histIdx]; } else if (histIdx === 0) { histIdx = -1; ta.value = draft; } e.preventDefault(); }
-  });
-  container.querySelector('.send-btn').addEventListener('click', send);
-  container.querySelector('.clear-btn').addEventListener('click', () => {
-    const m = document.querySelector(`#msg-${blockId}`); if (m) m.innerHTML = '';
-    state.chatMessages.length = 0;
-  });
-}
-
-function renderRingBlock(container) {
-  const sorted = [...state.ringBuffer].sort((a,b) => b.ts - a.ts);
-  container.innerHTML = '<div class="ring-entries">' + sorted.map(e => {
-    const agent = state.agents.get(e.agentId);
-    const color = agent?.color || '#888';
-    const time = new Date(e.ts).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
-    return `<div class="ring-entry" data-agent="${e.agentId}" data-ts="${e.ts}" style="border-left-color:${color}">
-      <div class="re-header"><span class="re-agent" style="color:${color}">${e.agentId}</span><span class="re-time">${time}</span></div>
-      <div class="re-text">${e.content.slice(0,200)}</div>
-    </div>`;
-  }).join('') + '</div>';
-  container.querySelectorAll('.ring-entry').forEach(el => el.addEventListener('dblclick', () => openAgentChat(el.dataset.agent, parseInt(el.dataset.ts))));
-}
-
-function renderTaskDetailBlock(container, blockCfg) {
-  const taskId = blockCfg?.taskId;
-  if (!taskId) { container.innerHTML = '<div style="padding:20px;color:var(--text-muted);font-size:12px;text-align:center">Click a task to view details</div>'; return; }
-  const task = state.tasks.get(taskId);
-  if (!task) { container.innerHTML = '<div style="padding:20px;color:var(--text-muted);font-size:12px">Task not found</div>'; return; }
-  const agent = task.agentId ? state.agents.get(task.agentId) : null;
-  const color = agent?.color || 'var(--text-muted)';
-  const sc = {'pending':'var(--text-muted)','in-progress':'var(--blue)','waiting':'var(--orange)','complete':'var(--green)','failed':'var(--red)'};
-  container.innerHTML = `<div class="task-detail-view">
-    <div class="td-header">
-      <div><div class="td-title">${task.title}</div>
-        <div style="display:flex;gap:8px;margin-top:4px;align-items:center">
-          <span class="td-status" style="background:${sc[task.status]}22;color:${sc[task.status]}">${STATUS_ICON[task.status]} ${STATUS_LABEL[task.status]}</span>
-          ${task.agentId ? `<span style="font-size:11px;color:${color}">⬤ ${task.agentId}</span>` : '<span style="font-size:11px;color:var(--text-muted)">unassigned</span>'}
-        </div>
-      </div>
-    </div>
-    <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin:8px 0 4px">Worklog</div>
-    <div class="worklog">${task.worklog.length ? task.worklog.map(w => {
-      const wa = state.agents.get(w.agentId); const wc = wa?.color || '#888';
-      return `<div class="wl-entry" style="border-left-color:${wc}">
-        <div class="wl-head"><span style="color:${wc}">${w.agentId}</span><span>${new Date(w.ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span></div>
-        <div class="wl-msg">${w.msg}</div>
-      </div>`;
-    }).join('') : '<div style="font-size:11px;color:var(--text-muted);padding:8px">No worklog entries</div>'}</div>
-  </div>`;
-}
-
-function renderMeshBlock(container) {
-  const M = window.AgentMesh;
-  const config = M?.getRelayConfig() || { relays: [] };
-  const connections = M?.getRelayConnections() || [];
-  const connMap = new Map(connections.map(c => [c.id, c.connected]));
-  const peers = M?.getRelayPeers() || [];
+// Generic widget opener - data-driven
+function openWidget(widgetType, params = {}, options = {}) {
+  const { reuse = true, matchKey = null } = options;
   
-  const enabledRelays = config.relays.filter(r => r.enabled);
-  const connectedCount = enabledRelays.filter(r => connMap.get(r.id)).length;
-  
-  const relayList = enabledRelays.map(r => {
-    const connected = connMap.get(r.id);
-    const icon = connected ? '●' : '○';
-    const color = connected ? 'var(--green)' : 'var(--text-muted)';
-    const label = r.type === 'websocket' ? r.url : `${r.id} (auto-renew)`;
-    const reauthBtn = !connected && r.type === 'agentcore' 
-      ? `<button onclick="window.reauthAgentCore?.()" style="background:var(--orange,#ff9500);color:#fff;border:none;padding:2px 6px;border-radius:3px;font-size:10px;cursor:pointer;margin-left:8px">🔐 Reauth</button>`
-      : '';
-    return `<div style="margin-bottom:4px;display:flex;align-items:center"><span style="color:${color}">${icon}</span> <span style="flex:1">${label}</span>${reauthBtn}</div>`;
-  }).join('');
-  
-  container.innerHTML = `<div style="padding:12px;font-size:12px">
-    <div style="margin-bottom:12px">
-      <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Connected Relays (${connectedCount}/${enabledRelays.length})</div>
-      ${relayList || '<div style="color:var(--text-muted)">No relays configured</div>'}
-    </div>
-    <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Remote Peers (${peers.length})</div>
-    <div>${peers.length ? peers.map(p => `<div style="margin-bottom:4px"><span style="color:var(--green)">●</span> ${p.hostname||'?'} <span style="color:var(--text-muted)">(${p.agents?.length||0} agents)</span></div>`).join('') : '<div style="color:var(--text-muted)">None</div>'}</div>
-  </div>`;
-}
-
-function renderAgentChatBlock(container, blockCfg) {
-  const agentId = blockCfg?.agentId;
-  if (!agentId) { container.innerHTML = '<div style="padding:20px;color:var(--text-muted);font-size:12px;text-align:center">No agent selected</div>'; return; }
-  const agent = state.agents.get(agentId);
-  const color = agent?.color || '#888';
-  const entries = state.ringBuffer.filter(e => e.agentId === agentId || (agentId === 'chat' && e.agentId === 'user')).sort((a,b) => a.ts - b.ts);
-  const isVirtual = agentId !== 'chat';
-  const msgsHtml = entries.map(e => {
-    const time = new Date(e.ts).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
-    const parsed = typeof marked !== 'undefined' ? marked.parse(e.content.slice(0, 500)) : escapeHtml(e.content.slice(0, 500));
-    return `<div class="msg assistant" data-ts="${e.ts}"><div class="msg-agent" style="color:${color}">${e.agentId}</div><span class="stream-text">${parsed}</span><div class="msg-time">${time}</div></div>`;
-  }).join('');
-  container.innerHTML = `<div class="chat-wrap"><div class="messages" style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px">${msgsHtml}</div></div>`;
-  // Scroll to target message or bottom
-  const msgs = container.querySelector('.messages');
-  if (blockCfg._scrollTs) {
-    const target = msgs.querySelector(`[data-ts="${blockCfg._scrollTs}"]`);
-    if (target) { target.scrollIntoView({ block: 'center' }); target.style.outline = '1px solid ' + color; setTimeout(() => target.style.outline = '', 2000); return; }
-  }
-  msgs.scrollTop = msgs.scrollHeight;
-}
-
-function openAgentChat(agentId, scrollTs) {
-  // Reuse existing agent-chat block for this agent, or create new
   let found = null;
-  function search(nodes) { for (const n of nodes) { if (n.type === 'agent-chat' && n.agentId === agentId) { found = n; return; } if (n.children) search(n.children); } }
-  search(state.layout);
-  if (found) { found._scrollTs = scrollTs || 0; } else {
-    const id = `b-ac-${state.blockCounter++}`;
-    state.layout.push({ id, type: 'agent-chat', flex: 1, agentId, _scrollTs: scrollTs || 0 });
+  if (reuse) {
+    function search(nodes) {
+      for (const n of nodes) {
+        if (n.type === widgetType && (!matchKey || n[matchKey] === params[matchKey])) {
+          found = n;
+          return;
+        }
+        if (n.children) search(n.children);
+      }
+    }
+    search(state.layout);
+  }
+  
+  if (found) {
+    Object.assign(found, params);
+  } else {
+    const id = `b-${widgetType}-${state.blockCounter++}`;
+    state.layout.push({ id, type: widgetType, flex: 1, ...params });
   }
   buildLayout();
 }
 
-const RENDERERS = { agents: renderAgentsBlock, tasks: renderTasksBlock, chat: renderChatBlock, ring: renderRingBlock, 'task-detail': renderTaskDetailBlock, 'agent-chat': renderAgentChatBlock, mesh: renderMeshBlock };
+// Convenience wrappers
+window.openAgentChat = (agentId, scrollTs) => openWidget('agent-chat', { agentId, _scrollTs: scrollTs || 0 }, { matchKey: 'agentId' });
+window.openAgentDetail = (agentId) => openWidget('agent-detail', { agentId }, { reuse: true });
+window.openTaskDetail = (taskId) => openWidget('task-detail', { taskId }, { reuse: true });
 
 // ═══ BLOCKS ═══
 function makeBlockEl(cfg) {
-  const meta = BLOCK_META[cfg.type] || { icon:'📦', title:cfg.type };
+  const meta = widgetRegistry.getMeta(cfg.type) || { icon:'📦', title:cfg.type };
   const title = cfg.type === 'agent-chat' ? cfg.agentId : meta.title;
   const div = document.createElement('div');
   div.className = 'block';
@@ -903,8 +756,7 @@ function makeBlockEl(cfg) {
   div.querySelector('.maximize-btn').addEventListener('click', () => toggleMaximize(cfg.id));
   div.querySelector('.close-btn').addEventListener('click', () => removeBlock(cfg.id));
   const body = div.querySelector('.block-body');
-  const renderer = RENDERERS[cfg.type];
-  if (renderer) renderer(body, cfg);
+  widgetRegistry.render(cfg.type, body, cfg);
   return div;
 }
 
@@ -960,24 +812,10 @@ function removeBlock(blockId) {
 }
 
 window.addBlock = function(type) {
-  const id = `b-${type}-${state.blockCounter++}`;
-  state.layout.push({ id, type, flex: 1 });
-  buildLayout();
+  openWidget(type, {}, { reuse: false });
 };
 
-function openTaskDetail(taskId) {
-  // Find existing task-detail block or create one
-  let found = null;
-  function search(nodes) { for (const n of nodes) { if (n.type === 'task-detail') { found = n; return; } if (n.children) search(n.children); } }
-  search(state.layout);
-  if (found) {
-    found.taskId = taskId;
-  } else {
-    const id = `b-td-${state.blockCounter++}`;
-    state.layout.push({ id, type: 'task-detail', flex: 1, taskId });
-  }
-  buildLayout();
-}
+// Removed - now handled by openWidget above
 
 // ═══ WALL CLOCK ═══
 function updateWallClock() {
