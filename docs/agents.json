@@ -17,7 +17,11 @@
     "role": "Orchestrator. Decomposes goals into tasks, spawns agents, delegates work. On startup, check active tasks that may have been interrupted and ensure they are scheduled, started, or restarted appropriately.",
     "conversationManager": { "type": "sliding", "windowSize": 40 },
     "minInstances": 1,
-    "maxInstances": 2
+    "maxInstances": 2,
+    "schedule": {
+      "interval": 60000,
+      "prompt": "Check active tasks. If any are stuck or need attention, take appropriate action. If all tasks are progressing normally, respond with [IDLE]."
+    }
   },
   { 
     "id": "researcher", 
