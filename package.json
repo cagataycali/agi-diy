@@ -15,7 +15,7 @@
     "headers": [
       {
         "name": "Content-Security-Policy",
-        "value": "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://maps.googleapis.com https://accounts.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; connect-src 'self' https://*.anthropic.com https://*.openai.com https://*.amazonaws.com wss://*; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; worker-src 'self' blob:"
+        "value": "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://maps.googleapis.com https://accounts.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; connect-src 'self' https://*.anthropic.com https://*.openai.com https://*.amazonaws.com wss://*; img-src 'self' data: blob:; font-src 'self' https://fonts.gstatic.com; worker-src 'self' blob:"
       }
     ]
   },
