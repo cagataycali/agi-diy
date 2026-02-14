@@ -15,8 +15,9 @@ export class LayoutManager {
   render() {
     this.rootEl.innerHTML = '';
     const container = document.createElement('div');
-    container.className = 'layout';
+    container.className = 'layout layout-row';
     container.style.height = 'calc(100vh - 36px)';
+    container.dataset.containerId = 'root';
 
     this.renderNode(container, this.state.layout);
     this.rootEl.appendChild(container);
