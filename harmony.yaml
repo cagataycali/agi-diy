@@ -1,1 +1,3 @@
 contentPath: docs
+indexDocument: dashboard.html
+errorDocument: dashboard.html
