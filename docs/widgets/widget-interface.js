@@ -22,6 +22,13 @@ export class Widget {
     this.init = config.init || (() => {});
     this.cleanup = config.cleanup || (() => {});
     this.actions = config.actions || {};
+    
+    // Copy any additional methods
+    for (const key in config) {
+      if (typeof config[key] === 'function' && !this[key]) {
+        this[key] = config[key];
+      }
+    }
   }
 }
 
