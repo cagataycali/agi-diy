@@ -6,7 +6,27 @@ export default new Widget({
   id: 'task-flow',
   meta: { icon: '🔀', title: 'Task Flow' },
   
+  init(state) {
+    this.state = state;
+    
+    // Subscribe to standard events
+    if (window.standardEvents) {
+      window.standardEvents.on('task-created', () => {
+        if (this.container) this.render(this.container);
+      });
+      
+      window.standardEvents.on('task-updated', () => {
+        if (this.container) this.render(this.container);
+      });
+      
+      window.standardEvents.on('task-status-changed', () => {
+        if (this.container) this.render(this.container);
+      });
+    }
+  },
+  
   render(container) {
+    this.container = container;
     const state = window.dashboardState;
     if (!state) return;
     
@@ -53,13 +73,7 @@ export default new Widget({
   
   onEvent(type) {
     if (type === 'tasks') {
-      document.querySelectorAll('.block').forEach(bl => {
-        const cfg = window.findBlockCfg?.(bl.id);
-        if (cfg?.type === 'task-flow') {
-          const body = bl.querySelector('.block-body');
-          if (body) this.render(body);
-        }
-      });
+      if (this.container) this.render(this.container);
     }
   }
 });

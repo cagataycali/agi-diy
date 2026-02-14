@@ -4,7 +4,36 @@ export default new Widget({
   id: 'agents',
   meta: { icon: '👥', title: 'Agents' },
   
+  init(state) {
+    this.state = state;
+    
+    // Subscribe to standard events
+    if (window.standardEvents) {
+      window.standardEvents.on('agent-discovered', (agent) => {
+        if (this.container) this.render(this.container);
+      });
+      
+      window.standardEvents.on('agent-status-changed', (agent) => {
+        this.handleAgentStatusChanged(agent);
+      });
+    }
+  },
+  
+  handleAgentStatusChanged(agent) {
+    // Update specific agent card without full re-render
+    document.querySelectorAll(`.agent-card[data-agent="${agent.id}"]`).forEach(card => {
+      const a = window.dashboardState?.agents.get(agent.id);
+      if (!a) return;
+      const dot = card.querySelector('.agent-dot');
+      const badge = card.querySelector('.agent-badge');
+      dot.className = `agent-dot ${a.status === 'processing' ? 'pulse' : ''}`;
+      badge.style.color = a.status === 'processing' ? a.color : 'var(--text-muted)';
+      badge.innerHTML = a.status === 'processing' ? '<span class="typing-dots"><span></span><span></span><span></span></span>' : a.status;
+    });
+  },
+  
   render(container, config) {
+    this.container = container;
     const state = window.dashboardState;
     if (!state) return;
     
@@ -39,21 +68,9 @@ export default new Widget({
   
   onEvent(type, payload) {
     if (type === 'agent-status' && payload?.agentId) {
-      document.querySelectorAll(`.agent-card[data-agent="${payload.agentId}"]`).forEach(card => {
-        const a = window.dashboardState?.agents.get(payload.agentId);
-        if (!a) return;
-        const dot = card.querySelector('.agent-dot');
-        const badge = card.querySelector('.agent-badge');
-        dot.className = `agent-dot ${a.status === 'processing' ? 'pulse' : ''}`;
-        badge.style.color = a.status === 'processing' ? a.color : 'var(--text-muted)';
-        badge.innerHTML = a.status === 'processing' ? '<span class="typing-dots"><span></span><span></span><span></span></span>' : a.status;
-      });
+      this.handleAgentStatusChanged({ id: payload.agentId });
     } else if (type === 'new-agent' && payload) {
-      // Re-render all agent widgets to show new agent
-      document.querySelectorAll('.agent-list').forEach(list => {
-        const container = list.parentElement;
-        if (container) this.render(container);
-      });
+      if (this.container) this.render(this.container);
     }
   }
 });
