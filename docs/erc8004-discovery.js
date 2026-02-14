@@ -8,6 +8,16 @@ const keccak256 = data => KeccakHasher.unpadded().update(data).finalize().output
 const M = window.AgentMesh;
 if (!M) console.warn('[ERC8004] AgentMesh not found');
 
+// ═══ Logging ═══
+const erc8004Logs = [];
+function logERC8004(level, chain, message, data) {
+    const entry = { time: Date.now(), level, chain, message, data };
+    erc8004Logs.push(entry);
+    if (erc8004Logs.length > 100) erc8004Logs.shift();
+    if (M?.broadcast) M.broadcast('erc8004-log', entry);
+}
+window.getERC8004Logs = () => [...erc8004Logs];
+
 // Blocked domains - won't attempt to fetch from these
 const BLOCKED_DOMAINS = ['example.com', 'example.org', 'localhost'];
 

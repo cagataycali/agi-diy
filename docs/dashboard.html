@@ -861,7 +861,9 @@ if (window.AgentMesh?.erc8004) {
       state.agents.set(id, agent);
       notifyNewAgent(agent);
     }
-  }).catch(e => console.warn('[ERC8004] Discovery failed:', e));
+  }).catch(e => {
+    if (window.logERC8004) window.logERC8004('error', 'discovery', 'Discovery failed', e.message);
+  });
 }
 setInterval(updateWallClock, 1000);
 updateWallClock();
