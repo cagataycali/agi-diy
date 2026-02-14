@@ -271,14 +271,27 @@
                     const checkClosed = setInterval(() => {
                         if (popup.closed) {
                             clearInterval(checkClosed);
-                            // Reload relay connections
+                            // Watch for config update
+                            const handleStorageChange = (e) => {
+                                if (e.key === 'mesh_agentcore_config' && e.newValue) {
+                                    window.removeEventListener('storage', handleStorageChange);
+                                    const config = M.getRelayConfig?.();
+                                    if (config) {
+                                        const relays = config.relays.filter(r => r.type === 'agentcore');
+                                        relays.forEach(r => M.connectRelayById?.(r.id));
+                                    }
+                                }
+                            };
+                            window.addEventListener('storage', handleStorageChange);
+                            // Fallback timeout in case storage event doesn't fire (same-window updates)
                             setTimeout(() => {
+                                window.removeEventListener('storage', handleStorageChange);
                                 const config = M.getRelayConfig?.();
                                 if (config) {
                                     const relays = config.relays.filter(r => r.type === 'agentcore');
                                     relays.forEach(r => M.connectRelayById?.(r.id));
                                 }
-                            }, 500);
+                            }, 1000);
                         }
                     }, 500);
                 };
