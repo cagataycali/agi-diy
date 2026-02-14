@@ -314,10 +314,10 @@ export const EventSchemas = {
   
   'relay-config-updated': {
     description: 'Relay server configuration has been updated',
-    required: [],
-    optional: ['config'],
+    required: ['relays'],
+    optional: [],
     types: {
-      config: 'object'
+      relays: 'array'
     }
   }
 };

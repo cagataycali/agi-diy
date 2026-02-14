@@ -196,10 +196,10 @@ EVENT_SCHEMAS = {
     
     "relay-config-updated": {
         "description": "Relay server configuration has been updated",
-        "required": [],
-        "optional": ["config"],
+        "required": ["relays"],
+        "optional": [],
         "types": {
-            "config": dict
+            "relays": list
         }
     }
 }
