@@ -14,12 +14,12 @@ export default new Widget({
       });
       
       window.standardEvents.on('agent-status-changed', (agent) => {
-        this.handleAgentStatusChanged(agent);
+        this.updateAgentStatus(agent);
       });
     }
   },
   
-  handleAgentStatusChanged(agent) {
+  updateAgentStatus(agent) {
     // Update specific agent card without full re-render
     document.querySelectorAll(`.agent-card[data-agent="${agent.id}"]`).forEach(card => {
       const a = window.dashboardState?.agents.get(agent.id);
@@ -68,7 +68,7 @@ export default new Widget({
   
   onEvent(type, payload) {
     if (type === 'agent-status' && payload?.agentId) {
-      this.handleAgentStatusChanged({ id: payload.agentId });
+      this.updateAgentStatus({ id: payload.agentId });
     } else if (type === 'new-agent' && payload) {
       if (this.container) this.render(this.container);
     }
