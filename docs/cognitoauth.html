@@ -5,7 +5,9 @@
   const h = new URLSearchParams(location.hash.slice(1));
   const q = new URLSearchParams(location.search);
   const idToken = h.get('id_token');
+  const isPopup = window.opener && !window.opener.closed;
   const ret = q.get('state') || h.get('state') || './dashboard.html';
+  
   if (!idToken) { document.getElementById('s').textContent = 'No token received'; return; }
 
   localStorage.setItem('cognito_id_token', idToken);
@@ -49,7 +51,7 @@
   }
   
   // Check if opened as popup
-  if (window.opener && !window.opener.closed) {
+  if (isPopup) {
     document.getElementById('s').textContent = 'Authentication complete. Closing...';
     setTimeout(() => window.close(), 1000);
   } else {
