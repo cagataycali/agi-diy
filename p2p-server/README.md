@@ -1,184 +1,212 @@
 # ag-mesh-relay
 
-P2P WebSocket relay for agi.diy mesh networking. Can run:
-- **Local server** that launches and manages kiro-cli agents
-- **AWS deployment** via [Bedrock AgentCore](https://github.com/aws/bedrock-agentcore-starter-toolkit) with Cognito auth
+WebSocket relay server for agi.diy agent mesh networking. Broadcasts agent presence, manages kiro-cli agent processes, and validates events.
 
-## Installation
+## Quick Start
 
 ```bash
-# Install as a tool
-uv tool install .
+# Install dependencies
+pip install websockets
 
-# Or with AWS support
-uv tool install ".[aws]"
+# Start relay server
+python3 -m ag_mesh_relay.server
+
+# Server runs on ws://localhost:10000
 ```
 
-## Local Server (kiro-cli agents)
+## Configuration
 
-Run the relay to launch and manage kiro-cli agents:
-
-```bash
-ag-mesh-relay
-
-# Or with custom host/port
-HOST=0.0.0.0 PORT=9000 ag-mesh-relay
-```
-
-### Configuration
-
-Edit `~/.config/ag-mesh-relay/config.json` (created automatically on first run):
+Config file: `~/.config/ag-mesh-relay/config.json`
 
 ```json
 {
   "agents": [
     {
-      "id": "default-agent",
-      "workingPath": "~/src",
+      "id": "my-agent-1",
       "agent": "default",
-      "autoStart": true
+      "workingPath": "~/src/my-project"
+    },
+    {
+      "id": "my-agent-2",
+      "agent": "git",
+      "workingPath": "~/src/another-project"
     }
   ],
   "server": {
     "host": "localhost",
-    "port": 8080
+    "port": 10000
   }
 }
 ```
 
-See `config.example.json` for more examples.
+### Agent Configuration
 
-### Launching Agents
+- `id`: Unique identifier for the agent instance
+- `agent`: Kiro CLI agent profile name (default, git, jupyter, etc.)
+- `workingPath`: Working directory for the agent
 
-Send a `launch_agent` message via WebSocket:
+## Features
 
-```javascript
-ws.send(JSON.stringify({
-  type: "launch_agent",
-  agentId: "my-agent",
-  config: {
-    workingPath: "~/src/myproject",
-    agent: "git"
-  }
-}));
-```
+### Agent Management
 
-The server will:
-1. Launch `kiro-cli acp --agent git --cwd ~/src/myproject`
-2. Register the agent as peer `kiro-my-agent` in the mesh
-3. Relay commands between the mesh and kiro-cli stdin/stdout
-
-### Sending Commands to Agents
-
-```javascript
-ws.send(JSON.stringify({
-  type: "agent_command",
-  agentId: "my-agent",
-  command: {
-    action: "execute",
-    data: { /* command payload */ }
-  }
-}));
-```
-
-## AWS Deployment
-
-For AWS deployment with AgentCore, install with AWS support:
+The relay automatically launches and manages kiro-cli agents defined in config:
 
 ```bash
-uv tool install ".[aws]"
+kiro-cli acp --agent <agent> --cwd <workingPath>
+```
+
+Agents are:
+- Launched on relay startup
+- Restarted if they crash
+- Stopped when relay shuts down
+
+### Event Validation
+
+Set `VALIDATE_EVENTS=true` (default) to validate all events against schemas:
 
 ```bash
-pip install bedrock-agentcore-starter-toolkit
-
-cd p2p-server
-agentcore configure --entrypoint relay.py --non-interactive
-agentcore launch --local   # test locally on ws://localhost:8080/ws
-agentcore launch           # deploy to AWS
+VALIDATE_EVENTS=true python3 -m ag_mesh_relay.server
 ```
 
-## Authentication
+Invalid events are logged but not blocked.
 
-AgentCore uses IAM SigV4 for WebSocket auth. Browsers can't set custom HTTP headers on WebSocket connections, so we use **Cognito Identity Pool** to bridge OAuth login → temporary AWS credentials → SigV4 presigned URL.
+### Capabilities Discovery
 
-```text
-User → Cognito login → id_token → Identity Pool → temp AWS creds → SigV4 presigned URL → WebSocket
-```
-
-### Prerequisites
-
-- A Cognito User Pool with an app client (implicit flow, openid scope)
-- A Cognito Identity Pool linked to the User Pool, with an authenticated IAM role that allows `bedrock-agentcore:InvokeAgentRuntime`
-
-### Browser Flow
+Dashboards can query available agents:
 
 ```javascript
-const IDENTITY_POOL_ID = 'us-east-1:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx';
-const USER_POOL_PROVIDER = 'cognito-idp.ap-southeast-2.amazonaws.com/ap-southeast-2_XXXXXXXXX';
-const AGENT_ARN = 'arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/relay-XXXXXXXXXX';
-
-// 1. User logs in via Cognito hosted UI → get id_token from URL hash
-// 2. Exchange id_token for AWS credentials:
-const idResp = await fetch('https://cognito-identity.us-east-1.amazonaws.com/', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/x-amz-json-1.1', 'X-Amz-Target': 'AWSCognitoIdentityService.GetId' },
-  body: JSON.stringify({ IdentityPoolId: IDENTITY_POOL_ID, Logins: { [USER_POOL_PROVIDER]: idToken } })
-});
-const { IdentityId } = await idResp.json();
-
-const credsResp = await fetch('https://cognito-identity.us-east-1.amazonaws.com/', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/x-amz-json-1.1', 'X-Amz-Target': 'AWSCognitoIdentityService.GetCredentialsForIdentity' },
-  body: JSON.stringify({ IdentityId, Logins: { [USER_POOL_PROVIDER]: idToken } })
-});
-const { Credentials } = await credsResp.json();
-
-// 3. SigV4-sign the WebSocket URL using temp credentials
-// 4. new WebSocket(presignedUrl)
+ws.send(JSON.stringify({ type: 'capabilities' }));
+// Response: { type: 'capabilities_response', data: { agentCards, activeAgents } }
 ```
 
-### Python Client
+Returns:
+- `agentCards`: Array of AgentCard objects (kiro-cli, claude-code)
+- `activeAgents`: Array of running agent IDs
 
-```python
-from bedrock_agentcore.runtime import AgentCoreRuntimeClient
+### Schema Export
 
-client = AgentCoreRuntimeClient(region="us-east-1")
-url = client.generate_presigned_url(runtime_arn="<agent-runtime-arn>")
-# Connect with any WebSocket library
+Get event schemas for external integrations:
+
+```javascript
+ws.send(JSON.stringify({ type: 'get_schemas' }));
+// Response: { type: 'schemas_response', data: { ... } }
 ```
 
-## Protocol
+## WebSocket Protocol
 
-Messages are JSON:
+### Client → Relay
 
-```json
-{
-  "type": "presence|heartbeat|broadcast|direct|stream|ack|turn_end|error",
-  "from": "<peer-id>",
-  "to": "<peer-id>",
-  "data": {},
-  "timestamp": 1234567890
-}
+```javascript
+// Presence heartbeat
+{ type: 'presence', from: 'peer-id', data: { agents, hostname, pageId, timestamp } }
+
+// Query capabilities
+{ type: 'capabilities' }
+
+// Get schemas
+{ type: 'get_schemas' }
+
+// Launch agent
+{ type: 'launch_agent', data: { agentId, agent, workingPath } }
+
+// Stop agent
+{ type: 'stop_agent', data: { agentId } }
 ```
 
-| Type | Routing |
-|------|---------|
-| `presence` | Broadcast to all peers |
-| `heartbeat` | Server only (updates last_seen) |
-| `broadcast` | All peers except sender |
-| `direct` | Single target peer |
-| `stream`, `ack`, `turn_end`, `error` | All peers except sender |
+### Relay → Client
 
-Peers that miss heartbeats for 30s are reaped automatically.
+```javascript
+// Capabilities response
+{ type: 'capabilities_response', data: { agentCards, activeAgents } }
 
-## Architecture
+// Schemas response
+{ type: 'schemas_response', data: { ... } }
 
-```text
-Browser A ──ws──┐
-Browser B ──ws──┤── AgentCore (SigV4) ──→ relay.py (/ws on port 8080)
-Browser C ──ws──┘
-        ↑
-  Cognito login → Identity Pool → temp AWS creds → presigned URL
+// Agent launched
+{ type: 'agent_launched', data: { agentId } }
+
+// Agent stopped
+{ type: 'agent_stopped', data: { agentId, reason } }
+
+// Presence broadcast
+{ type: 'presence', from: 'peer-id', data: { ... } }
 ```
 
-The relay is stateless between restarts — peers reconnect and re-announce via `presence`.
+## Event Schemas
+
+All events are validated against schemas in `event_schemas.py`. See `docs/event-schemas.js` for full schema definitions.
+
+Standard events:
+- Agent: `agent-discovered`, `agent-started`, `agent-status-changed`, `agent-stopped`
+- Capability: `capabilities-discovered`, `capability-invoked`, `capability-result`
+- Task: `task-created`, `task-updated`, `task-status-changed`, `task-progress`
+- Communication: `message-sent`, `message-received`, `thinking-update`
+- Connection: `connection-established`, `connection-lost`
+- Relay: `relay-connected`, `relay-disconnected`, `relay-log`, `relay-capabilities`, `presence`
+
+## Connecting from Dashboard
+
+In `docs/dashboard.html`:
+
+```javascript
+// Connect to relay
+const ws = new WebSocket('ws://localhost:10000');
+
+ws.onopen = () => {
+  // Query capabilities
+  ws.send(JSON.stringify({ type: 'capabilities' }));
+  
+  // Send heartbeat
+  setInterval(() => {
+    ws.send(JSON.stringify({
+      type: 'presence',
+      from: 'dashboard-' + Date.now(),
+      data: {
+        agents: [],
+        hostname: location.hostname,
+        pageId: 'dashboard',
+        timestamp: Date.now()
+      }
+    }));
+  }, 10000);
+};
+
+ws.onmessage = (e) => {
+  const msg = JSON.parse(e.data);
+  if (msg.type === 'capabilities_response') {
+    console.log('Available agents:', msg.data.agentCards);
+    console.log('Active agents:', msg.data.activeAgents);
+  }
+};
+```
+
+## Development
+
+### Running Tests
+
+```bash
+# Validate schemas
+python3 -c "from ag_mesh_relay.event_schemas import validate_event; print(validate_event('agent-discovered', {'id': 'test', 'source': 'relay'}))"
+```
+
+### Adding New Events
+
+1. Add schema to `event_schemas.py` and `docs/event-schemas.js`
+2. Include `description` field
+3. Test validation with sample payloads
+
+## Troubleshooting
+
+**Relay won't start:**
+- Check port 10000 is available: `lsof -i :10000`
+- Check config file exists: `cat ~/.config/ag-mesh-relay/config.json`
+
+**Agents not launching:**
+- Verify kiro-cli is installed: `which kiro-cli`
+- Check working paths exist
+- Check agent profiles exist: `kiro-cli chat --agent <name> --help`
+
+**Validation errors:**
+- Check event payload matches schema
+- Set `VALIDATE_EVENTS=false` to disable validation
+- Check logs for specific field errors
