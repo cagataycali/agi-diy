@@ -1,16 +1,15 @@
 # AgentMeshStudio Deployment Guide
 
+## Deployed URLs
+
+- **Beta**: https://agentmeshstudio.beta.harmony.a2z.com
+- **Prod**: (deploy after testing beta)
+
 ## Initial Setup
 
 ### 1. Create Package on code.amazon.com
 
-```bash
-# Create the package
-brazil create-package --name AgentMeshStudio --type StaticWebsite
-
-# Or if package already exists, just clone
-git clone ssh://git.amazon.com/pkg/AgentMeshStudio
-```
+Package created: `AgentMeshStudio`
 
 ### 2. Push Code
 
@@ -18,23 +17,31 @@ git clone ssh://git.amazon.com/pkg/AgentMeshStudio
 # Add remote (if not already added)
 git remote add amazon ssh://git.amazon.com/pkg/AgentMeshStudio
 
-# Push to mainline
-git push amazon main:mainline
+# Push to main
+git push amazon main:main
 ```
 
-## Deploy Frontend to Harmony Spaces
+## Deploy Frontend to Harmony
 
 ```bash
+# Build the app
+harmony app build
+
 # Deploy to beta for testing
-harmony-spaces deploy --environment beta
+harmony app deploy --stage beta
 
 # After testing, deploy to prod
-harmony-spaces deploy --environment prod
+harmony app deploy --stage prod
 ```
 
-Your app will be available at:
-- Beta: `https://spaces.harmony.a2z.com/YOUR_SPACE_ID-beta`
-- Prod: `https://spaces.harmony.a2z.com/YOUR_SPACE_ID`
+## Access Configuration
+
+The app is deployed with bindle ID: `amzn1.bindle.resource.i56xf3t7cukzyu2xamya`
+
+**Important:** Configure access permissions at:
+https://bindles.amazon.com/resource/amzn1.bindle.resource.6s7z7w5puqkgod6zvq6a
+
+Even your own team needs explicit access. See: https://docs.harmony.a2z.com/docs/application-development.html#Restricting%20Access%20to%20Apps
 
 ## Python Package (Local Relay)
 
@@ -54,6 +61,6 @@ ag-mesh-relay
 
 ## Notes
 
-- Frontend is 100% static - no build step required
+- Frontend is 100% static - no build step required for content
 - Python package is optional - users only need it for local P2P mesh networking
 - Frontend works standalone with cloud AI providers (Anthropic, OpenAI, Bedrock)
