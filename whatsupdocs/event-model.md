@@ -66,6 +66,41 @@ EventMapper.fromLegacy('agent-status', { agentId, status })
 // → { type: 'agent-status-changed', id, status, ... }
 ```
 
+## Event Validation
+
+All events are validated against schemas. Invalid events log warnings but are not blocked.
+
+```javascript
+import { validateEvent, getEventSchema } from './event-schemas.js';
+
+// Validate an event
+const isValid = validateEvent('agent-discovered', {
+  id: 'agent-1',
+  source: 'relay',
+  name: 'My Agent'
+});
+
+// Get schema documentation
+const schema = getEventSchema('agent-discovered');
+console.log(schema.required); // ['id', 'source']
+console.log(schema.optional); // ['name', 'capabilities', 'model', 'metadata']
+console.log(schema.example);  // { id: 'example', source: 'relay' }
+```
+
+### Validation Rules
+
+- **Required fields**: Must be present
+- **Type checking**: Values must match expected type
+- **Enum validation**: Values must be from allowed list
+- **Warnings**: Unexpected fields generate warnings (not errors)
+
+### Disabling Validation
+
+```javascript
+// Disable validation (for production)
+const events = new StandardEventEmitter({ validateEvents: false });
+```
+
 ## Usage
 
 ```javascript

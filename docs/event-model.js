@@ -353,8 +353,9 @@ export const EventMapper = {
  * Event emitter that normalizes all events to standard format
  */
 export class StandardEventEmitter {
-  constructor() {
+  constructor(options = {}) {
     this.listeners = new Map();
+    this.validateEvents = options.validateEvents !== false; // Default: true
   }
   
   /**
@@ -371,6 +372,13 @@ export class StandardEventEmitter {
    * Emit a standard event
    */
   emit(eventType, payload) {
+    // Validate if enabled
+    if (this.validateEvents) {
+      import('./event-schemas.js').then(({ validateEventSoft }) => {
+        validateEventSoft(eventType, payload);
+      });
+    }
+    
     const handlers = this.listeners.get(eventType);
     if (handlers) {
       handlers.forEach(h => h(payload));
