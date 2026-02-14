@@ -1725,10 +1725,10 @@
                     handleRelayMessage(msg, relayId);
                 } catch (err) { logRelay('warn', relayId, 'Invalid message', err.message); }
             };
-            ws.onclose = () => {
+            ws.onclose = (evt) => {
                 conn.connected = false;
                 if (conn.heartbeat) { clearInterval(conn.heartbeat); conn.heartbeat = null; }
-                logRelay('info', relayId, 'Disconnected', null);
+                logRelay('info', relayId, 'Disconnected', `code=${evt.code} reason=${evt.reason || 'none'}`);
                 broadcast('relay-disconnected', { relayId });
                 const handler = subscribers.get('relay-status');
                 if (handler) handler({ connected: false, url, relayId });
@@ -1743,7 +1743,7 @@
                 }
             };
             ws.onerror = (err) => {
-                logRelay('error', relayId, 'Connection failed', url);
+                logRelay('error', relayId, 'WebSocket error', err.message || 'unknown');
             };
         } catch (err) { logRelay('error', relayId, 'Failed to connect', err.message); }
     }
