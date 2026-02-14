@@ -141,6 +141,24 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); heig
 
 /* ── Task Elapsed Time ── */
 .task-elapsed { font-size: 9px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+/* ── Drag and Drop ── */
+.block.dragging { opacity: 0.5; }
+.drop-zones { position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 10; }
+.drop-zone { position: absolute; background: var(--accent); opacity: 0; transition: opacity .15s; }
+.drop-zone.active { opacity: 0.3; }
+.drop-zone-top { top: 0; left: 0; right: 0; height: 50%; }
+.drop-zone-bottom { bottom: 0; left: 0; right: 0; height: 50%; }
+.drop-zone-left { top: 0; left: 0; bottom: 0; width: 50%; }
+.drop-zone-right { top: 0; right: 0; bottom: 0; width: 50%; }
+.drop-zone-center { top: 25%; left: 25%; right: 25%; bottom: 25%; }
+
+/* ── Resize Handles ── */
+.layout-row { display: flex; flex-direction: column; gap: 1px; min-height: 0; }
+.resize-handle { background: var(--border); flex-shrink: 0; position: relative; }
+.resize-handle-row { height: 4px; cursor: ns-resize; }
+.resize-handle-col { width: 4px; cursor: ew-resize; }
+.resize-handle:hover { background: var(--accent); }
 </style>
 </head>
 <body>
@@ -162,6 +180,7 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); heig
   <div style="display:flex;align-items:center;gap:6px">
     <button class="add-btn" onclick="stopAllTasks()" style="background:var(--red);color:#fff" title="Stop all active tasks">⏹ Stop All</button>
     <button class="add-btn" onclick="clearDoneTasks()" title="Clear completed tasks">🗑️ Clear Done</button>
+    <button class="add-btn" onclick="resetLayout()" title="Reset layout to default">🔄 Reset Layout</button>
   </div>
   <button class="settings-btn" onclick="AgentMesh.settings?.open()" title="Settings">⚙</button>
 </div>
@@ -179,6 +198,7 @@ if (typeof Symbol.asyncDispose === 'undefined') Symbol.asyncDispose = Symbol('Sy
 import widgetRegistry from './widgets/index.js';
 import { Agent, tool, z, AnthropicModel, OpenAIModel, BedrockModel, McpClient, StreamableHTTPClientTransport, SlidingWindowConversationManager, NullConversationManager, SummarizingConversationManager } from './strands.js';
 import { WebLLMBrowserModel } from './webllm.js';
+import { LayoutManager } from './layout-manager.js';
 import './erc8004-discovery.js?v=2';
 
 // ═══ CONVERSATION MANAGER FACTORY ═══
@@ -439,6 +459,18 @@ const COLORS = ['#00ff88','#00aaff','#ff88ff','#ffaa00','#ff6666','#88ffff'];
 const STATUS_ICON = { pending:'⬜', 'in-progress':'🔵', waiting:'⏳', complete:'🟢', failed:'🔴' };
 const STATUS_LABEL = { pending:'Pending', 'in-progress':'In Progress', waiting:'Waiting', complete:'Complete', failed:'Failed' };
 
+const DEFAULT_LAYOUT = [
+  { id:'col-left', type:'col', flex:1, children:[
+    { id:'b-agents', type:'agents', flex:1 },
+    { id:'b-tasks', type:'tasks', flex:2 },
+  ]},
+  { id:'b-chat', type:'chat', flex:2 },
+  { id:'col-right', type:'col', flex:1, children:[
+    { id:'b-ring', type:'ring', flex:2 },
+    { id:'b-mesh', type:'mesh', flex:1 },
+  ]},
+];
+
 const state = {
   agents: new Map(),
   tasks: new Map(),
@@ -448,17 +480,7 @@ const state = {
   chatMessages: [],
   credentials: {},
   colorIndex: 0,
-  layout: [
-    { id:'col-left', type:'col', flex:1, children:[
-      { id:'b-agents', type:'agents', flex:1 },
-      { id:'b-tasks', type:'tasks', flex:2 },
-    ]},
-    { id:'b-chat', type:'chat', flex:2 },
-    { id:'col-right', type:'col', flex:1, children:[
-      { id:'b-ring', type:'ring', flex:2 },
-      { id:'b-mesh', type:'mesh', flex:1 },
-    ]},
-  ],
+  layout: JSON.parse(JSON.stringify(DEFAULT_LAYOUT)),
   blockCounter: 10,
   maximizedBlock: null,
 };
@@ -467,6 +489,16 @@ window.dashboardState = state;
 window.widgetRegistry = widgetRegistry;
 
 const DEFAULT_MAX_TOKENS = 60000;
+
+// ── Layout Manager ──
+const layoutManager = new LayoutManager({
+  rootEl: document.getElementById('root'),
+  widgetRegistry,
+  state,
+  onLayoutChange: () => {}
+});
+
+window.resetLayout = () => layoutManager.resetLayout(DEFAULT_LAYOUT);
 
 // ── Credentials & Model Factory ──
 function loadCredentials() {
@@ -731,7 +763,7 @@ function openWidget(widgetType, params = {}, options = {}) {
     const id = `b-${widgetType}-${state.blockCounter++}`;
     state.layout.push({ id, type: widgetType, flex: 1, ...params });
   }
-  buildLayout();
+  layoutManager.render();
 }
 
 // Convenience wrappers
@@ -739,83 +771,11 @@ window.openAgentChat = (agentId, scrollTs) => openWidget('agent-chat', { agentId
 window.openAgentDetail = (agentId) => openWidget('agent-detail', { agentId }, { reuse: true });
 window.openTaskDetail = (taskId) => openWidget('task-detail', { taskId }, { reuse: true });
 
-// ═══ BLOCKS ═══
-function makeBlockEl(cfg) {
-  const meta = widgetRegistry.getMeta(cfg.type) || { icon:'📦', title:cfg.type };
-  const title = cfg.type === 'agent-chat' ? cfg.agentId : meta.title;
-  const div = document.createElement('div');
-  div.className = 'block';
-  div.id = cfg.id;
-  div.style.flex = cfg.flex || 1;
-  div.innerHTML = `<div class="block-header">
-    <span class="block-icon">${meta.icon}</span>
-    <span class="block-title">${title}</span>
-    <button class="block-btn maximize-btn" title="Maximize">⤢</button>
-    <button class="block-btn close-btn" title="Close">✕</button>
-  </div><div class="block-body"></div>`;
-  div.querySelector('.maximize-btn').addEventListener('click', () => toggleMaximize(cfg.id));
-  div.querySelector('.close-btn').addEventListener('click', () => removeBlock(cfg.id));
-  const body = div.querySelector('.block-body');
-  widgetRegistry.render(cfg.type, body, cfg);
-  return div;
-}
+window.addBlock = (type) => openWidget(type, {}, { reuse: false });
 
-function buildLayout() {
-  const root = document.getElementById('root');
-  root.innerHTML = '';
-  const container = document.createElement('div');
-  container.className = 'layout';
-  container.style.height = 'calc(100vh - 36px)';
+// All layout functions moved to layout-manager.js
 
-  for (const node of state.layout) {
-    if (node.type === 'col') {
-      const col = document.createElement('div');
-      col.className = 'layout-col';
-      col.style.flex = node.flex || 1;
-      (node.children || []).forEach(child => col.appendChild(makeBlockEl(child)));
-      container.appendChild(col);
-    } else {
-      container.appendChild(makeBlockEl(node));
-    }
-  }
-  root.appendChild(container);
-}
-
-// ═══ BLOCK ACTIONS ═══
-function toggleMaximize(blockId) {
-  const el = document.getElementById(blockId);
-  if (!el) return;
-  if (state.maximizedBlock === blockId) {
-    el.classList.remove('maximized');
-    state.maximizedBlock = null;
-  } else {
-    if (state.maximizedBlock) document.getElementById(state.maximizedBlock)?.classList.remove('maximized');
-    el.classList.add('maximized');
-    state.maximizedBlock = blockId;
-  }
-}
-
-function findAndRemove(layout, blockId) {
-  for (let i = 0; i < layout.length; i++) {
-    if (layout[i].id === blockId) { layout.splice(i, 1); return true; }
-    if (layout[i].children && findAndRemove(layout[i].children, blockId)) {
-      if (layout[i].children.length === 0) layout.splice(i, 1);
-      return true;
-    }
-  }
-  return false;
-}
-
-function removeBlock(blockId) {
-  findAndRemove(state.layout, blockId);
-  buildLayout();
-}
-
-window.addBlock = function(type) {
-  openWidget(type, {}, { reuse: false });
-};
-
-// Removed - now handled by openWidget above
+// ═══ CHAT AGENT ═══
 
 // ═══ WALL CLOCK ═══
 function updateWallClock() {
@@ -842,8 +802,8 @@ function populateMeshNav() {
 loadCredentials();
 await loadDefaultAgents();
 loadTasks();
+layoutManager.loadLayout() || layoutManager.render();
 initialMeshSync();
-buildLayout();
 setTimeout(populateMeshNav, 500); // after mesh-pages.json loads
 
 // Discover on-chain agents (non-blocking)
