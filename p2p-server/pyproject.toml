@@ -1,0 +1,18 @@
+[project]
+name = "ag-mesh-relay"
+version = "0.1.0"
+description = "P2P WebSocket relay for agi.diy mesh networking with kiro-cli agent management"
+requires-python = ">=3.10"
+dependencies = [
+    "websockets>=12.0",
+]
+
+[project.optional-dependencies]
+aws = ["bedrock-agentcore-starter-toolkit"]
+
+[project.scripts]
+ag-mesh-relay = "ag_mesh_relay.server:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

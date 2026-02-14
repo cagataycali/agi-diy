@@ -1,8 +1,92 @@
-# P2P WebSocket Relay Server
+# ag-mesh-relay
 
-WebSocket message broker for agi.diy mesh networking. Deployed to AWS via [Bedrock AgentCore](https://github.com/aws/bedrock-agentcore-starter-toolkit) with Cognito authentication.
+P2P WebSocket relay for agi.diy mesh networking. Can run:
+- **Local server** that launches and manages kiro-cli agents
+- **AWS deployment** via [Bedrock AgentCore](https://github.com/aws/bedrock-agentcore-starter-toolkit) with Cognito auth
 
-## Quick Start
+## Installation
+
+```bash
+# Install as a tool
+uv tool install .
+
+# Or with AWS support
+uv tool install ".[aws]"
+```
+
+## Local Server (kiro-cli agents)
+
+Run the relay to launch and manage kiro-cli agents:
+
+```bash
+ag-mesh-relay
+
+# Or with custom host/port
+HOST=0.0.0.0 PORT=9000 ag-mesh-relay
+```
+
+### Configuration
+
+Edit `~/.config/ag-mesh-relay/config.json` (created automatically on first run):
+
+```json
+{
+  "agents": [
+    {
+      "id": "default-agent",
+      "workingPath": "~/src",
+      "agent": "default",
+      "autoStart": true
+    }
+  ],
+  "server": {
+    "host": "localhost",
+    "port": 8080
+  }
+}
+```
+
+See `config.example.json` for more examples.
+
+### Launching Agents
+
+Send a `launch_agent` message via WebSocket:
+
+```javascript
+ws.send(JSON.stringify({
+  type: "launch_agent",
+  agentId: "my-agent",
+  config: {
+    workingPath: "~/src/myproject",
+    agent: "git"
+  }
+}));
+```
+
+The server will:
+1. Launch `kiro-cli acp --agent git --cwd ~/src/myproject`
+2. Register the agent as peer `kiro-my-agent` in the mesh
+3. Relay commands between the mesh and kiro-cli stdin/stdout
+
+### Sending Commands to Agents
+
+```javascript
+ws.send(JSON.stringify({
+  type: "agent_command",
+  agentId: "my-agent",
+  command: {
+    action: "execute",
+    data: { /* command payload */ }
+  }
+}));
+```
+
+## AWS Deployment
+
+For AWS deployment with AgentCore, install with AWS support:
+
+```bash
+uv tool install ".[aws]"
 
 ```bash
 pip install bedrock-agentcore-starter-toolkit

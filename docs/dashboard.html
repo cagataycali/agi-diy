@@ -382,7 +382,7 @@ async function runDelegatedAgent(agentId, taskId, instructions) {
     }
 
     // Ring buffer
-    state.ringBuffer.push({ agentId, content: `[${task.title}] ${result.slice(0, 200)}`, ts: Date.now() });
+    state.ringBuffer.push({ agentId, content: `[${task.title}] ${result.slice(0, 200)}`, ts: Date.now(), taskId });
     notifyRingEntry(state.ringBuffer[state.ringBuffer.length - 1]);
     if (window.AgentMesh?.addToRingContext) window.AgentMesh.addToRingContext(agentId, 'browser', `[${task.title}] ${result.slice(0, 500)}`);
   } catch (e) {

@@ -1,0 +1,27 @@
+{
+  "agents": [
+    {
+      "id": "default-agent",
+      "workingPath": "~/src",
+      "agent": "default",
+      "autoStart": true
+    },
+    {
+      "id": "git-agent",
+      "workingPath": "~/src",
+      "agent": "git",
+      "autoStart": false
+    },
+    {
+      "id": "notes-agent",
+      "workingPath": "~/Documents",
+      "agent": "notes",
+      "autoStart": false
+    }
+  ],
+  "server": {
+    "host": "localhost",
+    "port": 10000
+  }
+}
+
