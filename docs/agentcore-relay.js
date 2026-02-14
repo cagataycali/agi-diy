@@ -190,10 +190,12 @@
             return;
         }
         
-        // Manual OAuth flow (Amplify optional)
+        // Manual OAuth flow via cognitoauth.html callback page
         const { domain, clientId } = cfg.cognito;
-        const redirectUri = encodeURIComponent(window.location.origin + window.location.pathname);
-        const authUrl = `https://${domain}/oauth2/authorize?client_id=${clientId}&response_type=code&redirect_uri=${redirectUri}&scope=openid+email+profile`;
+        const callbackUri = window.location.origin + '/cognitoauth.html';
+        const returnTo = encodeURIComponent(window.location.pathname);
+        const redirectUri = encodeURIComponent(callbackUri);
+        const authUrl = `https://${domain}/oauth2/authorize?client_id=${clientId}&response_type=token&redirect_uri=${redirectUri}&state=${returnTo}&scope=openid+email+profile`;
         window.location.href = authUrl;
     };
 
