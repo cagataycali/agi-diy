@@ -614,7 +614,6 @@ function notifyNewAgent(agent) {
 
 function notifyRingEntry(entry) {
   widgetRegistry.emit('ring-entry', entry);
-}
   function findCfg(nodes) { for (const n of nodes) { if (n.type === 'agent-chat' && n.agentId === entry.agentId) { const el = document.querySelector(`#${n.id} .block-body`); if (el) widgetRegistry.render('agent-chat', el, n); } if (n.children) findCfg(n.children); } }
   findCfg(state.layout);
 }

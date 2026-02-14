@@ -125,7 +125,73 @@ async def handle_message(ws: WebSocketServerProtocol, msg: dict, peer_id: Option
     """Handle incoming WebSocket message."""
     mtype = msg.get("type")
     
-    if mtype == "presence":
+    if mtype == "capabilities":
+        # Respond with relay capabilities using AgentCard format
+        agent_cards = []
+        
+        # Add kiro-cli agent card
+        agent_cards.append({
+            "name": "kiro-cli",
+            "description": "AWS Kiro CLI agent with file operations, code execution, and AWS integrations",
+            "url": "local://kiro-cli",
+            "provider": {
+                "organization": "AWS",
+                "url": "https://github.com/aws/kiro-cli"
+            },
+            "version": "1.0.0",
+            "capabilities": {
+                "streaming": True,
+                "pushNotifications": False,
+                "stateTransitionHistory": False
+            },
+            "authentication": {
+                "schemes": ["None"],
+                "credentials": None
+            },
+            "defaultInputModes": ["text/plain", "application/json"],
+            "defaultOutputModes": ["text/plain", "application/json", "text/markdown"],
+            "skills": [
+                {
+                    "id": "file-operations",
+                    "name": "File Operations",
+                    "description": "Read, write, search files and directories",
+                    "tags": ["filesystem", "io", "search"],
+                    "examples": ["Read package.json", "Search for TODO comments", "Create a new Python file"]
+                },
+                {
+                    "id": "code-execution",
+                    "name": "Code Execution",
+                    "description": "Execute bash commands and scripts",
+                    "tags": ["bash", "shell", "execution"],
+                    "examples": ["Run npm install", "Execute Python script", "Check git status"]
+                },
+                {
+                    "id": "aws-operations",
+                    "name": "AWS Operations",
+                    "description": "Interact with AWS services via CLI",
+                    "tags": ["aws", "cloud", "infrastructure"],
+                    "examples": ["List S3 buckets", "Describe EC2 instances", "Deploy CloudFormation stack"]
+                },
+                {
+                    "id": "code-intelligence",
+                    "name": "Code Intelligence",
+                    "description": "Semantic code search, navigation, and refactoring with LSP",
+                    "tags": ["lsp", "refactor", "navigation"],
+                    "examples": ["Find all references to function", "Rename symbol", "Go to definition"]
+                }
+            ]
+        })
+        
+        await ws.send(json.dumps({
+            "type": "capabilities_response",
+            "data": {
+                "agentCards": agent_cards,
+                "activeAgents": list(agents.keys())
+            }
+        }))
+        return peer_id
+    
+    elif mtype == "presence":
         new_peer_id = msg["from"]
         peers[new_peer_id] = {
             "ws": ws,

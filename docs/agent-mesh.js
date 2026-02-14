@@ -1701,6 +1701,10 @@
             ws.onopen = () => {
                 conn.connected = true;
                 logRelay('info', relayId, 'Connected', url);
+                
+                // Query relay capabilities
+                ws.send(JSON.stringify({ type: 'capabilities' }));
+                
                 sendRelayPresence(relayId);
                 conn.heartbeat = setInterval(() => {
                     if (!conn.connected) return;
@@ -1788,6 +1792,19 @@
 
     function handleRelayMessage(msg, relayId) {
         const { type, from, data } = msg;
+        
+        if (type === 'capabilities_response') {
+            // Store relay capabilities with AgentCards
+            const conn = relayConnections.get(relayId);
+            if (conn) {
+                conn.agentCards = data.agentCards || [];
+                conn.activeAgents = data.activeAgents || [];
+                logRelay('info', relayId, 'Capabilities', `${data.agentCards?.length || 0} agent types available`);
+                broadcast('relay-capabilities', { relayId, agentCards: data.agentCards, activeAgents: data.activeAgents });
+            }
+            return;
+        }
+        
         if (type === 'presence' || type === 'heartbeat') {
             remotePeers.set(from, { agents: data?.agents || [], hostname: data?.hostname, lastSeen: Date.now(), relayId });
             // Register remote agents
@@ -1946,10 +1963,69 @@
         setRelayReconnectProvider: (relayId, fn) => { relayReconnectProviders.set(relayId, fn); },
         get relayConnected() { return relayConnections.size > 0 && [...relayConnections.values()].some(c => c.connected); },
         getRelayPeers: () => [...remotePeers.values()],
-        getRelayConnections: () => Array.from(relayConnections.entries()).map(([id, conn]) => ({ id, connected: conn.connected })),
+        getRelayConnections: () => Array.from(relayConnections.entries()).map(([id, conn]) => ({ 
+            id, 
+            connected: conn.connected, 
+            agentCards: conn.agentCards || [],
+            activeAgents: conn.activeAgents || []
+        })),
         getRelayLogs: () => [...relayLogs],
         logRelay, // Expose for plugins
         relayInstanceId,
+        
+        // 🔧 Relay Capabilities (AgentCard-based)
+        getAvailableAgentCards: () => {
+            const cards = [];
+            for (const conn of relayConnections.values()) {
+                if (conn.connected && conn.agentCards) {
+                    cards.push(...conn.agentCards);
+                }
+            }
+            return cards;
+        },
+        getAgentCardsBySkill: (skillTag) => {
+            const cards = [];
+            for (const conn of relayConnections.values()) {
+                if (conn.connected && conn.agentCards) {
+                    for (const card of conn.agentCards) {
+                        const hasSkill = card.skills?.some(s => s.tags?.includes(skillTag));
+                        if (hasSkill) cards.push(card);
+                    }
+                }
+            }
+            return cards;
+        },
+        canLaunchAgent: (agentName) => {
+            for (const conn of relayConnections.values()) {
+                if (conn.connected && conn.agentCards) {
+                    const hasAgent = conn.agentCards.some(card => card.name === agentName);
+                    if (hasAgent) return true;
+                }
+            }
+            return false;
+        },
+        getRelaysForAgent: (agentName) => {
+            return Array.from(relayConnections.entries())
+                .filter(([_, conn]) => conn.connected && conn.agentCards?.some(card => card.name === agentName))
+                .map(([id, conn]) => ({ 
+                    id, 
+                    agentCard: conn.agentCards.find(card => card.name === agentName)
+                }));
+        },
+        
+        // Legacy compatibility
+        canLaunchKiroCli: () => {
+            return Array.from(relayConnections.values())
+                .some(conn => conn.connected && conn.agentCards?.some(card => card.name === 'kiro-cli'));
+        },
+        getKiroCliRelays: () => {
+            return Array.from(relayConnections.entries())
+                .filter(([_, conn]) => conn.connected && conn.agentCards?.some(card => card.name === 'kiro-cli'))
+                .map(([id, conn]) => ({ 
+                    id, 
+                    agentCard: conn.agentCards.find(card => card.name === 'kiro-cli')
+                }));
+        },
         
         // 🤖 Agent Registration (track agents across tabs)
         registerAgent,
