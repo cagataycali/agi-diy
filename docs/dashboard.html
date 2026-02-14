@@ -907,6 +907,51 @@ layoutManager.loadLayout() || layoutManager.render();
 initialMeshSync();
 setTimeout(populateMeshNav, 500); // after mesh-pages.json loads
 
+// Subscribe to relay events
+if (window.AgentMesh) {
+  // Request capabilities when relay connects
+  window.AgentMesh.subscribe?.('relay-connected', (payload) => {
+    if (!payload?.relayId) return;
+    console.log(`[Dashboard] Relay connected: ${payload.relayId}, requesting capabilities...`);
+    window.AgentMesh.sendToRelay?.({ type: 'capabilities_request' }, payload.relayId);
+  });
+  
+  // Handle capabilities response
+  window.AgentMesh.subscribe?.('relay-capabilities', (payload) => {
+    if (!payload) return;
+    console.log(`[Dashboard] Relay capabilities:`, payload);
+    
+    // Add active agents from relay to state
+    if (payload.activeAgents) {
+      payload.activeAgents.forEach(agent => {
+        const id = `relay-${agent.id || agent.name}`;
+        if (!state.agents.has(id)) {
+          state.agents.set(id, {
+            id,
+            model: agent.model || 'AgentCore Runtime',
+            status: 'running',
+            color: COLORS[state.colorIndex++ % COLORS.length],
+            relay: payload.relayId,
+            instances: 1,
+            agentCard: agent
+          });
+          notifyAgentStatus(id);
+        }
+      });
+    }
+  });
+  
+  // Request capabilities from already-connected relays
+  const relayConfig = window.AgentMesh.getRelayConfig?.();
+  if (relayConfig?.relays) {
+    relayConfig.relays.forEach(relay => {
+      if (relay.connected) {
+        window.AgentMesh.sendToRelay?.({ type: 'capabilities_request' }, relay.id);
+      }
+    });
+  }
+}
+
 // Discover on-chain agents (non-blocking)
 if (window.AgentMesh?.erc8004) {
   const erc = AgentMesh.erc8004;
