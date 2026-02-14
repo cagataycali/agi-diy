@@ -925,8 +925,6 @@ if (window.AgentMesh) {
       }
     }
   });
-  window.AgentMesh.subscribe?.('relay-status', () => widgetRegistry.notifyEvent('mesh', 'relay-status'));
-  window.AgentMesh.subscribe?.('relay-peers', () => widgetRegistry.notifyEvent('mesh', 'relay-peers'));
 }
 
 // Inject agent roster changes into the chat agent's conversation so it stays aware

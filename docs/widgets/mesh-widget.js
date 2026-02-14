@@ -33,11 +33,13 @@ export default new Widget({
       <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Remote Peers (${peers.length})</div>
       <div>${peers.length ? peers.map(p => `<div style="margin-bottom:4px"><span style="color:var(--green)">●</span> ${p.hostname||'?'} <span style="color:var(--text-muted)">(${p.agents?.length||0} agents)</span></div>`).join('') : '<div style="color:var(--text-muted)">None</div>'}</div>
     </div>`;
-  },
-  
-  onEvent(type) {
-    if (type === 'relay-status' || type === 'relay-peers') {
-      document.querySelectorAll('.block[id^="b-mesh"] .block-body').forEach(el => this.render(el));
+    
+    // Subscribe to updates
+    if (M?.subscribe && !container._meshSubscribed) {
+      const update = () => this.render(container);
+      M.subscribe('relay-status', update);
+      M.subscribe('relay-peers', update);
+      container._meshSubscribed = true;
     }
   }
 });
