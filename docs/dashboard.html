@@ -829,29 +829,22 @@ function renderMeshBlock(container) {
   const enabledRelays = config.relays.filter(r => r.enabled);
   const connectedCount = enabledRelays.filter(r => connMap.get(r.id)).length;
   
-  // Check if any AgentCore relay needs auth
-  const agentCoreRelays = enabledRelays.filter(r => r.type === 'agentcore');
-  const needsAuth = agentCoreRelays.some(r => !connMap.get(r.id));
-  
   const relayList = enabledRelays.map(r => {
     const connected = connMap.get(r.id);
     const icon = connected ? '●' : '○';
     const color = connected ? 'var(--green)' : 'var(--text-muted)';
     const label = r.type === 'websocket' ? r.url : `${r.id} (auto-renew)`;
-    return `<div style="margin-bottom:4px"><span style="color:${color}">${icon}</span> ${label}</div>`;
+    const reauthBtn = !connected && r.type === 'agentcore' 
+      ? `<button onclick="window.reauthAgentCore?.()" style="background:var(--orange,#ff9500);color:#fff;border:none;padding:2px 6px;border-radius:3px;font-size:10px;cursor:pointer;margin-left:8px">🔐 Reauth</button>`
+      : '';
+    return `<div style="margin-bottom:4px;display:flex;align-items:center"><span style="color:${color}">${icon}</span> <span style="flex:1">${label}</span>${reauthBtn}</div>`;
   }).join('');
-  
-  const reauthButton = needsAuth && agentCoreRelays.length > 0 
-    ? `<button onclick="window.reauthAgentCore?.()" style="background:var(--orange,#ff9500);color:#fff;border:none;padding:6px 12px;border-radius:4px;font-size:11px;cursor:pointer;width:100%;margin-bottom:8px">🔐 Re-authenticate</button>`
-    : '';
   
   container.innerHTML = `<div style="padding:12px;font-size:12px">
     <div style="margin-bottom:12px">
       <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Connected Relays (${connectedCount}/${enabledRelays.length})</div>
       ${relayList || '<div style="color:var(--text-muted)">No relays configured</div>'}
     </div>
-    ${reauthButton}
-    <button onclick="AgentMesh.settings?.open('mesh')" style="background:var(--accent);color:#fff;border:none;padding:6px 12px;border-radius:4px;font-size:11px;cursor:pointer;width:100%;margin-bottom:12px">⚙ Configure in Settings</button>
     <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Remote Peers (${peers.length})</div>
     <div>${peers.length ? peers.map(p => `<div style="margin-bottom:4px"><span style="color:var(--green)">●</span> ${p.hostname||'?'} <span style="color:var(--text-muted)">(${p.agents?.length||0} agents)</span></div>`).join('') : '<div style="color:var(--text-muted)">None</div>'}</div>
   </div>`;
