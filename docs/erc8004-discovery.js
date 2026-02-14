@@ -8,6 +8,18 @@ const keccak256 = data => KeccakHasher.unpadded().update(data).finalize().output
 const M = window.AgentMesh;
 if (!M) console.warn('[ERC8004] AgentMesh not found');
 
+// Blocked domains - won't attempt to fetch from these
+const BLOCKED_DOMAINS = ['example.com', 'example.org', 'localhost'];
+
+function isBlockedUrl(url) {
+  try {
+    const hostname = new URL(url).hostname;
+    return BLOCKED_DOMAINS.some(d => hostname === d || hostname.endsWith('.' + d));
+  } catch {
+    return false;
+  }
+}
+
 // IPFS gateway — off by default
 let ipfsGateway = localStorage.getItem('erc8004_ipfs_gateway') || '';
 
@@ -108,7 +120,7 @@ export async function getAgent(chain, agentId) {
         try {
             if (uri.startsWith('data:')) {
                 agent.registration = JSON.parse(atob(uri.split(',')[1]));
-            } else if (uri.startsWith('https://')) {
+            } else if (uri.startsWith('https://') && !isBlockedUrl(uri)) {
                 agent.registration = await (await fetch(uri)).json();
             } else if (uri.startsWith('ipfs://') && ipfsGateway) {
                 agent.registration = await (await fetch(ipfsGateway + uri.slice(7))).json();
