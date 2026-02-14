@@ -386,3 +386,60 @@ export function getAllSchemas() {
     getEventSchema(eventType)
   );
 }
+
+/**
+ * Export schemas as JSON Schema format
+ */
+export function exportAsJSONSchema() {
+  const schemas = {};
+  
+  for (const [eventType, schema] of Object.entries(EventSchemas)) {
+    const properties = {};
+    const required = [];
+    
+    for (const field of [...schema.required, ...schema.optional]) {
+      const type = schema.types[field];
+      
+      if (Array.isArray(type)) {
+        // Enum
+        properties[field] = { enum: type };
+      } else if (type === 'any') {
+        properties[field] = {};
+      } else {
+        properties[field] = { type };
+      }
+    }
+    
+    for (const field of schema.required) {
+      required.push(field);
+    }
+    
+    schemas[eventType] = {
+      type: 'object',
+      properties,
+      required,
+      additionalProperties: false
+    };
+  }
+  
+  return {
+    $schema: 'http://json-schema.org/draft-07/schema#',
+    title: 'agi.diy Event Schemas',
+    version: '1.0.0',
+    definitions: schemas
+  };
+}
+
+/**
+ * Download schemas as JSON file
+ */
+export function downloadSchemas() {
+  const schemas = exportAsJSONSchema();
+  const blob = new Blob([JSON.stringify(schemas, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'agi-diy-event-schemas.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}

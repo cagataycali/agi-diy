@@ -12,6 +12,8 @@ from typing import Dict, Optional
 import websockets
 from websockets.server import WebSocketServerProtocol
 
+from .event_schemas import validate_event, export_schemas_json
+
 # peer_id -> {ws, last_seen, meta}
 peers: Dict[str, dict] = {}
 # agent_id -> {process, peer_id, config}
@@ -19,6 +21,7 @@ agents: Dict[str, dict] = {}
 
 STALE_TIMEOUT = 30
 CONFIG_FILE = Path.home() / ".config" / "ag-mesh-relay" / "config.json"
+VALIDATE_EVENTS = os.getenv("VALIDATE_EVENTS", "true").lower() == "true"
 
 
 def load_config() -> dict:
@@ -36,6 +39,12 @@ def load_config() -> dict:
 
 async def broadcast(msg: dict, *, exclude: Optional[str] = None):
     """Broadcast message to all connected peers except excluded one."""
+    # Validate event if enabled
+    if VALIDATE_EVENTS and "type" in msg:
+        is_valid, errors = validate_event(msg["type"], msg.get("data", {}))
+        if not is_valid:
+            print(f"[Relay] Invalid event {msg['type']}: {errors}")
+    
     raw = json.dumps(msg)
     gone = []
     for pid, p in peers.items():
@@ -124,6 +133,14 @@ async def handle_agent_command(agent_id: str, command: dict):
 async def handle_message(ws: WebSocketServerProtocol, msg: dict, peer_id: Optional[str]):
     """Handle incoming WebSocket message."""
     mtype = msg.get("type")
+    
+    if mtype == "get_schemas":
+        # Return event schemas
+        await ws.send(json.dumps({
+            "type": "schemas_response",
+            "data": export_schemas_json()
+        }))
+        return peer_id
     
     if mtype == "capabilities":
         # Respond with relay capabilities using AgentCard format

@@ -268,4 +268,63 @@
             });
         }
     });
+    
+    // ═══ Developer Tab ═══
+    registerTab('developer', 'Developer', body => {
+        body.innerHTML = `
+            <div style="display:flex;flex-direction:column;gap:12px;">
+                <div>
+                    <h3 style="margin:0 0 8px 0;font-size:13px;">Event Schemas</h3>
+                    <p class="ms-hint">Download standardized event schemas for integration with other apps.</p>
+                    <button class="ms-btn primary" id="downloadSchemas">📥 Download Event Schemas (JSON)</button>
+                </div>
+                
+                <div>
+                    <h3 style="margin:0 0 8px 0;font-size:13px;">Event Validation</h3>
+                    <label style="flex-direction:row;align-items:center;gap:8px;">
+                        <input type="checkbox" id="validateEvents" ${window.standardEvents?.validateEvents !== false ? 'checked' : ''}>
+                        <span>Validate events (logs warnings for invalid events)</span>
+                    </label>
+                </div>
+                
+                <div>
+                    <h3 style="margin:0 0 8px 0;font-size:13px;">Debug</h3>
+                    <button class="ms-btn" id="listEventTypes">📋 List Event Types</button>
+                    <button class="ms-btn" id="showEventStats" style="margin-left:8px;">📊 Show Event Stats</button>
+                </div>
+            </div>
+        `;
+        
+        body.querySelector('#downloadSchemas').addEventListener('click', async () => {
+            const { downloadSchemas } = await import('./event-schemas.js');
+            downloadSchemas();
+        });
+        
+        body.querySelector('#validateEvents').addEventListener('change', (e) => {
+            if (window.standardEvents) {
+                window.standardEvents.validateEvents = e.target.checked;
+                localStorage.setItem('validateEvents', e.target.checked);
+            }
+        });
+        
+        body.querySelector('#listEventTypes').addEventListener('click', async () => {
+            const { listEventTypes } = await import('./event-schemas.js');
+            const types = listEventTypes();
+            console.log('Available event types:', types);
+            alert(`${types.length} event types available. See console for list.`);
+        });
+        
+        body.querySelector('#showEventStats').addEventListener('click', () => {
+            if (window.standardEvents) {
+                const stats = {};
+                for (const [type, handlers] of window.standardEvents.listeners) {
+                    stats[type] = handlers.length;
+                }
+                console.log('Event listener stats:', stats);
+                alert('Event stats logged to console');
+            } else {
+                alert('StandardEventEmitter not initialized');
+            }
+        });
+    });
 })();
