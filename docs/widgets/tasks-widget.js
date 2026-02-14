@@ -95,11 +95,5 @@ export default new Widget({
       window.widgetRegistry.emit('tasks', { type: 'tasks' });
       saveTasks();
     }
-  },
-  
-  onEvent(type) {
-    if (type === 'tasks') {
-      if (this.container) this.render(this.container);
-    }
   }
 });

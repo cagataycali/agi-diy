@@ -272,11 +272,5 @@ export default new Widget({
     } else {
       console.log(message);
     }
-  },
-  
-  onEvent(type, payload) {
-    if (type === 'relay-capabilities' || type === 'erc8004-discovered') {
-      if (this.container) this.render(this.container);
-    }
   }
 });

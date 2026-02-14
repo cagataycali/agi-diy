@@ -141,38 +141,5 @@ export default new Widget({
         }
       });
     });
-  },
-  
-  onEvent(type, payload) {
-    if (['agent-status', 'agent-spawned', 'agent-terminated'].includes(type)) {
-      if (this.container) this.render(this.container);
-    }
-    
-    if (type === 'relay-capabilities' && payload) {
-      const state = window.dashboardState;
-      if (!state || !payload.activeAgents) return;
-      
-      console.log('[running-agents] Processing relay capabilities:', payload);
-      
-      payload.activeAgents.forEach(agentId => {
-        // activeAgents is an array of strings (agent IDs)
-        const id = typeof agentId === 'string' ? `relay-${agentId}` : `relay-${agentId.id || agentId.name}`;
-        if (!state.agents.has(id)) {
-          const COLORS = ['#00ff88', '#00d4ff', '#ff00ff', '#ffaa00', '#ff4444', '#44ff44'];
-          state.agents.set(id, {
-            id,
-            model: typeof agentId === 'string' ? 'Kiro CLI Agent' : (agentId.model || 'Relay Agent'),
-            status: 'running',
-            color: COLORS[state.colorIndex++ % COLORS.length],
-            relay: payload.relayId,
-            instances: 1,
-            agentCard: typeof agentId === 'object' ? agentId : null
-          });
-          console.log('[running-agents] Added relay agent:', id);
-        }
-      });
-      
-      if (this.container) this.render(this.container);
-    }
   }
 });
