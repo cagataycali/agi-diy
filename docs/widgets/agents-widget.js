@@ -21,11 +21,11 @@ export default new Widget({
         <div class="agent-info">
           <div class="agent-name">${a.id}</div>
           <div class="agent-model">${a.model}</div>
-          <div style="font-size:9px;color:var(--text-muted);margin-top:2px;display:flex;gap:8px">
-            <span>⚡ ${instances}/${maxInstances}</span>
-            <span>🔵 ${active}</span>
-            <span>🟢 ${done}</span>
-          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:9px;color:var(--text-muted)">
+          <span>⚡${instances}/${maxInstances}</span>
+          <span>🔵${active}</span>
+          <span>🟢${done}</span>
         </div>
         <div class="agent-badge" style="color:${a.status==='processing'?a.color:'var(--text-muted)'}">${a.status === 'processing' ? '<span class="typing-dots"><span></span><span></span><span></span></span>' : a.status}</div>
       </div>
