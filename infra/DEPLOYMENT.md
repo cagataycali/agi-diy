@@ -38,7 +38,7 @@ Save this ID to `.env.local`.
 
 ```bash
 aws cloudformation create-stack \
-  --stack-name agidiy-website \
+  --stack-name agentmesh-website \
   --template-body file://infra/s3-website.yaml \
   --parameters ParameterKey=HostedZoneId,ParameterValue=$HOSTED_ZONE_ID \
   --region us-east-1 \
@@ -51,7 +51,7 @@ Wait for stack creation:
 
 ```bash
 aws cloudformation wait stack-create-complete \
-  --stack-name agidiy-website \
+  --stack-name agentmesh-website \
   --region us-east-1 \
   --profile $AWS_PROFILE
 ```
@@ -60,7 +60,7 @@ aws cloudformation wait stack-create-complete \
 
 ```bash
 aws cloudformation describe-stacks \
-  --stack-name agidiy-website \
+  --stack-name agentmesh-website \
   --region us-east-1 \
   --profile $AWS_PROFILE \
   --query 'Stacks[0].Outputs'
@@ -98,7 +98,7 @@ aws s3 cp s3://$S3_BUCKET/ s3://$S3_BUCKET/ \
 
 ```bash
 DISTRIBUTION_ID=$(aws cloudformation describe-stacks \
-  --stack-name agidiy-website \
+  --stack-name agentmesh-website \
   --region us-east-1 \
   --profile $AWS_PROFILE \
   --query 'Stacks[0].Outputs[?OutputKey==`DistributionId`].OutputValue' \
@@ -149,15 +149,15 @@ jobs:
       
       - name: Sync to S3
         run: |
-          aws s3 sync docs/ s3://agidiy.sauhsoj.people.aws.dev/ \
+          aws s3 sync docs/ s3://$S3_BUCKET/ \
             --delete \
             --cache-control "public, max-age=3600" \
             --exclude "*.md"
       
       - name: Set immutable cache for assets
         run: |
-          aws s3 cp s3://agidiy.sauhsoj.people.aws.dev/ \
-            s3://agidiy.sauhsoj.people.aws.dev/ \
+          aws s3 cp s3://$S3_BUCKET/ \
+            s3://$S3_BUCKET/ \
             --recursive \
             --exclude "*" \
             --include "*.js" \
@@ -231,8 +231,8 @@ Resources:
               - s3:DeleteObject
               - s3:ListBucket
             Resource:
-              - !Sub 'arn:aws:s3:::agidiy.sauhsoj.people.aws.dev'
-              - !Sub 'arn:aws:s3:::agidiy.sauhsoj.people.aws.dev/*'
+              - !Sub 'arn:aws:s3:::$S3_BUCKET'
+              - !Sub 'arn:aws:s3:::$S3_BUCKET/*'
           - Effect: Allow
             Action:
               - cloudfront:CreateInvalidation
@@ -258,14 +258,14 @@ aws cloudformation create-stack \
 
 Once verified working:
 
-1. Current: GitHub Pages → `agidiy.sauhsoj.people.aws.dev`
-2. New: CloudFront → `agidiy.sauhsoj.people.aws.dev`
+1. Current: GitHub Pages → `$S3_BUCKET`
+2. New: CloudFront → `$S3_BUCKET`
 
 The CloudFormation stack automatically creates the Route53 A record pointing to CloudFront. To switch:
 
 ```bash
 # The stack already updated DNS, just verify
-dig agidiy.sauhsoj.people.aws.dev
+dig $S3_BUCKET
 
 # Should show CloudFront distribution domain
 ```
@@ -277,7 +277,7 @@ If issues occur:
 ```bash
 # Delete the stack (keeps S3 bucket by default)
 aws cloudformation delete-stack \
-  --stack-name agidiy-website \
+  --stack-name agentmesh-website \
   --region us-east-1
 
 # Manually point DNS back to GitHub Pages if needed

@@ -166,7 +166,7 @@ EVENT_SCHEMAS = {
             "level": ["info", "warn", "error"],
             "relayId": str,
             "message": str,
-            "data": (str, dict)
+            "data": (str, dict, type(None))
         }
     },
     
@@ -184,13 +184,15 @@ EVENT_SCHEMAS = {
     
     "presence": {
         "description": "Peer heartbeat announcing availability and status",
-        "required": ["agents", "hostname", "pageId", "timestamp"],
-        "optional": [],
+        "required": ["status"],
+        "optional": ["type", "agent", "agents", "hostname", "pageId"],
         "types": {
+            "status": ["online", "offline"],
+            "type": str,
+            "agent": str,
             "agents": list,
             "hostname": str,
-            "pageId": str,
-            "timestamp": (int, float)
+            "pageId": str
         }
     },
     

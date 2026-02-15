@@ -1,23 +1,24 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'S3 static website hosting for agi.diy'
+Description: 'S3 static website hosting for AgentMeshStudio'
 
 Parameters:
-  DomainName:
+  BucketName:
     Type: String
-    Description: Domain name for the website
+    Description: S3 bucket name
   
   HostedZoneId:
     Type: String
     Description: Route53 Hosted Zone ID
+    Default: ''
+
+Conditions:
+  HasHostedZone: !Not [!Equals [!Ref HostedZoneId, '']]
 
 Resources:
   WebsiteBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Ref DomainName
-      WebsiteConfiguration:
-        IndexDocument: dashboard.html
-        ErrorDocument: dashboard.html
+      BucketName: !Ref BucketName
       CorsConfiguration:
         CorsRules:
           - AllowedOrigins: ['*']
@@ -29,7 +30,7 @@ Resources:
     Type: AWS::CloudFront::OriginAccessControl
     Properties:
       OriginAccessControlConfig:
-        Name: !Sub '${DomainName}-OAC'
+        Name: !Sub '${BucketName}-OAC'
         OriginAccessControlOriginType: s3
         SigningBehavior: always
         SigningProtocol: sigv4
@@ -50,23 +51,12 @@ Resources:
               StringEquals:
                 'AWS:SourceArn': !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}'
 
-  Certificate:
-    Type: AWS::CertificateManager::Certificate
-    Properties:
-      DomainName: !Ref DomainName
-      ValidationMethod: DNS
-      DomainValidationOptions:
-        - DomainName: !Ref DomainName
-          HostedZoneId: !Ref HostedZoneId
-
   CloudFrontDistribution:
     Type: AWS::CloudFront::Distribution
     Properties:
       DistributionConfig:
         Enabled: true
-        Comment: !Sub 'CDN for ${DomainName}'
-        Aliases:
-          - !Ref DomainName
+        Comment: !Sub 'CDN for ${BucketName}'
         DefaultRootObject: dashboard.html
         Origins:
           - Id: S3Origin
@@ -94,15 +84,14 @@ Resources:
             ResponseCode: 200
             ResponsePagePath: /dashboard.html
         ViewerCertificate:
-          AcmCertificateArn: !Ref Certificate
-          SslSupportMethod: sni-only
-          MinimumProtocolVersion: TLSv1.2_2021
+          CloudFrontDefaultCertificate: true
 
   DNSRecord:
     Type: AWS::Route53::RecordSet
+    Condition: HasHostedZone
     Properties:
       HostedZoneId: !Ref HostedZoneId
-      Name: !Ref DomainName
+      Name: !Ref BucketName
       Type: A
       AliasTarget:
         DNSName: !GetAtt CloudFrontDistribution.DomainName
@@ -112,10 +101,6 @@ Outputs:
   BucketName:
     Value: !Ref WebsiteBucket
     Description: S3 bucket name
-  
-  WebsiteURL:
-    Value: !GetAtt WebsiteBucket.WebsiteURL
-    Description: S3 website endpoint
   
   CloudFrontURL:
     Value: !GetAtt CloudFrontDistribution.DomainName

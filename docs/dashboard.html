@@ -185,11 +185,11 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); heig
 
 <div class="add-bar" id="statusBar" style="justify-content:flex-start;padding-left:12px">
   <div style="display:flex;align-items:center;gap:4px" id="meshNavSlot"></div>
-  <button class="add-btn" onclick="stopAllTasks()" style="background:var(--red);color:#fff;margin-left:auto" title="Stop all active tasks">⏹ Stop All</button>
-  <div class="wall-clock" id="wallClock" style="position:static;height:auto"></div>
+  <div class="wall-clock" id="wallClock" style="position:static;height:auto;margin-left:auto"></div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="mesh-nav.js"></script>
 <script src="agent-mesh.js?v=2"></script>
 <script>
 // Initialize StandardEventEmitter early (minimal inline version)
@@ -906,46 +906,7 @@ function updateWallClock() {
 
 // ═══ MESH NAV IN STATUS BAR ═══
 function populateMeshNav() {
-  const slot = document.getElementById('meshNavSlot');
-  if (!slot) return;
-  
-  // Get mesh pages (multi/single/mesh)
-  const pages = window.AgentMesh?.pages || {};
-  const current = window.AgentMesh?.currentPage?.id;
-  
-  // Get custom layouts
-  const savedLayouts = JSON.parse(localStorage.getItem('dashboard_layouts') || '{}');
-  
-  slot.innerHTML = '';
-  
-  // Add mesh pages as tabs
-  Object.entries(pages).forEach(([file, p]) => {
-    const btn = document.createElement('a');
-    btn.href = file;
-    btn.target = '_blank';
-    btn.className = 'add-btn';
-    btn.title = p.label;
-    btn.textContent = p.icon;
-    if (p.id === current) {
-      btn.style.color = 'var(--accent)';
-      btn.style.borderColor = 'var(--accent)';
-    }
-    slot.appendChild(btn);
-  });
-  
-  // Add custom layouts
-  Object.entries(savedLayouts).forEach(([name, layout]) => {
-    const btn = document.createElement('button');
-    btn.className = 'add-btn';
-    btn.title = `Load layout: ${name}`;
-    btn.textContent = '📐';
-    btn.onclick = () => layoutManager.loadLayout(name);
-    slot.appendChild(btn);
-  });
-  
-  // Hide the floating mesh nav injected by agent-mesh.js
-  const floatingNav = document.getElementById('agent-mesh-nav');
-  if (floatingNav) floatingNav.style.display = 'none';
+  window.MeshNav?.populate('meshNavSlot');
 }
 
 // ═══ INIT ═══
@@ -1064,8 +1025,9 @@ function populateWidgetSidebar() {
   divider.className = 'sidebar-divider';
   sidebar.appendChild(divider);
   
-  // Actions (excluding Stop All - that stays in status bar)
+  // Actions
   const actions = [
+    { icon: '⏹', label: 'Stop All', title: 'Stop all active tasks', fn: stopAllTasks },
     { icon: '🗑️', label: 'Clear Done', title: 'Clear completed tasks', fn: clearDoneTasks },
     { icon: '🔄', label: 'Reset', title: 'Reset layout', fn: resetLayout },
     { icon: '💾', label: 'Layouts', title: 'Layouts', fn: showLayoutMenu },
