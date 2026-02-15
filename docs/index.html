@@ -1320,6 +1320,7 @@
     window.BedrockBrowserModel = null;
 
     import { WebLLMBrowserModel } from './webllm.js';
+    import { loadCredentials as _loadCredentials, detectProvider as _detectProvider, createModel as _createModel } from './model-utils.js';
 
     import {
         VisionAgent,
@@ -3467,129 +3468,63 @@ Example - create a tool that gets weather:
         const provider = localStorage.getItem('provider') || 'anthropic';
         const systemPrompt = localStorage.getItem('system_prompt') || DEFAULT_SYSTEM_PROMPT;
 
-        // 🔑 Load credentials from AgentMesh unified storage if available
-        let meshCreds = null;
-        if (window.AgentMesh?.getCredentials) {
-            meshCreds = window.AgentMesh.getCredentials();
+        // 🔑 Build credentials from AgentMesh + per-provider localStorage
+        const meshCreds = window.AgentMesh?.getCredentials?.() || {};
+        const credentials = {
+            anthropic: { apiKey: meshCreds?.anthropic?.apiKey || localStorage.getItem('anthropic_api_key'), model: localStorage.getItem('anthropic_model') || 'claude-haiku-4-5' },
+            openai: { apiKey: localStorage.getItem('openai_api_key'), model: localStorage.getItem('openai_model') || 'gpt-5-nano-2025-08-07' },
+            bedrock: { apiKey: meshCreds?.bedrock?.apiKey || localStorage.getItem('bedrock_api_key'), region: meshCreds?.bedrock?.region || localStorage.getItem('bedrock_region') || 'us-east-1', model: localStorage.getItem('bedrock_model') || 'global.anthropic.claude-opus-4-6-v1' },
+            openai_compatible: { apiKey: localStorage.getItem('compat_api_key') || 'not-needed', baseUrl: localStorage.getItem('compat_base_url') || '', model: localStorage.getItem('compat_model') || '' },
+            webllm: { model: localStorage.getItem('webllm_model') || 'Qwen2.5-3B-Instruct-q4f16_1-MLC' }
+        };
+
+        // Validate credentials
+        if (provider !== 'webllm' && provider !== 'openai_compatible' && !credentials[provider]?.apiKey) {
+            setStatus('no key'); return false;
+        }
+        if (provider === 'openai_compatible' && !credentials.openai_compatible.baseUrl) {
+            setStatus('no endpoint'); addMessage('error', 'Set an endpoint URL in Settings.'); return false;
         }
 
         let model;
+        const _models = { AnthropicModel: AnthropicBrowserModel, OpenAIModel: OpenAIBrowserModel, BedrockModel: BedrockBrowserModel, WebLLMBrowserModel };
 
-        if (provider === 'anthropic') {
-            const apiKey = meshCreds?.anthropic?.apiKey || localStorage.getItem('anthropic_api_key');
-            const modelId = localStorage.getItem('anthropic_model') || 'claude-haiku-4-5';
-            const maxTokensStr = localStorage.getItem('anthropic_max_tokens');
-            const headersStr = localStorage.getItem('anthropic_headers');
+        // Parse per-provider config from localStorage
+        const maxTokensStr = localStorage.getItem(`${provider === 'openai_compatible' ? 'compat' : provider}_max_tokens`);
+        const maxTokens = maxTokensStr ? parseInt(maxTokensStr) : (provider === 'webllm' ? 4096 : 8096);
+        let customHeaders = {};
+        try { const h = localStorage.getItem(`${provider}_headers`); if (h) customHeaders = JSON.parse(h); } catch (e) {}
+        let additionalRequestFields = null;
+        try { const f = localStorage.getItem('bedrock_additional_fields'); if (f) additionalRequestFields = JSON.parse(f); } catch (e) {}
 
-            if (!apiKey) {
-                setStatus('no key');
-                return false;
-            }
+        if (provider === 'webllm') {
+            const modelId = credentials.webllm.model;
+            if (!navigator.gpu) { setStatus('no WebGPU'); addMessage('error', 'WebGPU not supported. Try Chrome 113+ or Edge 113+.'); return false; }
 
-            const maxTokens = maxTokensStr ? parseInt(maxTokensStr) : 8096;
-            let customHeaders = {};
-            try {
-                if (headersStr) customHeaders = JSON.parse(headersStr);
-            } catch (e) {
-                console.warn('Invalid custom headers JSON:', e);
-            }
-
-            model = new AnthropicBrowserModel({ apiKey, modelId, maxTokens, customHeaders });
-        } else if (provider === 'openai') {
-            const apiKey = localStorage.getItem('openai_api_key');
-            const modelId = localStorage.getItem('openai_model') || 'gpt-5-nano-2025-08-07';
-            const maxTokensStr = localStorage.getItem('openai_max_tokens');
-            const headersStr = localStorage.getItem('openai_headers');
-
-            if (!apiKey) {
-                setStatus('no key');
-                return false;
-            }
-
-            const maxTokens = maxTokensStr ? parseInt(maxTokensStr) : 8096;
-            let customHeaders = {};
-            try {
-                if (headersStr) customHeaders = JSON.parse(headersStr);
-            } catch (e) {
-                console.warn('Invalid custom headers JSON:', e);
-            }
-
-            model = new OpenAIBrowserModel({ apiKey, modelId, maxTokens, customHeaders });
-        } else if (provider === 'bedrock') {
-            const apiKey = meshCreds?.bedrock?.apiKey || localStorage.getItem('bedrock_api_key');
-            const region = meshCreds?.bedrock?.region || localStorage.getItem('bedrock_region') || 'us-east-1';
-            const modelId = localStorage.getItem('bedrock_model') || 'global.anthropic.claude-opus-4-6-v1';
-            const maxTokensStr = localStorage.getItem('bedrock_max_tokens');
-            const additionalFieldsStr = localStorage.getItem('bedrock_additional_fields');
-
-            if (!apiKey) {
-                setStatus('no key');
-                return false;
-            }
-
-            const maxTokens = maxTokensStr ? parseInt(maxTokensStr) : 8096;
-            let additionalRequestFields = null;
-            try {
-                if (additionalFieldsStr) additionalRequestFields = JSON.parse(additionalFieldsStr);
-            } catch (e) {
-                console.warn('Invalid additional fields JSON:', e);
-            }
-
-            model = new BedrockBrowserModel({ apiKey, region, modelId, maxTokens, additionalRequestFields });
-        } else if (provider === 'openai_compatible') {
-            const baseURL = localStorage.getItem('compat_base_url') || '';
-            const apiKey = localStorage.getItem('compat_api_key') || 'not-needed';
-            const modelId = localStorage.getItem('compat_model') || '';
-            if (!baseURL) { setStatus('no endpoint'); addMessage('error', 'Set an endpoint URL in Settings.'); return false; }
-            model = new OpenAIBrowserModel({ apiKey, modelId, maxTokens: 4096, baseURL });
-        } else if (provider === 'webllm') {
-            const modelId = localStorage.getItem('webllm_model') || 'Qwen2.5-3B-Instruct-q4f16_1-MLC';
-
-            // Check WebGPU support
-            if (!navigator.gpu) {
-                setStatus('no WebGPU');
-                addMessage('error', 'WebGPU not supported. Try Chrome 113+ or Edge 113+.');
-                return false;
-            }
-
-            // Show progress UI
-            const progressEl = document.getElementById('webllmProgress');
-            const progressText = document.getElementById('webllmProgressText');
-            const progressBar = document.getElementById('webllmProgressBar');
-
-            // Reuse existing model if same modelId
             if (webllmModelInstance && webllmModelInstance.getConfig().modelId === modelId && webllmModelInstance._loaded) {
                 model = webllmModelInstance;
                 setStatus('ready (local)');
             } else {
+                const progressEl = document.getElementById('webllmProgress');
+                const progressText = document.getElementById('webllmProgressText');
+                const progressBar = document.getElementById('webllmProgressBar');
                 progressEl.style.display = 'block';
                 setStatus('loading model...');
-
                 try {
-                    model = new WebLLMBrowserModel({
-                        modelId,
-                        maxTokens: 4096,
-                        onProgress: (percent, text) => {
-                            progressBar.style.width = percent + '%';
-                            progressText.textContent = text || `Loading: ${percent}%`;
-                            setStatus(`loading ${percent}%`);
-                        }
+                    model = _createModel('webllm', credentials, _models, {
+                        modelId, maxTokens: 4096,
+                        onProgress: (percent, text) => { progressBar.style.width = percent + '%'; progressText.textContent = text || `Loading: ${percent}%`; setStatus(`loading ${percent}%`); }
                     });
-
                     await model.load();
                     webllmModelInstance = model;
                     progressEl.style.display = 'none';
                     setStatus('ready (local)');
-                } catch (e) {
-                    progressEl.style.display = 'none';
-                    setStatus('load failed');
-                    addMessage('error', `Failed to load model: ${e.message}`);
-                    return false;
-                }
+                } catch (e) { progressEl.style.display = 'none'; setStatus('load failed'); addMessage('error', `Failed to load model: ${e.message}`); return false; }
             }
         } else {
-            setStatus('unsupported');
-            return false;
+            try {
+                model = _createModel(provider, credentials, _models, { maxTokens, customHeaders, additionalRequestFields });
+            } catch (e) { setStatus('error'); addMessage('error', e.message); return false; }
         }
 
         try {

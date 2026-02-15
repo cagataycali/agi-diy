@@ -10,6 +10,7 @@
     <meta name="theme-color" content="#0a0a0a">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕸️</text></svg>">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script type="module" src="model-utils.js"></script>
     <script src="agent-mesh.js?v=2"></script>
     <style>
         *{box-sizing:border-box;margin:0;padding:0}
@@ -213,13 +214,13 @@
         <div class="st"><div class="st-v" id="cntCloud" style="color:var(--c-agentcore)">0</div><div class="st-l">cloud</div></div>
         <div class="st"><div class="st-v" id="cntZenoh" style="color:var(--c-zenoh)">0</div><div class="st-l">zenoh</div></div>
     </div>
-    
+
     <div class="sec-hdr" style="margin-top:10px"><span class="sec-icon">🏃</span><span class="sec-title">Running</span></div>
     <div class="sb-scroll" id="agentsList"></div>
-    
+
     <div class="sec-hdr"><span class="sec-icon">📦</span><span class="sec-title">Available</span><span class="sec-cnt" id="cntAvailable">0</span></div>
     <div class="sb-scroll" id="availableAgentsList" style="max-height:200px"></div>
-    
+
     <div class="sb-spawn">
         <button class="spawn-btn" onclick="openSpawn('virtual')">+ virtual</button>
         <button class="spawn-btn" onclick="openSpawn('browser')">+ browser</button>
@@ -379,6 +380,14 @@ window._StrandsTextBlock=TextBlock;window._StrandsMessage=Message;window._Strand
 // ═══════════════════════════════════════════════════════════════
 
 window._BrowserModels={AnthropicBrowserModel:AnthropicModel,OpenAIBrowserModel:OpenAIModel,BedrockBrowserModel:BedrockModel,WebLLMBrowserModel};
+
+// Model factory via shared model-utils
+window._createModelFromCreds = function(provider, apiKey, config) {
+    const creds = { [provider]: { apiKey, region: config.region, baseUrl: config.baseUrl, model: config.modelId } };
+    return window.ModelUtils.createModel(provider, creds, {
+        AnthropicModel, OpenAIModel, BedrockModel, WebLLMBrowserModel
+    }, config);
+};
 
 // ═══════════════════════════════════════════════════════════════
 // BROWSER TOOLS for browser agents
@@ -777,13 +786,9 @@ async function runBrowserAgent(a,txt){
     const modelId=cfg.modelId||null;
     if(!inst){
         let model;
-        const Models=window._BrowserModels;
-        if(provider==='anthropic')model=new Models.AnthropicBrowserModel({apiKey,modelId:modelId||'claude-sonnet-4-20250514'});
-        else if(provider==='openai')model=new Models.OpenAIBrowserModel({apiKey,modelId:modelId||'gpt-4o'});
-        else if(provider==='openai_compatible'){if(!S.cfg.compatBaseUrl){a.messages.push({role:'assistant',content:'❌ No endpoint URL configured.'});updateUI();return}model=new Models.OpenAIBrowserModel({apiKey,modelId:modelId||S.cfg.compatModel||'',clientConfig:{baseURL:S.cfg.compatBaseUrl}})}
-        else if(provider==='bedrock')model=new Models.BedrockBrowserModel({apiKey,region:S.cfg.bedrockRegion||'us-east-1',modelId:modelId||'us.anthropic.claude-sonnet-4-20250514-v1:0'});
-        else if(provider==='webllm'){model=new Models.WebLLMBrowserModel({modelId:modelId||S.cfg.webllmModel||'Qwen2.5-3B-Instruct-q4f16_1-MLC',maxTokens:4096})}
-        else{a.messages.push({role:'assistant',content:`❌ Unknown provider: ${provider}`});updateUI();return}
+        try {
+            model=window._createModelFromCreds(provider,apiKey,{modelId:modelId,region:S.cfg.bedrockRegion||'us-east-1',baseUrl:S.cfg.compatBaseUrl,maxTokens:4096});
+        } catch(e){a.messages.push({role:'assistant',content:`❌ ${e.message}`});updateUI();return}
         const agent=new window._StrandsAgent({model,tools:window._BrowserTools||[],systemPrompt:cfg.systemPrompt||`You are ${a.name}, a helpful AI assistant running in the browser.`,printer:false});
         inst={agent,model};_browserAgentInstances.set(a.id,inst);
     } else {
@@ -1021,7 +1026,7 @@ function updateUI(){updateStatus();updateStats();updateAgentsList();updateAvaila
 function updateAvailableAgents(){
     const el=E('availableAgentsList');
     const available=[];
-    
+
     // Get AgentCards from relay
     if(window.AgentMesh?.getAvailableAgentCards){
         const cards=window.AgentMesh.getAvailableAgentCards();
@@ -1029,14 +1034,14 @@ function updateAvailableAgents(){
             available.push({id:card.name,name:card.name,desc:card.description,source:'relay',card});
         }
     }
-    
+
     E('cntAvailable').textContent=available.length;
-    
+
     if(!available.length){
         el.innerHTML='<div style="padding:12px;text-align:center;color:var(--t3);font-size:9px">Connect relay to see available agents</div>';
         return;
     }
-    
+
     let html='';
     for(const a of available){
         const skills=(a.card?.skills||[]).slice(0,2).map(s=>s.tags?.[0]||s.name).filter(Boolean);
@@ -1183,9 +1188,9 @@ async function handleBrowserInvoke(msg){
     const turnId=msg.turn_id||'';
     const fromWsId=msg.from_ws_id||'';
     const zenohRequesterId=msg.zenoh_requester_id||'';
-    
+
     console.log('🧠 Browser invoke received:',prompt.slice(0,80),'from:',fromWsId||zenohRequesterId);
-    
+
     // Find or create mesh agent
     let meshAgent=getMeshAgent();
     if(!meshAgent){ensureMeshAgent();meshAgent=getMeshAgent()}
@@ -1196,15 +1201,15 @@ async function handleBrowserInvoke(msg){
         }
         return;
     }
-    
+
     // Add the query to mesh agent's messages for display
     meshAgent.messages.push({role:'user',content:`[from ${fromWsId||zenohRequesterId||'mesh'}] ${prompt}`});
     updateUI();
-    
+
     // Run the browser agent
     meshAgent.streaming=true;meshAgent.streamText='';meshAgent.streamTools=[];meshAgent.status='streaming';
     updateUI();
-    
+
     try{
         // Stream chunks back to the relay for zenoh forwarding
         const cfg=meshAgent.config||{};
@@ -1213,20 +1218,19 @@ async function handleBrowserInvoke(msg){
         if(provider==='anthropic')apiKey=S.cfg.anthropicKey;
         else if(provider==='openai')apiKey=S.cfg.openaiKey;
         else if(provider==='bedrock')apiKey=S.cfg.bedrockKey;
-        
+
         if(!apiKey){throw new Error(`No ${provider} API key configured`)}
-        
+
         let inst=_browserAgentInstances.get(meshAgent.id);
         if(!inst){
-            let model;const Models=window._BrowserModels;
-            if(provider==='anthropic')model=new Models.AnthropicBrowserModel({apiKey,modelId:cfg.modelId||'claude-sonnet-4-20250514'});
-            else if(provider==='openai')model=new Models.OpenAIBrowserModel({apiKey,modelId:cfg.modelId||'gpt-4o'});
-            else if(provider==='bedrock')model=new Models.BedrockBrowserModel({apiKey,region:S.cfg.bedrockRegion||'us-east-1',modelId:cfg.modelId||'us.anthropic.claude-sonnet-4-20250514-v1:0'});
-            else throw new Error(`Unknown provider: ${provider}`);
+            let model;
+            try {
+                model=window._createModelFromCreds(provider,apiKey,{modelId:cfg.modelId,region:S.cfg.bedrockRegion||'us-east-1'});
+            } catch(e){throw new Error(e.message)}
             const agent=new window._StrandsAgent({model,tools:window._BrowserTools||[],systemPrompt:cfg.systemPrompt||'You are a mesh browser agent.',printer:false});
             inst={agent,model};_browserAgentInstances.set(meshAgent.id,inst);
         }
-        
+
         let currentText='';
         for await(const event of inst.agent.stream(prompt)){
             if(!event||!event.type)continue;
@@ -1240,11 +1244,11 @@ async function handleBrowserInvoke(msg){
                 }
             }
         }
-        
+
         const ft=currentText.trim();
         if(ft)meshAgent.messages.push({role:'assistant',content:ft});
         meshAgent.streaming=false;meshAgent.streamText='';meshAgent.streamTools=[];meshAgent.status='ready';
-        
+
         // Send final response back to relay
         if(S.relay&&S.relayOk){
             S.relay.send(JSON.stringify({type:'browser_invoke_response',turn_id:turnId,response:ft,requester_ws_id:fromWsId,zenoh_requester_id:zenohRequesterId}));

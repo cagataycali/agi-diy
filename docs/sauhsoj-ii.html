@@ -1512,6 +1512,7 @@
     <script type="module">
     import { Agent, tool, Model, z, BeforeModelCallEvent, AfterInvocationEvent, SlidingWindowConversationManager, BedrockModel, AnthropicModel, OpenAIModel, McpClient, StreamableHTTPClientTransport } from './strands.js?v=2';
     import { WebLLMBrowserModel, WEBLLM_MODELS } from './webllm.js';
+    import { createModel as _createModel, detectProvider as _detectProvider } from './model-utils.js';
 
     // ╔═══════════════════════════════════════════════════════════════════════════╗
     // ║  agi.html — Multi-Agent System                                          ║
@@ -1712,14 +1713,10 @@
 
 
     let webllmModelInstance = null;
+    const _models = { AnthropicModel, OpenAIModel, BedrockModel, WebLLMBrowserModel };
 
     function detectProvider() {
-        const c = state.credentials;
-        if (c.bedrock?.apiKey) return 'bedrock';
-        if (c.anthropic?.apiKey) return 'anthropic';
-        if (c.openai?.apiKey) return 'openai';
-        if (c.openai_compatible?.baseUrl) return 'openai_compatible';
-        return 'webllm';
+        return _detectProvider(state.credentials);
     }
 
     function providerReady(provider) {
@@ -1732,54 +1729,25 @@
     }
 
     function createModel(provider, customConfig = {}) {
-        const creds = state.credentials[provider];
-        const modelId = customConfig.modelId || creds?.model || DEFAULT_MODELS[provider];
+        const modelId = customConfig.modelId || state.credentials[provider]?.model || DEFAULT_MODELS[provider];
         const catalogFlags = getModelFlags(provider, modelId);
         const additionalFields = customConfig.additionalRequestFields ?? catalogFlags ?? (provider === 'bedrock' ? DEFAULT_BEDROCK_ADDITIONAL_FIELDS : null);
-        if (provider === 'anthropic') {
-            return new AnthropicModel({
-                apiKey: creds.apiKey,
-                modelId,
-                maxTokens: customConfig.maxTokens || DEFAULT_MAX_TOKENS,
-                additionalRequestFields: additionalFields
-            });
-        } else if (provider === 'openai') {
-            return new OpenAIModel({
-                apiKey: creds.apiKey,
-                modelId,
-                maxTokens: customConfig.maxTokens || DEFAULT_MAX_TOKENS
-            });
-        } else if (provider === 'openai_compatible') {
-            if (!creds.baseUrl) throw new Error('OpenAI-compatible endpoint URL not set');
-            return new OpenAIModel({
-                apiKey: creds.apiKey || 'not-needed',
-                modelId,
-                maxTokens: customConfig.maxTokens || DEFAULT_MAX_TOKENS,
-                clientConfig: { baseURL: creds.baseUrl }
-            });
-        } else if (provider === 'bedrock') {
-            return new BedrockModel({
-                apiKey: creds.apiKey,
-                region: creds.region || 'us-east-1',
-                modelId,
-                maxTokens: customConfig.maxTokens || DEFAULT_MAX_TOKENS,
-                additionalRequestFields: additionalFields
-            });
-        } else if (provider === 'webllm') {
+
+        // WebLLM caching
+        if (provider === 'webllm') {
             if (webllmModelInstance?.getConfig().modelId === modelId && webllmModelInstance._loaded) return webllmModelInstance;
             const progressEl = document.getElementById('webllmProgress');
-            const m = new WebLLMBrowserModel({
-                modelId,
-                maxTokens: customConfig.maxTokens || 4096,
-                onProgress: (pct, txt) => {
-                    if (progressEl) { progressEl.style.display = 'block'; progressEl.textContent = `${txt || 'Loading'} ${pct}%`; }
-                }
+            const m = _createModel(provider, state.credentials, _models, {
+                modelId, maxTokens: customConfig.maxTokens || 4096,
+                onProgress: (pct, txt) => { if (progressEl) { progressEl.style.display = 'block'; progressEl.textContent = `${txt || 'Loading'} ${pct}%`; } }
             });
-            // load() is async — will be called on first stream() automatically
             webllmModelInstance = m;
             return m;
         }
-        throw new Error(`Unknown provider: ${provider}`);
+
+        return _createModel(provider, state.credentials, _models, {
+            modelId, maxTokens: customConfig.maxTokens || DEFAULT_MAX_TOKENS, additionalRequestFields: additionalFields
+        });
     }
 
     // Default models per provider
