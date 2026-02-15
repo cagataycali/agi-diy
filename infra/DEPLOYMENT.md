@@ -1,17 +1,38 @@
 # S3 Deployment Instructions
 
+## Environment Setup
+
+Create `.env.local` (not committed to git):
+
+```bash
+# AWS Account
+AWS_ACCOUNT_ID=<your-playground1-account-id>
+AWS_PROFILE=<your-aws-profile>
+
+# Route53
+HOSTED_ZONE_ID=<your-hosted-zone-id>
+
+# GitHub
+GITHUB_ORG=<your-github-org>
+GITHUB_REPO=<your-github-repo>
+
+# S3
+S3_BUCKET=<your-domain-name>
+```
+
 ## Step-by-Step Deployment
 
 ### 1. Get Route53 Hosted Zone ID
 
 ```bash
 aws route53 list-hosted-zones-by-name \
-  --dns-name sauhsoj.people.aws.dev \
+  --dns-name <your-domain> \
   --query 'HostedZones[0].Id' \
-  --output text
+  --output text \
+  --profile $AWS_PROFILE
 ```
 
-Save this ID for the next step.
+Save this ID to `.env.local`.
 
 ### 2. Deploy CloudFormation Stack
 
@@ -19,8 +40,9 @@ Save this ID for the next step.
 aws cloudformation create-stack \
   --stack-name agidiy-website \
   --template-body file://infra/s3-website.yaml \
-  --parameters ParameterKey=HostedZoneId,ParameterValue=<YOUR_HOSTED_ZONE_ID> \
-  --region us-east-1
+  --parameters ParameterKey=HostedZoneId,ParameterValue=$HOSTED_ZONE_ID \
+  --region us-east-1 \
+  --profile $AWS_PROFILE
 ```
 
 **Note:** Certificate must be in us-east-1 for CloudFront.
@@ -30,7 +52,8 @@ Wait for stack creation:
 ```bash
 aws cloudformation wait stack-create-complete \
   --stack-name agidiy-website \
-  --region us-east-1
+  --region us-east-1 \
+  --profile $AWS_PROFILE
 ```
 
 ### 3. Get Stack Outputs
@@ -39,6 +62,7 @@ aws cloudformation wait stack-create-complete \
 aws cloudformation describe-stacks \
   --stack-name agidiy-website \
   --region us-east-1 \
+  --profile $AWS_PROFILE \
   --query 'Stacks[0].Outputs'
 ```
 
@@ -50,14 +74,14 @@ Note the:
 
 ```bash
 # Sync docs folder to S3
-aws s3 sync docs/ s3://agidiy.sauhsoj.people.aws.dev/ \
+aws s3 sync docs/ s3://$S3_BUCKET/ \
   --delete \
   --cache-control "public, max-age=3600" \
-  --exclude "*.md"
+  --exclude "*.md" \
+  --profile $AWS_PROFILE
 
 # Set longer cache for static assets
-aws s3 cp s3://agidiy.sauhsoj.people.aws.dev/ \
-  s3://agidiy.sauhsoj.people.aws.dev/ \
+aws s3 cp s3://$S3_BUCKET/ s3://$S3_BUCKET/ \
   --recursive \
   --exclude "*" \
   --include "*.js" \
@@ -66,7 +90,8 @@ aws s3 cp s3://agidiy.sauhsoj.people.aws.dev/ \
   --include "*.jpg" \
   --include "*.svg" \
   --cache-control "public, max-age=31536000, immutable" \
-  --metadata-directive REPLACE
+  --metadata-directive REPLACE \
+  --profile $AWS_PROFILE
 ```
 
 ### 5. Invalidate CloudFront Cache
@@ -75,19 +100,21 @@ aws s3 cp s3://agidiy.sauhsoj.people.aws.dev/ \
 DISTRIBUTION_ID=$(aws cloudformation describe-stacks \
   --stack-name agidiy-website \
   --region us-east-1 \
+  --profile $AWS_PROFILE \
   --query 'Stacks[0].Outputs[?OutputKey==`DistributionId`].OutputValue' \
   --output text)
 
 aws cloudfront create-invalidation \
   --distribution-id $DISTRIBUTION_ID \
-  --paths "/*"
+  --paths "/*" \
+  --profile $AWS_PROFILE
 ```
 
 ### 6. Verify Deployment
 
 ```bash
 # Check S3 website endpoint
-curl -I https://agidiy.sauhsoj.people.aws.dev
+curl -I https://$S3_BUCKET
 
 # Should return 200 OK with CloudFront headers
 ```

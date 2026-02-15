@@ -23,7 +23,7 @@ jobs:
       
       - name: Sync to S3
         env:
-          S3_BUCKET: ${{ vars.S3_BUCKET || 'agidiy.sauhsoj.people.aws.dev' }}
+          S3_BUCKET: ${{ vars.S3_BUCKET }}
         run: |
           aws s3 sync docs/ s3://$S3_BUCKET/ \
             --delete \
@@ -32,7 +32,7 @@ jobs:
       
       - name: Set immutable cache for assets
         env:
-          S3_BUCKET: ${{ vars.S3_BUCKET || 'agidiy.sauhsoj.people.aws.dev' }}
+          S3_BUCKET: ${{ vars.S3_BUCKET }}
         run: |
           aws s3 cp s3://$S3_BUCKET/ s3://$S3_BUCKET/ \
             --recursive \

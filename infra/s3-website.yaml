@@ -18,8 +18,7 @@ Description: 'S3 static website hosting for agi.diy'
 Parameters:
   DomainName:
     Type: String
-    Default: agidiy.sauhsoj.people.aws.dev
-    Description: Domain name for the website
+    Description: Domain name for the website (e.g., example.com)
 
 Resources:
   WebsiteBucket:

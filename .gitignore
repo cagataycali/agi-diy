@@ -8,3 +8,5 @@ p2p-server/.agentcore/
 *.local.json
 __pycache__/
 *.pyc
+.env.local
+.env.local
