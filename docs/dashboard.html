@@ -36,12 +36,26 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); heig
 .block-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
 /* ── Add Block Bar ── */
-.add-bar { position: fixed; bottom: 0; left: 0; right: 0; height: 36px; background: var(--bg-card); border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: center; gap: 8px; z-index: 50; }
+.add-bar { position: fixed; bottom: 0; left: 0; right: 0; height: 36px; background: var(--bg-card); border-top: 1px solid var(--border); display: flex; align-items: center; gap: 8px; z-index: 50; }
 .add-btn { background: var(--bg-hover); border: 1px solid var(--border); color: var(--text-dim); font-size: 11px; padding: 4px 12px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 4px; }
 .add-btn:hover { color: var(--text); border-color: var(--accent); }
 .settings-btn { background: none; border: none; color: var(--text-dim); font-size: 20px; cursor: pointer; padding: 2px 8px; }
 .settings-btn:hover { color: var(--accent); }
-.wall-clock { font-size: 11px; color: var(--accent); font-variant-numeric: tabular-nums; position: fixed; bottom: 0; right: 12px; height: 36px; display: flex; align-items: center; z-index: 51; }
+.wall-clock { font-size: 11px; color: var(--accent); font-variant-numeric: tabular-nums; }
+
+/* ── Widget Sidebar ── */
+.widget-sidebar { position: fixed; right: 0; top: 0; bottom: 36px; width: 48px; background: var(--bg-card); border-left: 1px solid var(--border); display: flex; flex-direction: column; gap: 2px; padding: 8px 4px; z-index: 60; transition: width .2s; overflow: hidden; }
+.widget-sidebar:hover { width: 160px; }
+.widget-sidebar.docked { width: 160px; }
+.widget-btn { background: none; border: none; color: var(--text-dim); cursor: pointer; padding: 8px; border-radius: 6px; display: flex; align-items: center; gap: 8px; white-space: nowrap; transition: background .12s; }
+.widget-btn:hover { background: var(--bg-hover); color: var(--text); }
+.widget-btn .icon { font-size: 16px; min-width: 20px; text-align: center; }
+.widget-btn .label { font-size: 11px; opacity: 0; transition: opacity .2s; }
+.widget-sidebar:hover .widget-btn .label, .widget-sidebar.docked .widget-btn .label { opacity: 1; }
+.sidebar-divider { height: 1px; background: var(--border); margin: 4px 0; }
+.sidebar-toggle { margin-top: auto; padding: 8px; text-align: center; cursor: pointer; font-size: 14px; opacity: 0; transition: opacity .2s; }
+.widget-sidebar:hover .sidebar-toggle, .widget-sidebar.docked .sidebar-toggle { opacity: 0.5; }
+.sidebar-toggle:hover { opacity: 1 !important; }
 
 /* ── Agent List ── */
 .agent-list { display: flex; flex-direction: column; gap: 2px; padding: 6px; }
@@ -165,29 +179,15 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); heig
 <body>
 <!-- Layout is built by JS -->
 <div id="root"></div>
-<div class="add-bar" id="statusBar">
+
+<!-- Widget Sidebar (populated by JS) -->
+<div class="widget-sidebar" id="widgetSidebar"></div>
+
+<div class="add-bar" id="statusBar" style="justify-content:flex-start;padding-left:12px">
   <div style="display:flex;align-items:center;gap:4px" id="meshNavSlot"></div>
-  <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px">
-    <button class="add-btn" onclick="addBlock('chat')">+ Chat</button>
-    <button class="add-btn" onclick="addBlock('agents')">+ Agents</button>
-    <button class="add-btn" onclick="addBlock('agent-detail')">+ Agent Detail</button>
-    <button class="add-btn" onclick="addBlock('tasks')">+ Tasks</button>
-    <button class="add-btn" onclick="addBlock('task-flow')">+ Task Flow</button>
-    <button class="add-btn" onclick="addBlock('ring')">+ Ring</button>
-    <button class="add-btn" onclick="addBlock('task-detail')">+ Task Detail</button>
-    <button class="add-btn" onclick="addBlock('agent-chat')">+ Agent Chat</button>
-    <button class="add-btn" onclick="addBlock('mesh')">+ Mesh</button>
-    <button class="add-btn" onclick="addBlock('erc8004')">+ ERC8004</button>
-  </div>
-  <div style="display:flex;align-items:center;gap:6px">
-    <button class="add-btn" onclick="stopAllTasks()" style="background:var(--red);color:#fff" title="Stop all active tasks">⏹ Stop All</button>
-    <button class="add-btn" onclick="clearDoneTasks()" title="Clear completed tasks">🗑️ Clear Done</button>
-    <button class="add-btn" onclick="resetLayout()" title="Reset layout to default">🔄 Reset Layout</button>
-    <button class="add-btn" onclick="showLayoutMenu()" title="Save/Load layouts">💾 Layouts</button>
-  </div>
-  <button class="settings-btn" onclick="AgentMesh.settings?.open()" title="Settings">⚙</button>
+  <button class="add-btn" onclick="stopAllTasks()" style="background:var(--red);color:#fff;margin-left:auto" title="Stop all active tasks">⏹ Stop All</button>
+  <div class="wall-clock" id="wallClock" style="position:static;height:auto"></div>
 </div>
-<div class="wall-clock" id="wallClock"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="agent-mesh.js?v=2"></script>
@@ -907,12 +907,42 @@ function updateWallClock() {
 // ═══ MESH NAV IN STATUS BAR ═══
 function populateMeshNav() {
   const slot = document.getElementById('meshNavSlot');
-  if (!slot || !window.AgentMesh?.pages) return;
-  const pages = window.AgentMesh.pages;
-  const current = window.AgentMesh.currentPage?.id;
-  slot.innerHTML = Object.entries(pages).map(([file, p]) =>
-    `<a href="${file}" class="add-btn" style="${p.id===current?'color:var(--accent);border-color:var(--accent)':''}" title="${p.label}">${p.icon}</a>`
-  ).join('');
+  if (!slot) return;
+  
+  // Get mesh pages (multi/single/mesh)
+  const pages = window.AgentMesh?.pages || {};
+  const current = window.AgentMesh?.currentPage?.id;
+  
+  // Get custom layouts
+  const savedLayouts = JSON.parse(localStorage.getItem('dashboard_layouts') || '{}');
+  
+  slot.innerHTML = '';
+  
+  // Add mesh pages as tabs
+  Object.entries(pages).forEach(([file, p]) => {
+    const btn = document.createElement('a');
+    btn.href = file;
+    btn.target = '_blank';
+    btn.className = 'add-btn';
+    btn.title = p.label;
+    btn.textContent = p.icon;
+    if (p.id === current) {
+      btn.style.color = 'var(--accent)';
+      btn.style.borderColor = 'var(--accent)';
+    }
+    slot.appendChild(btn);
+  });
+  
+  // Add custom layouts
+  Object.entries(savedLayouts).forEach(([name, layout]) => {
+    const btn = document.createElement('button');
+    btn.className = 'add-btn';
+    btn.title = `Load layout: ${name}`;
+    btn.textContent = '📐';
+    btn.onclick = () => layoutManager.loadLayout(name);
+    slot.appendChild(btn);
+  });
+  
   // Hide the floating mesh nav injected by agent-mesh.js
   const floatingNav = document.getElementById('agent-mesh-nav');
   if (floatingNav) floatingNav.style.display = 'none';
@@ -1014,6 +1044,53 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.ready.then(reg => reg.active?.postMessage({ type: 'RECACHE' }));
   });
 }
+
+// ── Populate Widget Sidebar ──
+function populateWidgetSidebar() {
+  const sidebar = document.getElementById('widgetSidebar');
+  const widgets = Array.from(widgetRegistry.widgets.entries());
+  
+  widgets.forEach(([id, widget]) => {
+    const btn = document.createElement('button');
+    btn.className = 'widget-btn';
+    btn.title = widget.meta.title || id;
+    btn.onclick = () => addBlock(id);
+    btn.innerHTML = `<span class="icon">${widget.meta.icon}</span><span class="label">${widget.meta.title}</span>`;
+    sidebar.appendChild(btn);
+  });
+  
+  // Divider
+  const divider = document.createElement('div');
+  divider.className = 'sidebar-divider';
+  sidebar.appendChild(divider);
+  
+  // Actions (excluding Stop All - that stays in status bar)
+  const actions = [
+    { icon: '🗑️', label: 'Clear Done', title: 'Clear completed tasks', fn: clearDoneTasks },
+    { icon: '🔄', label: 'Reset', title: 'Reset layout', fn: resetLayout },
+    { icon: '💾', label: 'Layouts', title: 'Layouts', fn: showLayoutMenu },
+    { icon: '⚙', label: 'Settings', title: 'Settings', fn: () => AgentMesh.settings?.open() }
+  ];
+  
+  actions.forEach(a => {
+    const btn = document.createElement('button');
+    btn.className = 'widget-btn';
+    btn.title = a.title;
+    btn.onclick = a.fn;
+    btn.innerHTML = `<span class="icon">${a.icon}</span><span class="label">${a.label}</span>`;
+    sidebar.appendChild(btn);
+  });
+  
+  // Toggle
+  const toggle = document.createElement('div');
+  toggle.className = 'sidebar-toggle';
+  toggle.title = 'Toggle sidebar';
+  toggle.textContent = '📌';
+  toggle.onclick = () => sidebar.classList.toggle('docked');
+  sidebar.appendChild(toggle);
+}
+
+populateWidgetSidebar();
 </script>
 </body>
 </html>
