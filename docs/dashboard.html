@@ -235,11 +235,10 @@ import { createBrowserTools } from './browser-tools.js';
 import { loadCredentials, detectProvider as detectProviderUtil, createModel as createModelUtil, createConversationManager as createCMUtil } from './model-utils.js';
 import { Orchestrator } from './orchestrator.js';
 import { WidgetSidebar } from './widget-sidebar.js';
+import { ChatHandler } from './chat-handler.js';
 import './erc8004-discovery.js?v=2';
 
 // ═══ STATE & HELPERS ═══
-function saveTasks() { try { localStorage.setItem('dashboard_tasks', JSON.stringify([...state.tasks.values()])); } catch(e) {} }
-function loadTasks() { try { const d = JSON.parse(localStorage.getItem('dashboard_tasks')); if (d?.length) { state.tasks.clear(); d.forEach(t => state.tasks.set(t.id, t)); return true; } } catch(e) {} return false; }
 
 // ═══ BROWSER TOOLS ═══
 const browserTools = createBrowserTools({ tool, z, state, notify, saveTasks });
@@ -307,6 +306,10 @@ const state = {
 
 window.dashboardState = state;
 window.widgetRegistry = widgetRegistry;
+
+// Helper functions that depend on state
+function saveTasks() { try { localStorage.setItem('dashboard_tasks', JSON.stringify([...state.tasks.values()])); } catch(e) {} }
+function loadTasks() { try { const d = JSON.parse(localStorage.getItem('dashboard_tasks')); if (d?.length) { state.tasks.clear(); d.forEach(t => state.tasks.set(t.id, t)); return true; } } catch(e) {} return false; }
 
 const DEFAULT_MAX_TOKENS = 60000;
 
@@ -448,206 +451,31 @@ function findBlockCfg(id) {
 }
 
 // ── Chat Agent ──
-function ensureChatAgent() {
-  if (state.chatAgent) return true;
-  const chatCfg = state.agents.get('chat');
-  if (!chatCfg) return false;
-  try {
-    const model = createModel(chatCfg.provider || detectProvider(), { modelId: chatCfg.modelId, maxTokens: 8192 });
-    state.chatAgent = new Agent({
-      model,
-      tools: ORCHESTRATOR_TOOLS,
-      systemPrompt: buildOrchestratorPrompt(),
-      printer: false,
-      conversationManager: createConversationManager(chatCfg.conversationManager)
-    });
-    seedAgentList(state.chatAgent);
-    if (window.AgentMesh?.registerAgent) window.AgentMesh.registerAgent('chat', 'browser', { model: chatCfg.modelId });
-    return true;
-  } catch (e) { console.error('Failed to create chat agent:', e); return false; }
-}
 
-function startWallClock() {
-  if (!state.wallClockStart) state.wallClockStart = Date.now();
-}
+// ═══ CHAT HANDLER ═══
+const chatHandler = new ChatHandler({
+  state,
+  createModel,
+  detectProvider,
+  createConversationManager,
+  buildOrchestratorPrompt,
+  seedAgentList,
+  ORCHESTRATOR_TOOLS,
+  notifyAgentStatus,
+  notifyRingEntry
+});
 
-async function sendChatMessage(text, blockId) {
-  if (!text.trim()) return;
-  if (!ensureChatAgent()) { alert('Failed to create chat agent. Check API key in Settings or select WebLLM.'); return; }
-  startWallClock();
+// Expose for compatibility
+const ensureChatAgent = () => chatHandler.ensureChatAgent();
+const sendChatMessage = (text, blockId) => chatHandler.sendChatMessage(text, blockId);
+const startWallClock = () => chatHandler.startWallClock();
+const escapeHtml = (s) => chatHandler.escapeHtml(s);
+const formatElapsed = (start, end) => chatHandler.formatElapsed(start, end);
 
-  const msgEl = document.querySelector(`#msg-${blockId}`);
-  if (!msgEl) return;
-  const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+// Agent management
+const loadDefaultAgents = () => orchestrator.loadDefaultAgents(state, COLORS, notifyAgentStatus);
+const startAgentInstance = (agentId) => orchestrator.startAgentInstance(agentId, state, notifyAgentStatus);
 
-  // Show user message
-  msgEl.insertAdjacentHTML('beforeend', `<div class="msg user">${escapeHtml(text)}<div class="msg-time">${time}</div></div>`);
-  msgEl.scrollTop = msgEl.scrollHeight;
-
-  // Add to ring
-  state.ringBuffer.push({ agentId: 'user', content: text.slice(0, 300), ts: Date.now() });
-  notifyRingEntry(state.ringBuffer[state.ringBuffer.length - 1]);
-  if (window.AgentMesh?.addToRingContext) window.AgentMesh.addToRingContext('chat', 'browser', `[User] ${text.slice(0, 300)}`);
-
-  // Update agent status
-  const agentData = state.agents.get('chat');
-  if (agentData) { agentData.status = 'processing'; notifyAgentStatus('chat'); }
-
-  // Stream response
-  const streamDiv = document.createElement('div');
-  streamDiv.className = 'msg assistant';
-  streamDiv.innerHTML = `<div class="msg-agent" style="color:${agentData?.color || 'var(--green)'}">chat</div><span class="stream-text"></span>`;
-  msgEl.appendChild(streamDiv);
-
-  try {
-    let currentText = '';
-    // Fresh agent per message for parallelism
-    const chatCfg = state.agents.get('chat');
-    const model = createModel(chatCfg?.provider || detectProvider(), { modelId: chatCfg?.modelId, maxTokens: 8192 });
-    const agent = new Agent({
-      model,
-      tools: ORCHESTRATOR_TOOLS,
-      systemPrompt: buildOrchestratorPrompt(),
-      printer: false,
-      conversationManager: createConversationManager(chatCfg?.conversationManager)
-    });
-    seedAgentList(agent);
-    // Inject history
-    for (const m of state.chatMessages.slice(-20)) {
-      agent.messages.push({ role: m.role, content: [{ type: 'textBlock', text: m.content }] });
-    }
-
-    for await (const event of agent.stream(text)) {
-      if (event?.type === 'modelContentBlockDeltaEvent' && event.delta?.type === 'textDelta') {
-        currentText += event.delta.text;
-        streamDiv.querySelector('.stream-text').textContent = currentText;
-        msgEl.scrollTop = msgEl.scrollHeight;
-      }
-    }
-
-    streamDiv.querySelector('.stream-text').innerHTML = typeof marked !== 'undefined' ? marked.parse(currentText) : escapeHtml(currentText);
-    streamDiv.insertAdjacentHTML('beforeend', `<div class="msg-time">${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>`);
-    state.chatMessages.push({ role: 'user', content: text }, { role: 'assistant', content: currentText });
-
-    // Ring buffer
-    state.ringBuffer.push({ agentId: 'chat', content: currentText.slice(0, 500), ts: Date.now() });
-    notifyRingEntry(state.ringBuffer[state.ringBuffer.length - 1]);
-    if (window.AgentMesh?.addToRingContext) window.AgentMesh.addToRingContext('chat', 'browser', currentText.slice(0, 500));
-  } catch (e) {
-    streamDiv.querySelector('.stream-text').textContent = `Error: ${e.message}`;
-    streamDiv.style.color = 'var(--red)';
-  }
-
-  if (agentData) { agentData.status = 'ready'; notifyAgentStatus('chat'); }
-}
-
-function escapeHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-function formatElapsed(start, end) {
-  const s = Math.floor((end - start) / 1000);
-  if (s < 60) return `${s}s`;
-  return `${Math.floor(s/60)}m${s%60}s`;
-}
-
-// ── Default Agents (loaded from agents.json) ──
-let DEFAULT_AGENTS = [];
-
-function startAgentInstance(agentId) {
-  const agent = state.agents.get(agentId);
-  if (!agent) return;
-
-  agent.instances = (agent.instances || 0) + 1;
-  agent.status = 'idle';
-  notifyAgentStatus(agentId);
-
-  // If agent has a schedule, set up interval
-  if (agent.schedule?.interval) {
-    const intervalId = setInterval(async () => {
-      const currentAgent = state.agents.get(agentId);
-      if (!currentAgent || currentAgent.instances === 0) {
-        clearInterval(intervalId);
-        return;
-      }
-      if (currentAgent.status === 'processing') return; // Skip if busy
-
-      // Run scheduled prompt
-      currentAgent.status = 'processing';
-      notifyAgentStatus(agentId);
-
-      try {
-        const model = createModel(currentAgent.provider || detectProvider(), {
-          modelId: currentAgent.modelId,
-          maxTokens: 4096
-        });
-        const agentInstance = new Agent({
-          model,
-          tools: ORCHESTRATOR_TOOLS,
-          systemPrompt: currentAgent.role,
-          printer: false,
-          conversationManager: createConversationManager(currentAgent.conversationManager)
-        });
-
-        let response = '';
-        for await (const event of agentInstance.stream(agent.schedule.prompt)) {
-          if (event?.type === 'modelContentBlockDeltaEvent' && event.delta?.type === 'textDelta') {
-            response += event.delta.text;
-          }
-        }
-
-        if (!response.includes('[IDLE]')) {
-          console.log(`${agentId} scheduled run:`, response.slice(0, 200));
-        }
-      } catch (e) {
-        console.error(`${agentId} scheduled run error:`, e);
-      }
-
-      currentAgent.status = 'idle';
-      notifyAgentStatus(agentId);
-    }, agent.schedule.interval);
-  }
-}
-
-async function loadDefaultAgents() {
-  try {
-    const resp = await fetch('./agents.json');
-    DEFAULT_AGENTS = await resp.json();
-  } catch (e) { console.warn('Failed to load agents.json, using empty defaults:', e); }
-  DEFAULT_AGENTS.forEach((a, i) => {
-    if (!state.agents.has(a.id)) {
-      state.agents.set(a.id, {
-        ...a,
-        color: a.color || COLORS[i % COLORS.length],
-        status: 'ready',
-        instances: 0,
-        minInstances: a.minInstances || 0,
-        maxInstances: a.maxInstances || 1
-      });
-    }
-  });
-  state.colorIndex = state.agents.size;
-
-  // Start minimum instances for each agent
-  state.agents.forEach((agent, id) => {
-    const minInstances = agent.minInstances || 0;
-    if (minInstances > 0 && (agent.instances || 0) < minInstances) {
-      for (let i = 0; i < minInstances; i++) {
-        startAgentInstance(id);
-      }
-    }
-  });
-
-  // Register all agents with AgentMesh for cross-page discovery
-  if (window.AgentMesh?.registerAgent) {
-    state.agents.forEach((a, id) => window.AgentMesh.registerAgent(id, 'browser', { model: a.model }));
-  }
-}
-
-// All render functions moved to their respective widgets
-
-// Convenience wrappers for layoutManager.openWidget
-window.openAgentChat = (agentId, scrollTs) => layoutManager.openWidget('agent-chat', { agentId, _scrollTs: scrollTs || 0 }, { matchKey: 'agentId' });
-window.openAgentDetail = (agentId) => layoutManager.openWidget('agent-detail', { agentId }, { reuse: true });
-window.openTaskDetail = (taskId) => layoutManager.openWidget('task-detail', { taskId }, { reuse: true });
 window.addBlock = (type) => layoutManager.openWidget(type, {}, { reuse: false });
 
 // ═══ CHAT AGENT ═══
