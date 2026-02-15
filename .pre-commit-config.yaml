@@ -1,0 +1,30 @@
+# Pre-commit hooks configuration
+# Install: pip install pre-commit
+# Setup: pre-commit install
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: detect-private-key
+      - id: detect-aws-credentials
+        args: ['--allow-missing-credentials']
+
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+        exclude: package-lock.json
+
+  - repo: https://github.com/aws-cloudformation/cfn-lint
+    rev: v0.83.8
+    hooks:
+      - id: cfn-lint
+        files: infra/.*\.(yaml|yml|json)$
