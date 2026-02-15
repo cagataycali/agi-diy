@@ -25,7 +25,7 @@ jobs:
         env:
           S3_BUCKET: ${{ vars.S3_BUCKET }}
         run: |
-          # Sync HTML files
+          # Sync HTML files (short cache)
           aws s3 sync docs/ s3://"$S3_BUCKET"/ \
             --delete \
             --exclude "*" \
@@ -33,36 +33,36 @@ jobs:
             --content-type "text/html" \
             --cache-control "public, max-age=3600"
 
-          # Sync JavaScript files
+          # Sync JavaScript files (immutable)
           aws s3 sync docs/ s3://"$S3_BUCKET"/ \
             --exclude "*" \
             --include "*.js" \
             --content-type "application/javascript" \
-            --cache-control "public, max-age=3600"
+            --cache-control "public, max-age=31536000, immutable"
 
-          # Sync CSS files
+          # Sync CSS files (immutable)
           aws s3 sync docs/ s3://"$S3_BUCKET"/ \
             --exclude "*" \
             --include "*.css" \
             --content-type "text/css" \
-            --cache-control "public, max-age=3600"
+            --cache-control "public, max-age=31536000, immutable"
 
-          # Sync JSON files
+          # Sync JSON files (short cache)
           aws s3 sync docs/ s3://"$S3_BUCKET"/ \
             --exclude "*" \
             --include "*.json" \
             --content-type "application/json" \
             --cache-control "public, max-age=3600"
 
-          # Sync images
+          # Sync images (immutable)
           aws s3 sync docs/ s3://"$S3_BUCKET"/ \
             --exclude "*" \
             --include "*.png" \
             --include "*.jpg" \
             --include "*.svg" \
-            --cache-control "public, max-age=3600"
+            --cache-control "public, max-age=31536000, immutable"
 
-          # Sync other files (txt, etc)
+          # Sync other files
           aws s3 sync docs/ s3://"$S3_BUCKET"/ \
             --exclude "*.html" \
             --exclude "*.js" \
@@ -74,25 +74,9 @@ jobs:
             --exclude "*.md" \
             --cache-control "public, max-age=3600"
 
-      - name: Set immutable cache for assets
-        env:
-          S3_BUCKET: ${{ vars.S3_BUCKET }}
-        run: |
-          # Update cache-control for static assets (preserve existing content-type)
-          aws s3 cp s3://"$S3_BUCKET"/ s3://"$S3_BUCKET"/ \
-            --recursive \
-            --exclude "*" \
-            --include "*.js" \
-            --include "*.css" \
-            --include "*.png" \
-            --include "*.jpg" \
-            --include "*.svg" \
-            --cache-control "public, max-age=31536000, immutable" \
-            --metadata-directive COPY
-
       - name: Invalidate CloudFront
         if: vars.CLOUDFRONT_DISTRIBUTION_ID != ''
         run: |
           aws cloudfront create-invalidation \
-            --distribution-id ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }} \
+            --distribution-id "${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}" \
             --paths "/*"
