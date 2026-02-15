@@ -49,6 +49,7 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); heig
 .complication-btn:hover { background: var(--bg-hover); color: var(--text); }
 
 /* ── Widget Sidebar ── */
+.layout { margin-right: 48px; } /* reserve space for collapsed sidebar */
 .widget-sidebar { position: fixed; right: 0; top: 0; bottom: 36px; width: 48px; background: var(--bg-card); border-left: 1px solid var(--border); display: flex; flex-direction: column; gap: 2px; padding: 8px 4px; z-index: 60; transition: width .2s; overflow: hidden; }
 .widget-sidebar:hover { width: 160px; }
 .widget-sidebar.docked { width: 160px; }
