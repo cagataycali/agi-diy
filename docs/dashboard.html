@@ -17,15 +17,16 @@
   --orange: #ffaa00; --red: #ff6666; --cyan: #88ffff;
   --radius: 8px; --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --block-header: 32px;
+  --sidebar-w: 48px; --statusbar-h: 36px;
 }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: var(--font); background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; }
 
 /* ── Block Layout Engine ── */
-.layout { display: flex; height: 100vh; width: 100vw; gap: 1px; background: var(--border); }
+.layout { display: flex; height: calc(100vh - var(--statusbar-h)); width: calc(100vw - var(--sidebar-w)); gap: 1px; background: var(--border); }
 .layout-col { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .block { background: var(--bg-panel); display: flex; flex-direction: column; min-height: 0; overflow: hidden; position: relative; }
-.block.maximized { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 100; }
+.block.maximized { position: fixed; top: 0; left: 0; width: calc(100vw - var(--sidebar-w)); height: calc(100vh - var(--statusbar-h)); z-index: 100; }
 .block-header { height: var(--block-header); min-height: var(--block-header); display: flex; align-items: center; padding: 0 10px; gap: 6px; background: var(--bg-card); border-bottom: 1px solid var(--border); cursor: default; user-select: none; }
 .block-icon { font-size: 12px; }
 .block-title { font-size: 11px; font-weight: 600; color: var(--text-dim); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -36,7 +37,7 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); heig
 .block-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
 /* ── Add Block Bar ── */
-.add-bar { position: fixed; bottom: 0; left: 0; right: 0; height: 36px; background: var(--bg-card); border-top: 1px solid var(--border); display: flex; align-items: center; gap: 8px; z-index: 50; }
+.add-bar { position: fixed; bottom: 0; left: 0; right: var(--sidebar-w); height: var(--statusbar-h); background: var(--bg-card); border-top: 1px solid var(--border); display: flex; align-items: center; gap: 8px; z-index: 50; }
 .add-btn { background: var(--bg-hover); border: 1px solid var(--border); color: var(--text-dim); font-size: 11px; padding: 4px 12px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 4px; }
 .add-btn:hover { color: var(--text); border-color: var(--accent); }
 .settings-btn { background: none; border: none; color: var(--text-dim); font-size: 20px; cursor: pointer; padding: 2px 8px; }
@@ -49,8 +50,7 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); heig
 .complication-btn:hover { background: var(--bg-hover); color: var(--text); }
 
 /* ── Widget Sidebar ── */
-.layout { margin-right: 48px; } /* reserve space for collapsed sidebar */
-.widget-sidebar { position: fixed; right: 0; top: 0; bottom: 36px; width: 48px; background: var(--bg-card); border-left: 1px solid var(--border); display: flex; flex-direction: column; gap: 2px; padding: 8px 4px; z-index: 60; transition: width .2s; overflow: hidden; }
+.widget-sidebar { position: fixed; right: 0; top: 0; bottom: var(--statusbar-h); width: var(--sidebar-w); background: var(--bg-card); border-left: 1px solid var(--border); display: flex; flex-direction: column; gap: 2px; padding: 8px 4px; z-index: 60; transition: width .2s; overflow: hidden; }
 .widget-sidebar:hover { width: 160px; }
 .widget-sidebar.docked { width: 160px; }
 .widget-btn { background: none; border: none; color: var(--text-dim); cursor: pointer; padding: 8px; border-radius: 6px; display: flex; align-items: center; gap: 8px; white-space: nowrap; transition: background .12s; }
