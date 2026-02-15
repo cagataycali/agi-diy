@@ -4,7 +4,7 @@
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+    rev: v6.0.0
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
@@ -25,36 +25,36 @@ repos:
         args: ['--branch', 'main']
 
   - repo: https://github.com/Yelp/detect-secrets
-    rev: v1.4.0
+    rev: v1.5.0
     hooks:
       - id: detect-secrets
         args: ['--baseline', '.secrets.baseline']
         exclude: package-lock.json
 
   - repo: https://github.com/aws-cloudformation/cfn-lint
-    rev: v0.83.8
+    rev: v1.44.0
     hooks:
       - id: cfn-lint
         files: infra/.*\.(yaml|yml|json)$
 
   - repo: https://github.com/rhysd/actionlint
-    rev: v1.6.27
+    rev: v1.7.11
     hooks:
       - id: actionlint
 
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 0.27.3
+    rev: 0.36.1
     hooks:
       - id: check-github-workflows
       - id: check-github-actions
 
   - repo: https://github.com/standard/standard
-    rev: v17.1.0
+    rev: v17.1.2
     hooks:
       - id: standard
         files: \.(js|jsx|mjs|cjs)$
 
   - repo: https://github.com/pre-commit/sync-pre-commit-deps
-    rev: v0.0.1
+    rev: v0.0.3
     hooks:
       - id: sync-pre-commit-deps

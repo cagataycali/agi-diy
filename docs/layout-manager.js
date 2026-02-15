@@ -1,15 +1,20 @@
 /**
  * Layout Manager for agi.diy Dashboard
- * Handles draggable, resizable, dockable widget layout
+ * Handles draggable, resizable, dockable widget layout and complications
  */
 
 export class LayoutManager {
   constructor(config) {
     this.rootEl = config.rootEl;
     this.widgetRegistry = config.widgetRegistry;
+    this.complicationRegistry = config.complicationRegistry;
     this.state = config.state;
     this.onLayoutChange = config.onLayoutChange || (() => {});
     this.dragState = { blockId: null, dropZone: null, targetBlockId: null };
+    
+    // Complication containers
+    this.statusbarEl = config.statusbarEl;
+    this.sidebarEl = config.sidebarEl;
   }
 
   render() {
@@ -21,6 +26,28 @@ export class LayoutManager {
 
     this.renderNode(container, this.state.layout);
     this.rootEl.appendChild(container);
+    
+    // Render complications
+    this.renderComplications();
+  }
+
+  renderComplications() {
+    if (!this.complicationRegistry) return;
+    
+    const complications = this.state.complications || {
+      statusbar: ['mesh-nav', 'wall-clock'],
+      sidebar: ['stop-all', 'clear-done', 'reset', 'layouts', 'settings']
+    };
+    
+    const context = { state: this.state, layoutManager: this, widgetRegistry: this.widgetRegistry };
+    
+    if (this.statusbarEl) {
+      this.complicationRegistry.render(this.statusbarEl, 'statusbar', complications.statusbar, context);
+    }
+    
+    if (this.sidebarEl) {
+      this.complicationRegistry.render(this.sidebarEl, 'sidebar', complications.sidebar, context);
+    }
   }
 
   renderNode(parent, nodes) {
@@ -408,5 +435,33 @@ export class LayoutManager {
     this.render();
     this.saveLayout();
     this.onLayoutChange();
+  }
+
+  // ═══ WIDGET OPENING ═══
+  
+  openWidget(widgetType, params = {}, options = {}) {
+    const { reuse = true, matchKey = null } = options;
+    
+    let found = null;
+    if (reuse) {
+      const search = (nodes) => {
+        for (const n of nodes) {
+          if (n.type === widgetType && (!matchKey || n[matchKey] === params[matchKey])) {
+            found = n;
+            return;
+          }
+          if (n.children) search(n.children);
+        }
+      };
+      search(this.state.layout);
+    }
+    
+    if (found) {
+      Object.assign(found, params);
+    } else {
+      const id = `b-${widgetType}-${this.state.blockCounter++}`;
+      this.state.layout.push({ id, type: widgetType, flex: 1, ...params });
+    }
+    this.render();
   }
 }

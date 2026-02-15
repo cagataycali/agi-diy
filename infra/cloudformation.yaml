@@ -15,6 +15,15 @@ Conditions:
   HasHostedZone: !Not [!Equals [!Ref HostedZoneId, '']]
 
 Resources:
+  Certificate:
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName: !Ref BucketName
+      ValidationMethod: DNS
+      DomainValidationOptions:
+        - DomainName: !Ref BucketName
+          HostedZoneId: !If [HasHostedZone, !Ref HostedZoneId, !Ref 'AWS::NoValue']
+
   WebsiteBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -84,7 +93,11 @@ Resources:
             ResponseCode: 200
             ResponsePagePath: /dashboard.html
         ViewerCertificate:
-          CloudFrontDefaultCertificate: true
+          AcmCertificateArn: !Ref Certificate
+          SslSupportMethod: sni-only
+          MinimumProtocolVersion: TLSv1.2_2021
+        Aliases:
+          - !Ref BucketName
 
   DNSRecord:
     Type: AWS::Route53::RecordSet
@@ -98,6 +111,10 @@ Resources:
         HostedZoneId: Z2FDTNDATAQYW2
 
 Outputs:
+  CertificateArn:
+    Value: !Ref Certificate
+    Description: ACM certificate ARN
+  
   BucketName:
     Value: !Ref WebsiteBucket
     Description: S3 bucket name

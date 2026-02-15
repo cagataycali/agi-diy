@@ -789,6 +789,7 @@
                 <span class="brand">agi<span class="brand-dot">.</span>diy</span>
                 <div class="header-divider"></div>
                 <span id="sdkStatus">loading...</span>
+                <div style="display:flex;align-items:center;gap:4px;margin-left:12px" id="meshNavSlot"></div>
             </div>
             <div class="header-right">
                 <button class="header-btn" id="clearBtn">clear</button>
@@ -5964,6 +5965,11 @@ Example - create a tool that gets weather:
         checkForQueryParam();
     });
     </script>
+<script src="mesh-nav.js"></script>
 <script src="agent-mesh.js"></script>
+<script>
+// Populate mesh navigation after AgentMesh loads
+setTimeout(() => window.MeshNav?.populate('meshNavSlot'), 500);
+</script>
 </body>
 </html>

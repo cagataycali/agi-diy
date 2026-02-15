@@ -908,6 +908,7 @@
                     agi.diy
                     <span class="brand-sub">multi-agent</span>
                 </div>
+                <div style="display:flex;align-items:center;gap:4px;margin-top:12px;flex-wrap:wrap" id="meshNavSlot"></div>
             </div>
             <div class="sidebar-content">
                 <div class="sidebar-section">
@@ -4110,6 +4111,11 @@ ${getRingContext()}`;
     console.log('%c🦆 agi.diy Multi-Agent v1.0', 'font-size:16px;font-weight:bold;');
     console.log('%cSpawn agents, schedule tasks, let them coordinate via ring attention.', 'color:#888');
     </script>
+<script src="mesh-nav.js"></script>
 <script src="agent-mesh.js"></script>
+<script>
+// Populate mesh navigation after AgentMesh loads
+setTimeout(() => window.MeshNav?.populate('meshNavSlot'), 500);
+</script>
 </body>
 </html>

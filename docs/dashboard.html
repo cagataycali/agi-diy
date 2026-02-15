@@ -43,19 +43,28 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); heig
 .settings-btn:hover { color: var(--accent); }
 .wall-clock { font-size: 11px; color: var(--accent); font-variant-numeric: tabular-nums; }
 
+/* ── Complications ── */
+.complication { display: inline-flex; align-items: center; }
+.complication-btn { background: none; border: none; color: var(--text-dim); font-size: 11px; cursor: pointer; padding: 4px 8px; border-radius: 4px; transition: background .12s, color .12s; }
+.complication-btn:hover { background: var(--bg-hover); color: var(--text); }
+
 /* ── Widget Sidebar ── */
 .widget-sidebar { position: fixed; right: 0; top: 0; bottom: 36px; width: 48px; background: var(--bg-card); border-left: 1px solid var(--border); display: flex; flex-direction: column; gap: 2px; padding: 8px 4px; z-index: 60; transition: width .2s; overflow: hidden; }
 .widget-sidebar:hover { width: 160px; }
 .widget-sidebar.docked { width: 160px; }
 .widget-btn { background: none; border: none; color: var(--text-dim); cursor: pointer; padding: 8px; border-radius: 6px; display: flex; align-items: center; gap: 8px; white-space: nowrap; transition: background .12s; }
 .widget-btn:hover { background: var(--bg-hover); color: var(--text); }
-.widget-btn .icon { font-size: 16px; min-width: 20px; text-align: center; }
-.widget-btn .label { font-size: 11px; opacity: 0; transition: opacity .2s; }
-.widget-sidebar:hover .widget-btn .label, .widget-sidebar.docked .widget-btn .label { opacity: 1; }
+.widget-btn.pinned { color: var(--accent); }
+.widget-icon { font-size: 16px; min-width: 20px; text-align: center; }
+.widget-label { font-size: 11px; opacity: 0; transition: opacity .2s; }
+.widget-sidebar:hover .widget-label, .widget-sidebar.docked .widget-label { opacity: 1; }
 .sidebar-divider { height: 1px; background: var(--border); margin: 4px 0; }
 .sidebar-toggle { margin-top: auto; padding: 8px; text-align: center; cursor: pointer; font-size: 14px; opacity: 0; transition: opacity .2s; }
 .widget-sidebar:hover .sidebar-toggle, .widget-sidebar.docked .sidebar-toggle { opacity: 0.5; }
 .sidebar-toggle:hover { opacity: 1 !important; }
+.widget-more { position: relative; }
+.widget-more-menu { position: absolute; right: 100%; top: 0; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 4px; min-width: 160px; display: none; box-shadow: 0 4px 12px rgba(0,0,0,.3); }
+.widget-more:hover .widget-more-menu { display: block; }
 
 /* ── Agent List ── */
 .agent-list { display: flex; flex-direction: column; gap: 2px; padding: 6px; }
@@ -180,12 +189,11 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); heig
 <!-- Layout is built by JS -->
 <div id="root"></div>
 
-<!-- Widget Sidebar (populated by JS) -->
+<!-- Widget Sidebar (populated by complications) -->
 <div class="widget-sidebar" id="widgetSidebar"></div>
 
-<div class="add-bar" id="statusBar" style="justify-content:flex-start;padding-left:12px">
-  <div style="display:flex;align-items:center;gap:4px" id="meshNavSlot"></div>
-  <div class="wall-clock" id="wallClock" style="position:static;height:auto;margin-left:auto"></div>
+<div class="add-bar" id="statusBar" style="justify-content:flex-start;padding-left:12px;gap:8px">
+  <div id="statusBarComplications" style="display:flex;align-items:center;gap:4px;flex:1"></div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -221,33 +229,26 @@ import widgetRegistry from './widgets/index.js';
 import { Agent, tool, z, AnthropicModel, OpenAIModel, BedrockModel, McpClient, StreamableHTTPClientTransport, SlidingWindowConversationManager, NullConversationManager, SummarizingConversationManager } from './strands.js';
 import { WebLLMBrowserModel } from './webllm.js';
 import { LayoutManager } from './layout-manager.js';
+import { ComplicationRegistry } from './complication-registry.js';
+import { registerDefaultComplications } from './default-complications.js';
+import { createBrowserTools } from './browser-tools.js';
+import { loadCredentials, detectProvider as detectProviderUtil, createModel as createModelUtil, createConversationManager as createCMUtil } from './model-utils.js';
 import './erc8004-discovery.js?v=2';
 
-// ═══ CONVERSATION MANAGER FACTORY ═══
-function createConversationManager(config) {
-  const cmConfig = config || { type: 'sliding', windowSize: 40 };
-  
-  if (cmConfig.type === 'null') {
-    return new NullConversationManager();
-  } else if (cmConfig.type === 'summarizing') {
-    return new SummarizingConversationManager({
-      summaryRatio: cmConfig.summaryRatio || 0.3,
-      preserveRecentMessages: cmConfig.preserveRecentMessages || 10,
-      summarizationSystemPrompt: cmConfig.summarizationSystemPrompt
-    });
-  } else {
-    // Default: sliding window
-    return new SlidingWindowConversationManager({ 
-      windowSize: cmConfig.windowSize || 40 
-    });
-  }
-}
+// ═══ STATE & HELPERS ═══
+function notify(type) { widgetRegistry.emit(type); }
+function saveTasks() { try { localStorage.setItem('dashboard_tasks', JSON.stringify([...state.tasks.values()])); } catch(e) {} }
+function loadTasks() { try { const d = JSON.parse(localStorage.getItem('dashboard_tasks')); if (d?.length) { state.tasks.clear(); d.forEach(t => state.tasks.set(t.id, t)); return true; } } catch(e) {} return false; }
 
-// ═══ TASK TOOLS ═══
-let taskIdCounter = 100;
+// ═══ BROWSER TOOLS ═══
+const browserTools = createBrowserTools({ tool, z, state, notify, saveTasks });
+const { storageGetTool, storageSetTool } = browserTools.storage;
+const { createTaskTool, updateTaskTool, listTasksTool, claimTaskTool } = browserTools.tasks;
+const { listAgentsTool, delegateTaskTool } = browserTools.orchestration;
 
-const createTaskTool = tool({
-  name: 'create_task',
+const TASK_TOOLS = [createTaskTool, updateTaskTool, listTasksTool, claimTaskTool];
+const EXTRA_TOOLS = { storage_get: storageGetTool, storage_set: storageSetTool };
+const ORCHESTRATOR_TOOLS = [...TASK_TOOLS, listAgentsTool, delegateTaskTool];
   description: 'Create a new task. Use parentId to create sub-tasks for hierarchical decomposition.',
   inputSchema: z.object({
     title: z.string().describe('Task title'),
@@ -261,88 +262,8 @@ const createTaskTool = tool({
     state.tasks.set(id, task);
     if (input.parentId) { const p = state.tasks.get(input.parentId); if (p) p.children.push(id); }
     notify('tasks'); saveTasks();
-    return JSON.stringify({ id, title: task.title, status: task.status });
-  }
-});
-
-const updateTaskTool = tool({
-  name: 'update_task',
-  description: 'Update task status or add a worklog entry.',
-  inputSchema: z.object({
-    taskId: z.string().describe('Task ID'),
-    status: z.enum(['pending','in-progress','waiting','complete','failed']).optional(),
-    worklog: z.string().optional().describe('Worklog message to append'),
-    agentId: z.string().optional().describe('Reassign to agent'),
-  }),
-  callback: (input) => {
-    const t = state.tasks.get(input.taskId);
-    if (!t) return JSON.stringify({ error: 'Task not found' });
-    if (input.status) t.status = input.status;
-    if (input.agentId) t.agentId = input.agentId;
-    if (input.worklog) t.worklog.push({ ts: Date.now(), agentId: input.agentId || t.agentId || 'system', msg: input.worklog });
-    notify('tasks'); saveTasks();
-    return JSON.stringify({ id: t.id, status: t.status, agentId: t.agentId });
-  }
-});
-
-const listTasksTool = tool({
-  name: 'list_tasks',
-  description: 'List tasks, optionally filtered by status or agent.',
-  inputSchema: z.object({
-    status: z.string().optional(),
-    agentId: z.string().optional(),
-  }),
-  callback: (input) => {
-    let tasks = [...state.tasks.values()];
-    if (input.status) tasks = tasks.filter(t => t.status === input.status);
-    if (input.agentId) tasks = tasks.filter(t => t.agentId === input.agentId);
-    return JSON.stringify(tasks.map(t => ({ id: t.id, title: t.title, status: t.status, agentId: t.agentId, parentId: t.parentId })));
-  }
-});
-
-const claimTaskTool = tool({
-  name: 'claim_task',
-  description: 'Claim an unassigned task for an agent and set it to in-progress.',
-  inputSchema: z.object({
-    taskId: z.string(),
-    agentId: z.string(),
-  }),
-  callback: (input) => {
-    const t = state.tasks.get(input.taskId);
-    if (!t) return JSON.stringify({ error: 'Task not found' });
-    t.agentId = input.agentId; t.status = 'in-progress';
-    t.worklog.push({ ts: Date.now(), agentId: input.agentId, msg: `Claimed by ${input.agentId}` });
-    notify('tasks'); saveTasks();
-    return JSON.stringify({ id: t.id, status: t.status, agentId: t.agentId });
-  }
-});
-
-const TASK_TOOLS = [createTaskTool, updateTaskTool, listTasksTool, claimTaskTool];
-
-// ═══ STORAGE TOOLS (for agents that need localStorage access) ═══
-const storageGetTool = tool({
-  name: 'storage_get',
-  description: 'Read a value from localStorage by key.',
-  inputSchema: z.object({ key: z.string().describe('localStorage key') }),
-  callback: (input) => JSON.stringify({ key: input.key, value: localStorage.getItem(input.key) })
-});
-const storageSetTool = tool({
-  name: 'storage_set',
-  description: 'Write a value to localStorage by key.',
-  inputSchema: z.object({ key: z.string().describe('localStorage key'), value: z.string().describe('Value to store') }),
-  callback: (input) => { localStorage.setItem(input.key, input.value); return JSON.stringify({ key: input.key, stored: true }); }
-});
-const EXTRA_TOOLS = { storage_get: storageGetTool, storage_set: storageSetTool };
 
 // ═══ ORCHESTRATION ═══
-const listAgentsTool = tool({
-  name: 'list_agents',
-  description: 'List all available agents with their roles and status.',
-  inputSchema: z.object({}),
-  callback: () => JSON.stringify([...state.agents.values()].map(a => ({ id: a.id, model: a.model, role: a.role, status: a.status })))
-});
-
-const delegateTaskTool = tool({
   name: 'delegate_task',
   description: 'Delegate a task to an agent. The agent will work on it asynchronously and update the task status/worklog.',
   inputSchema: z.object({
@@ -514,13 +435,25 @@ window.widgetRegistry = widgetRegistry;
 
 const DEFAULT_MAX_TOKENS = 60000;
 
+// ── Complication Registry ──
+const complicationRegistry = new ComplicationRegistry();
+
 // ── Layout Manager ──
 const layoutManager = new LayoutManager({
   rootEl: document.getElementById('root'),
   widgetRegistry,
+  complicationRegistry,
   state,
+  statusbarEl: document.getElementById('statusBarComplications'),
+  sidebarEl: document.getElementById('widgetSidebar'),
   onLayoutChange: () => {}
 });
+
+// Register default complications
+registerDefaultComplications(complicationRegistry, { state, layoutManager, widgetRegistry });
+
+// Start wall clock updates
+setInterval(() => complicationRegistry.update('wall-clock', { state }), 1000);
 
 window.resetLayout = () => layoutManager.resetLayout(DEFAULT_LAYOUT);
 
@@ -571,31 +504,25 @@ window.deleteLayoutPreset = (name) => {
   }
 };
 
-
 // ── Credentials & Model Factory ──
-function loadCredentials() {
-  if (window.AgentMesh?.getCredentials) {
-    state.credentials = window.AgentMesh.getCredentials();
-  } else {
-    try { state.credentials = JSON.parse(localStorage.getItem('agi_shared_credentials') || '{}'); } catch(e) {}
-  }
-}
+state.credentials = loadCredentials();
 
 function createModel(provider, cfg = {}) {
-  const creds = state.credentials[provider] || {};
-  if (provider === 'anthropic') return new AnthropicModel({ apiKey: creds.apiKey, modelId: cfg.modelId || creds.model || 'claude-sonnet-4-20250514', maxTokens: cfg.maxTokens || DEFAULT_MAX_TOKENS });
-  if (provider === 'openai') return new OpenAIModel({ apiKey: creds.apiKey, modelId: cfg.modelId || creds.model || 'gpt-4o', maxTokens: cfg.maxTokens || DEFAULT_MAX_TOKENS });
-  if (provider === 'bedrock') return new BedrockModel({ apiKey: creds.apiKey, region: creds.region || 'us-east-1', modelId: cfg.modelId || creds.model || 'global.anthropic.claude-sonnet-4-20250514-v1:0', maxTokens: cfg.maxTokens || DEFAULT_MAX_TOKENS });
-  if (provider === 'webllm') return new WebLLMBrowserModel({ modelId: cfg.modelId || 'Qwen2.5-3B-Instruct-q4f16_1-MLC', maxTokens: cfg.maxTokens || DEFAULT_MAX_TOKENS });
-  throw new Error(`Unknown provider: ${provider}`);
+  return createModelUtil(provider, state.credentials, { 
+    AnthropicModel, OpenAIModel, BedrockModel, WebLLMBrowserModel 
+  }, cfg);
 }
 
 function detectProvider() {
-  const c = state.credentials;
-  if (c.bedrock?.apiKey) return 'bedrock';
-  if (c.anthropic?.apiKey) return 'anthropic';
-  if (c.openai?.apiKey) return 'openai';
-  return 'webllm';
+  return detectProviderUtil(state.credentials);
+}
+
+function createConversationManager(config) {
+  return createCMUtil(config, { 
+    SlidingWindowConversationManager, 
+    NullConversationManager, 
+    SummarizingConversationManager 
+  });
 }
 
 // ── One-time mesh sync at startup ──
@@ -859,55 +786,13 @@ async function loadDefaultAgents() {
 
 // All render functions moved to their respective widgets
 
-// Generic widget opener - data-driven
-function openWidget(widgetType, params = {}, options = {}) {
-  const { reuse = true, matchKey = null } = options;
-  
-  let found = null;
-  if (reuse) {
-    function search(nodes) {
-      for (const n of nodes) {
-        if (n.type === widgetType && (!matchKey || n[matchKey] === params[matchKey])) {
-          found = n;
-          return;
-        }
-        if (n.children) search(n.children);
-      }
-    }
-    search(state.layout);
-  }
-  
-  if (found) {
-    Object.assign(found, params);
-  } else {
-    const id = `b-${widgetType}-${state.blockCounter++}`;
-    state.layout.push({ id, type: widgetType, flex: 1, ...params });
-  }
-  layoutManager.render();
-}
-
-// Convenience wrappers
-window.openAgentChat = (agentId, scrollTs) => openWidget('agent-chat', { agentId, _scrollTs: scrollTs || 0 }, { matchKey: 'agentId' });
-window.openAgentDetail = (agentId) => openWidget('agent-detail', { agentId }, { reuse: true });
-window.openTaskDetail = (taskId) => openWidget('task-detail', { taskId }, { reuse: true });
-
-window.addBlock = (type) => openWidget(type, {}, { reuse: false });
-
-// All layout functions moved to layout-manager.js
+// Convenience wrappers for layoutManager.openWidget
+window.openAgentChat = (agentId, scrollTs) => layoutManager.openWidget('agent-chat', { agentId, _scrollTs: scrollTs || 0 }, { matchKey: 'agentId' });
+window.openAgentDetail = (agentId) => layoutManager.openWidget('agent-detail', { agentId }, { reuse: true });
+window.openTaskDetail = (taskId) => layoutManager.openWidget('task-detail', { taskId }, { reuse: true });
+window.addBlock = (type) => layoutManager.openWidget(type, {}, { reuse: false });
 
 // ═══ CHAT AGENT ═══
-
-// ═══ WALL CLOCK ═══
-function updateWallClock() {
-  if (!state.wallClockStart) return;
-  const s = Math.floor((Date.now() - state.wallClockStart) / 1000);
-  document.getElementById('wallClock').textContent = `⏱ ${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
-}
-
-// ═══ MESH NAV IN STATUS BAR ═══
-function populateMeshNav() {
-  window.MeshNav?.populate('meshNavSlot');
-}
 
 // ═══ INIT ═══
 
@@ -951,8 +836,6 @@ if (window.AgentMesh?.erc8004) {
     if (window.logERC8004) window.logERC8004('error', 'discovery', 'Discovery failed', e.message);
   });
 }
-setInterval(updateWallClock, 1000);
-updateWallClock();
 
 // Lightweight elapsed time updater (no DOM rebuild)
 setInterval(() => {
@@ -1011,14 +894,65 @@ function populateWidgetSidebar() {
   const sidebar = document.getElementById('widgetSidebar');
   const widgets = Array.from(widgetRegistry.widgets.entries());
   
-  widgets.forEach(([id, widget]) => {
+  // Load pinned widgets from localStorage
+  const pinned = new Set(JSON.parse(localStorage.getItem('pinnedWidgets') || '[]'));
+  
+  // Sort: pinned first, then alphabetically
+  const sorted = widgets.sort(([idA, wA], [idB, wB]) => {
+    const aPin = pinned.has(idA) ? 0 : 1;
+    const bPin = pinned.has(idB) ? 0 : 1;
+    if (aPin !== bPin) return aPin - bPin;
+    return (wA.meta.title || idA).localeCompare(wB.meta.title || idB);
+  });
+  
+  const visible = sorted.slice(0, 10);
+  const overflow = sorted.slice(10);
+  
+  // Render visible widgets
+  visible.forEach(([id, widget]) => {
     const btn = document.createElement('button');
-    btn.className = 'widget-btn';
+    btn.className = 'widget-btn' + (pinned.has(id) ? ' pinned' : '');
     btn.title = widget.meta.title || id;
     btn.onclick = () => addBlock(id);
+    btn.oncontextmenu = (e) => {
+      e.preventDefault();
+      if (pinned.has(id)) pinned.delete(id); else pinned.add(id);
+      localStorage.setItem('pinnedWidgets', JSON.stringify([...pinned]));
+      sidebar.innerHTML = '';
+      populateWidgetSidebar();
+    };
     btn.innerHTML = `<span class="icon">${widget.meta.icon}</span><span class="label">${widget.meta.title}</span>`;
     sidebar.appendChild(btn);
   });
+  
+  // Overflow menu
+  if (overflow.length) {
+    const more = document.createElement('div');
+    more.className = 'widget-more';
+    const moreBtn = document.createElement('button');
+    moreBtn.className = 'widget-btn';
+    moreBtn.title = 'More widgets';
+    moreBtn.innerHTML = `<span class="icon">⋯</span><span class="label">More</span>`;
+    const menu = document.createElement('div');
+    menu.className = 'widget-more-menu';
+    overflow.forEach(([id, widget]) => {
+      const btn = document.createElement('button');
+      btn.className = 'widget-btn' + (pinned.has(id) ? ' pinned' : '');
+      btn.onclick = () => addBlock(id);
+      btn.oncontextmenu = (e) => {
+        e.preventDefault();
+        if (pinned.has(id)) pinned.delete(id); else pinned.add(id);
+        localStorage.setItem('pinnedWidgets', JSON.stringify([...pinned]));
+        sidebar.innerHTML = '';
+        populateWidgetSidebar();
+      };
+      btn.innerHTML = `<span class="icon">${widget.meta.icon}</span><span class="label">${widget.meta.title}</span>`;
+      menu.appendChild(btn);
+    });
+    more.appendChild(moreBtn);
+    more.appendChild(menu);
+    sidebar.appendChild(more);
+  }
   
   // Divider
   const divider = document.createElement('div');
