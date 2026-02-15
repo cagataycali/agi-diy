@@ -1,4 +1,4 @@
-import { Widget } from './widget-interface.js';
+import { Widget } from './widget-interface.js'
 
 /**
  * Running Agents Widget
@@ -14,16 +14,16 @@ import { Widget } from './widget-interface.js';
 export default new Widget({
   id: 'running-agents',
   meta: { icon: '🏃', title: 'Running Agents' },
-  
-  render(container, config) {
-    this.container = container;
+
+  render (container, config) {
+    this.container = container
     // Get running agents from both mesh state and dashboard state
-    const meshAgents = window.S?.agents || new Map();
-    const dashAgents = window.dashboardState?.agents || new Map();
-    
+    const meshAgents = window.S?.agents || new Map()
+    const dashAgents = window.dashboardState?.agents || new Map()
+
     // Merge running instances (prefer mesh state as it has runtime info)
-    const runningAgents = new Map();
-    
+    const runningAgents = new Map()
+
     // Add mesh agents (these are actual running instances)
     for (const [id, agent] of meshAgents) {
       if (!agent.is_self) { // Skip self-reference
@@ -38,13 +38,13 @@ export default new Widget({
           description: agent.description,
           toolCount: agent.tool_count || agent.tools?.length,
           source: 'mesh'
-        });
+        })
       }
     }
-    
-    // Add dashboard agents that have active instances
+
+    // Add dashboard agents that have active instances or are remote
     for (const [id, agent] of dashAgents) {
-      if ((agent.instances || 0) > 0 && !runningAgents.has(id)) {
+      if (((agent.instances || 0) > 0 || agent.remote) && !runningAgents.has(id)) {
         runningAgents.set(id, {
           id,
           name: agent.id,
@@ -55,10 +55,10 @@ export default new Widget({
           role: agent.role,
           instances: agent.instances,
           source: 'dashboard'
-        });
+        })
       }
     }
-    
+
     if (runningAgents.size === 0) {
       container.innerHTML = `
         <div style="padding:24px;text-align:center;color:var(--text-muted)">
@@ -66,18 +66,18 @@ export default new Widget({
           <div style="font-size:12px">No running agents</div>
           <div style="font-size:10px;margin-top:4px">Launch agents from Available Agents</div>
         </div>
-      `;
-      return;
+      `
+      return
     }
-    
+
     // Group by type
-    const groups = {};
+    const groups = {}
     for (const agent of runningAgents.values()) {
-      const type = agent.type || 'unknown';
-      if (!groups[type]) groups[type] = [];
-      groups[type].push(agent);
+      const type = agent.type || 'unknown'
+      if (!groups[type]) groups[type] = []
+      groups[type].push(agent)
     }
-    
+
     const typeIcons = {
       local: '🖥️',
       virtual: '👻',
@@ -87,10 +87,10 @@ export default new Widget({
       zenoh: '🕸️',
       orchestrator: '🎯',
       launched: '🚀'
-    };
-    
-    let html = '<div class="running-agents-list">';
-    
+    }
+
+    let html = '<div class="running-agents-list">'
+
     for (const [type, agents] of Object.entries(groups)) {
       html += `
         <div class="agent-group">
@@ -99,10 +99,10 @@ export default new Widget({
             <span class="group-title">${type}</span>
             <span class="group-count">${agents.length}</span>
           </div>
-      `;
-      
+      `
+
       for (const agent of agents) {
-        const statusClass = agent.status === 'streaming' ? 'pulse' : '';
+        const statusClass = agent.status === 'streaming' ? 'pulse' : ''
         html += `
           <div class="agent-card" data-agent-id="${agent.id}" data-source="${agent.source}">
             <div class="agent-dot ${statusClass}" style="background:${agent.color || 'var(--accent)'}"></div>
@@ -118,28 +118,28 @@ export default new Widget({
             </div>
             <div class="agent-status ${agent.status}">${agent.status}</div>
           </div>
-        `;
+        `
       }
-      
-      html += '</div>';
+
+      html += '</div>'
     }
-    
-    html += '</div>';
-    
-    container.innerHTML = html;
-    
+
+    html += '</div>'
+
+    container.innerHTML = html
+
     // Add click handlers
     container.querySelectorAll('.agent-card').forEach(card => {
       card.addEventListener('click', () => {
-        const agentId = card.dataset.agentId;
-        const source = card.dataset.source;
-        
+        const agentId = card.dataset.agentId
+        const source = card.dataset.source
+
         if (source === 'mesh' && window.selectAgent) {
-          window.selectAgent(agentId);
+          window.selectAgent(agentId)
         } else if (source === 'dashboard' && window.openAgentDetail) {
-          window.openAgentDetail(agentId);
+          window.openAgentDetail(agentId)
         }
-      });
-    });
+      })
+    })
   }
-});
+})
