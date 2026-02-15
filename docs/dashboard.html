@@ -191,6 +191,25 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); heig
 
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="agent-mesh.js?v=2"></script>
+<script>
+// Initialize StandardEventEmitter early (minimal inline version)
+window.standardEvents = {
+  listeners: new Map(),
+  validateEvents: true,
+  on(eventType, handler) {
+    if (!this.listeners.has(eventType)) {
+      this.listeners.set(eventType, []);
+    }
+    this.listeners.get(eventType).push(handler);
+  },
+  emit(eventType, payload) {
+    const handlers = this.listeners.get(eventType);
+    if (handlers) {
+      handlers.forEach(h => h(payload));
+    }
+  }
+};
+</script>
 <script src="agent-mesh-settings.js?v=2"></script>
 <script src="agentcore-relay.js?v=2"></script>
 <script>
