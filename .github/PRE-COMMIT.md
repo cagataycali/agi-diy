@@ -14,7 +14,7 @@ pre-commit install
 
 ## What Gets Checked
 
-### Standard Hooks
+### Standard Hooks (pre-commit/pre-commit-hooks)
 - **trailing-whitespace**: Remove trailing whitespace
 - **end-of-file-fixer**: Ensure files end with newline
 - **check-yaml**: Validate YAML syntax
@@ -22,15 +22,39 @@ pre-commit install
 - **check-added-large-files**: Prevent large files (>1MB)
 - **detect-private-key**: Detect private keys
 - **detect-aws-credentials**: Detect AWS credentials
+- **check-merge-conflict**: Detect merge conflict markers
+- **check-case-conflict**: Detect case conflicts in filenames
+- **check-symlinks**: Detect broken symlinks
+- **check-executables-have-shebangs**: Ensure executables have shebangs
+- **check-shebang-scripts-are-executable**: Ensure scripts with shebangs are executable
+- **mixed-line-ending**: Detect mixed line endings
+- **no-commit-to-branch**: Prevent direct commits to main
 
-### Secrets Detection
-- **detect-secrets**: Scans for secrets using entropy and pattern matching
+### Secrets Detection (Yelp/detect-secrets)
+- Scans for secrets using entropy and pattern matching
 - Baseline file: `.secrets.baseline`
 
-### CloudFormation Linting
-- **cfn-lint**: Validates CloudFormation templates
+### CloudFormation Linting (aws-cloudformation/cfn-lint)
+- Validates CloudFormation templates
 - Checks for best practices and common mistakes
 - Ensures parameters are used instead of hardcoded values
+
+### GitHub Actions Linting (rhysd/actionlint)
+- Validates GitHub Actions workflow syntax
+- Checks for common mistakes in workflows
+- Validates job dependencies and matrix configurations
+
+### JSON Schema Validation (python-jsonschema/check-jsonschema)
+- **check-github-workflows**: Validate GitHub workflow files against schema
+- **check-github-actions**: Validate GitHub action metadata
+
+### JavaScript Linting (standard/standard)
+- Enforces JavaScript Standard Style
+- No configuration needed
+- Automatically fixes many issues
+
+### Dependency Sync (pre-commit/sync-pre-commit-deps)
+- Keeps pre-commit hook versions in sync with package.json
 
 ## Running Manually
 
