@@ -29,7 +29,34 @@ jobs:
             --delete \
             --cache-control "public, max-age=3600" \
             --exclude "*.md" \
-            --content-type-by-extension
+            --content-type "text/html" \
+            --exclude "*" \
+            --include "*.html"
+          
+          aws s3 sync docs/ s3://$S3_BUCKET/ \
+            --exclude "*" \
+            --include "*.js" \
+            --content-type "application/javascript" \
+            --cache-control "public, max-age=3600"
+          
+          aws s3 sync docs/ s3://$S3_BUCKET/ \
+            --exclude "*" \
+            --include "*.css" \
+            --content-type "text/css" \
+            --cache-control "public, max-age=3600"
+          
+          aws s3 sync docs/ s3://$S3_BUCKET/ \
+            --exclude "*" \
+            --include "*.json" \
+            --content-type "application/json" \
+            --cache-control "public, max-age=3600"
+          
+          aws s3 sync docs/ s3://$S3_BUCKET/ \
+            --exclude "*" \
+            --include "*.png" \
+            --include "*.jpg" \
+            --include "*.svg" \
+            --cache-control "public, max-age=3600"
       
       - name: Set immutable cache for assets
         env:
