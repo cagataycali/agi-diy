@@ -1,10 +1,18 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'S3 static website hosting for agi.diy (CloudFront domain only)'
+Description: 'S3 static website hosting for AgentMeshStudio'
 
 Parameters:
   BucketName:
     Type: String
     Description: S3 bucket name
+  
+  HostedZoneId:
+    Type: String
+    Description: Route53 Hosted Zone ID
+    Default: ''
+
+Conditions:
+  HasHostedZone: !Not [!Equals [!Ref HostedZoneId, '']]
 
 Resources:
   WebsiteBucket:
@@ -77,6 +85,17 @@ Resources:
             ResponsePagePath: /dashboard.html
         ViewerCertificate:
           CloudFrontDefaultCertificate: true
+
+  DNSRecord:
+    Type: AWS::Route53::RecordSet
+    Condition: HasHostedZone
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref BucketName
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt CloudFrontDistribution.DomainName
+        HostedZoneId: Z2FDTNDATAQYW2
 
 Outputs:
   BucketName:
