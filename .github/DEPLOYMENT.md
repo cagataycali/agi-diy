@@ -70,10 +70,20 @@ gh run watch --repo <org>/<repo>
 
 ## Security Benefits
 
-✅ **No long-lived credentials** - OIDC tokens expire after 1 hour
+✅ **No long-lived credentials** - OIDC tokens are generated fresh for each workflow run and expire after 1 hour
 ✅ **Scoped to repository** - Only your repo can assume the role
 ✅ **Least privilege** - Role only has S3 and CloudFront permissions
 ✅ **Auditable** - CloudTrail logs all actions
+
+### How OIDC Works
+
+Each time the workflow runs:
+1. GitHub generates a new OIDC token (valid 1 hour)
+2. Workflow exchanges token for temporary AWS credentials
+3. Credentials are used for deployment
+4. Credentials expire when workflow ends
+
+**No manual rotation needed** - Fresh tokens are generated automatically for every deployment.
 
 ## Troubleshooting
 
