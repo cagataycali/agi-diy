@@ -236,7 +236,6 @@ import { loadCredentials, detectProvider as detectProviderUtil, createModel as c
 import './erc8004-discovery.js?v=2';
 
 // ═══ STATE & HELPERS ═══
-function notify(type) { widgetRegistry.emit(type); }
 function saveTasks() { try { localStorage.setItem('dashboard_tasks', JSON.stringify([...state.tasks.values()])); } catch(e) {} }
 function loadTasks() { try { const d = JSON.parse(localStorage.getItem('dashboard_tasks')); if (d?.length) { state.tasks.clear(); d.forEach(t => state.tasks.set(t.id, t)); return true; } } catch(e) {} return false; }
 
@@ -508,23 +507,6 @@ function initialMeshSync() {
 }
 
 // ── Granular DOM Updates (no innerHTML replacement) ──
-function notify(type) {
-  widgetRegistry.emit(type, { type });
-}
-
-function notifyAgentStatus(agentId) {
-  widgetRegistry.emit('agent-status', { agentId });
-}
-
-function notifyNewAgent(agent) {
-  widgetRegistry.emit('new-agent', agent);
-}
-
-function notifyRingEntry(entry) {
-  widgetRegistry.emit('ring-entry', entry);
-  function findCfg(nodes) { for (const n of nodes) { if (n.type === 'agent-chat' && n.agentId === entry.agentId) { const el = document.querySelector(`#${n.id} .block-body`); if (el) widgetRegistry.render('agent-chat', el, n); } if (n.children) findCfg(n.children); } }
-  findCfg(state.layout);
-}
 
 function agentCardHTML(a) {
   const instances = a.instances || 1;
