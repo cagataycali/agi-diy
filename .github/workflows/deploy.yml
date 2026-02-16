@@ -1,0 +1,82 @@
+name: Deploy to S3
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Sync to S3
+        env:
+          S3_BUCKET: ${{ vars.S3_BUCKET }}
+        run: |
+          # Sync HTML files (short cache)
+          aws s3 sync docs/ s3://"$S3_BUCKET"/ \
+            --delete \
+            --exclude "*" \
+            --include "*.html" \
+            --content-type "text/html" \
+            --cache-control "public, max-age=3600"
+
+          # Sync JavaScript files (immutable)
+          aws s3 sync docs/ s3://"$S3_BUCKET"/ \
+            --exclude "*" \
+            --include "*.js" \
+            --content-type "application/javascript" \
+            --cache-control "public, max-age=31536000, immutable"
+
+          # Sync CSS files (immutable)
+          aws s3 sync docs/ s3://"$S3_BUCKET"/ \
+            --exclude "*" \
+            --include "*.css" \
+            --content-type "text/css" \
+            --cache-control "public, max-age=31536000, immutable"
+
+          # Sync JSON files (short cache)
+          aws s3 sync docs/ s3://"$S3_BUCKET"/ \
+            --exclude "*" \
+            --include "*.json" \
+            --content-type "application/json" \
+            --cache-control "public, max-age=3600"
+
+          # Sync images (immutable)
+          aws s3 sync docs/ s3://"$S3_BUCKET"/ \
+            --exclude "*" \
+            --include "*.png" \
+            --include "*.jpg" \
+            --include "*.svg" \
+            --cache-control "public, max-age=31536000, immutable"
+
+          # Sync other files
+          aws s3 sync docs/ s3://"$S3_BUCKET"/ \
+            --exclude "*.html" \
+            --exclude "*.js" \
+            --exclude "*.css" \
+            --exclude "*.json" \
+            --exclude "*.png" \
+            --exclude "*.jpg" \
+            --exclude "*.svg" \
+            --exclude "*.md" \
+            --cache-control "public, max-age=3600"
+
+      - name: Invalidate CloudFront
+        if: vars.CLOUDFRONT_DISTRIBUTION_ID != ''
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id "${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}" \
+            --paths "/*"

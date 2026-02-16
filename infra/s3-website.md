@@ -1,0 +1,137 @@
+# S3 Static Website Hosting for agi.diy
+
+This guide walks through hosting the agi.diy dashboard on S3 with CloudFront and updating the DNS.
+
+## Prerequisites
+
+- AWS CLI configured with playground1 account credentials
+- Access to Route53 for `sauhsoj.people.aws.dev` zone
+
+## Step 1: Create S3 Bucket with CloudFormation
+
+Create `infra/s3-website.yaml`:
+
+```yaml
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'S3 static website hosting for agi.diy'
+
+Parameters:
+  DomainName:
+    Type: String
+    Description: Domain name for the website (e.g., example.com)
+
+Resources:
+  WebsiteBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${DomainName}'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+      WebsiteConfiguration:
+        IndexDocument: dashboard.html
+        ErrorDocument: dashboard.html
+      CorsConfiguration:
+        CorsRules:
+          - AllowedOrigins: ['*']
+            AllowedMethods: [GET, HEAD]
+            AllowedHeaders: ['*']
+            MaxAge: 3600
+
+  WebsiteBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref WebsiteBucket
+      PolicyDocument:
+        Statement:
+          - Sid: PublicReadGetObject
+            Effect: Allow
+            Principal: '*'
+            Action: s3:GetObject
+            Resource: !Sub '${WebsiteBucket.Arn}/*'
+
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: !Sub 'CDN for ${DomainName}'
+        Aliases:
+          - !Ref DomainName
+        DefaultRootObject: dashboard.html
+        Origins:
+          - Id: S3Origin
+            DomainName: !GetAtt WebsiteBucket.RegionalDomainName
+            S3OriginConfig:
+              OriginAccessIdentity: ''
+            CustomOriginConfig:
+              HTTPPort: 80
+              HTTPSPort: 443
+              OriginProtocolPolicy: http-only
+        DefaultCacheBehavior:
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD, OPTIONS]
+          CachedMethods: [GET, HEAD]
+          Compress: true
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: none
+          MinTTL: 0
+          DefaultTTL: 86400
+          MaxTTL: 31536000
+        CustomErrorResponses:
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /dashboard.html
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /dashboard.html
+        ViewerCertificate:
+          AcmCertificateArn: !Ref Certificate
+          SslSupportMethod: sni-only
+          MinimumProtocolVersion: TLSv1.2_2021
+
+  Certificate:
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName: !Ref DomainName
+      ValidationMethod: DNS
+      DomainValidationOptions:
+        - DomainName: !Ref DomainName
+          HostedZoneId: !Ref HostedZoneId
+
+  DNSRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref DomainName
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt CloudFrontDistribution.DomainName
+        HostedZoneId: Z2FDTNDATAQYW2  # CloudFront hosted zone ID (constant)
+
+Parameters:
+  HostedZoneId:
+    Type: String
+    Description: Route53 Hosted Zone ID for sauhsoj.people.aws.dev
+
+Outputs:
+  BucketName:
+    Value: !Ref WebsiteBucket
+    Description: S3 bucket name
+
+  WebsiteURL:
+    Value: !GetAtt WebsiteBucket.WebsiteURL
+    Description: S3 website endpoint
+
+  CloudFrontURL:
+    Value: !GetAtt CloudFrontDistribution.DomainName
+    Description: CloudFront distribution domain
+
+  DistributionId:
+    Value: !Ref CloudFrontDistribution
+    Description: CloudFront distribution ID for cache invalidation

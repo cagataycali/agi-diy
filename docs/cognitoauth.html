@@ -1,0 +1,61 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>Authenticating…</title></head><body>
+<p id="s">Authenticating…</p>
+<script>
+(async () => {
+  const h = new URLSearchParams(location.hash.slice(1));
+  const q = new URLSearchParams(location.search);
+  const idToken = h.get('id_token');
+  const isPopup = window.opener && !window.opener.closed;
+  const ret = q.get('state') || h.get('state') || './dashboard.html';
+  
+  if (!idToken) { document.getElementById('s').textContent = 'No token received'; return; }
+
+  localStorage.setItem('cognito_id_token', idToken);
+  if (h.get('access_token')) localStorage.setItem('cognito_access_token', h.get('access_token'));
+
+  // Exchange id_token for AWS credentials via Identity Pool (DO NOT STORE)
+  const poolId = localStorage.getItem('identity_pool_id');
+  const provider = localStorage.getItem('cognito_provider_name');
+  if (poolId && provider) {
+    document.getElementById('s').textContent = 'Exchanging credentials…';
+    try {
+      const region = poolId.split(':')[0];
+      const base = `https://cognito-identity.${region}.amazonaws.com/`;
+      const hdrs = { 'Content-Type': 'application/x-amz-json-1.1' };
+      const logins = { [provider]: idToken };
+      const { IdentityId } = await (await fetch(base, { method: 'POST',
+        headers: { ...hdrs, 'X-Amz-Target': 'AWSCognitoIdentityService.GetId' },
+        body: JSON.stringify({ IdentityPoolId: poolId, Logins: logins }) })).json();
+      if (IdentityId) {
+        const { Credentials } = await (await fetch(base, { method: 'POST',
+          headers: { ...hdrs, 'X-Amz-Target': 'AWSCognitoIdentityService.GetCredentialsForIdentity' },
+          body: JSON.stringify({ IdentityId, Logins: logins }) })).json();
+        if (Credentials) {
+          // Update config with idToken and cognito info ONLY (no credentials)
+          const key = 'mesh_agentcore_config';
+          const cfg = JSON.parse(localStorage.getItem(key) || '{}');
+          cfg.idToken = idToken;
+          // DO NOT store credentials - they will be vended at runtime
+          if (!cfg.cognito) cfg.cognito = {};
+          cfg.cognito.identityPoolId = poolId;
+          cfg.cognito.providerName = provider;
+          const dom = localStorage.getItem('cognito_domain'); if (dom) cfg.cognito.domain = dom;
+          const cid = localStorage.getItem('cognito_client_id'); if (cid) cfg.cognito.clientId = cid;
+          if (!cfg.arn) { const a = localStorage.getItem('agentcore_arn'); if (a) cfg.arn = a; }
+          if (!cfg.region && cfg.arn) cfg.region = (cfg.arn.match(/:([a-z0-9-]+):\d{12}:/)||[])[1] || 'us-east-1';
+          localStorage.setItem(key, JSON.stringify(cfg));
+          console.log('[CognitoAuth] Stored idToken and config (credentials will be vended at runtime)');
+        }
+      }
+    } catch (e) { console.warn('Credential exchange failed:', e); }
+  }
+  
+  // Check if opened as popup
+  if (isPopup) {
+    document.getElementById('s').textContent = 'Authentication complete. Closing...';
+    setTimeout(() => window.close(), 1000);
+  } else {
+    location.replace(ret);
+  }
+})();
+</script></body></html>

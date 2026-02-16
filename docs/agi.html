@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>agi.diy — multi-agent</title>
@@ -45,7 +48,7 @@
 
         /* Layout */
         .app { display: flex; height: 100vh; }
-        
+
         /* Sidebar */
         .sidebar {
             width: 260px;
@@ -88,7 +91,7 @@
             margin-bottom: 12px;
             font-weight: 600;
         }
-        
+
         /* Agent Cards */
         .agent-list { display: flex; flex-direction: column; gap: 8px; }
         .agent-card {
@@ -165,14 +168,14 @@
         .agent-card:hover .agent-edit { opacity: 1; }
         .agent-card.active .agent-edit { opacity: 1; } /* Show on active/selected */
         .agent-edit:hover { color: var(--text); }
-        
+
         /* Mobile: always show edit/kill buttons */
         @media (max-width: 900px) {
             .agent-kill, .agent-edit { opacity: 0.7; }
             .agent-card.active .agent-kill,
             .agent-card.active .agent-edit { opacity: 1; }
         }
-        
+
         /* Tools Grid */
         .tools-grid {
             display: grid;
@@ -209,7 +212,7 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
-        
+
         /* Spawn Button */
         .spawn-btn {
             width: 100%;
@@ -229,7 +232,7 @@
             border-color: rgba(255,255,255,0.2);
             color: var(--text-secondary);
         }
-        
+
         /* Scheduled Tasks */
         .schedule-item {
             background: var(--glass);
@@ -256,7 +259,7 @@
             font-size: 14px;
         }
         .schedule-delete:hover { color: rgba(255,100,100,1); }
-        
+
         /* Main Area */
         .main {
             flex: 1;
@@ -264,7 +267,7 @@
             flex-direction: column;
             min-width: 0;
         }
-        
+
         /* Header */
         .header {
             padding: 16px 24px;
@@ -309,7 +312,7 @@
         }
         .header-btn:hover { background: var(--glass-hover); color: var(--text); }
         .header-btn:active { transform: scale(0.95); }
-        
+
         /* Messages */
         .messages-container {
             flex: 1;
@@ -363,7 +366,7 @@
             color: var(--text-secondary);
             font-size: 13px;
         }
-        
+
         /* Tool Block */
         .tool-block {
             background: var(--glass);
@@ -401,7 +404,7 @@
             white-space: pre-wrap;
             color: var(--text-tertiary);
         }
-        
+
         /* Dynamic UI */
         .dynamic-ui {
             background: var(--glass);
@@ -410,7 +413,7 @@
             padding: 20px;
             margin: 20px 0;
         }
-        
+
         /* Markdown */
         .markdown-content { padding: 4px 8px; }
         .markdown-content h1,.markdown-content h2,.markdown-content h3 { margin:20px 0 10px; font-weight:600; }
@@ -421,7 +424,7 @@
         .markdown-content pre { background:rgba(0,0,0,0.4); padding:14px; border-radius:8px; overflow-x:auto; margin:14px 0; }
         .markdown-content pre code { background:none; padding:0; }
         .markdown-content a { color:var(--text); text-decoration:underline; text-underline-offset:3px; }
-        
+
         /* Input */
         .input-container {
             padding: 16px 24px;
@@ -485,14 +488,14 @@
         .send-btn:hover { background: var(--glass-hover); color: var(--text); }
         .send-btn:active { transform: scale(0.92); }
         .send-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-        
+
         /* Thinking */
         .thinking { display:flex; gap:6px; padding:8px 0; }
         .thinking-dot { width:6px; height:6px; border-radius:50%; background:var(--text-tertiary); animation:bounce 1.4s infinite ease-in-out both; }
         .thinking-dot:nth-child(1) { animation-delay:-0.32s; }
         .thinking-dot:nth-child(2) { animation-delay:-0.16s; }
         @keyframes bounce { 0%,80%,100%{transform:scale(0);opacity:0.3} 40%{transform:scale(1);opacity:1} }
-        
+
         /* Modal */
         .modal {
             position: fixed;
@@ -568,14 +571,14 @@
             -webkit-appearance: none;
             appearance: none;
         }
-        .form-input:focus { 
-            outline: none; 
+        .form-input:focus {
+            outline: none;
             border-color: rgba(255,255,255,0.2);
         }
-        textarea.form-input { 
-            min-height: 80px; 
-            resize: vertical; 
-            font-family: inherit; 
+        textarea.form-input {
+            min-height: 80px;
+            resize: vertical;
+            font-family: inherit;
         }
         .form-hint { font-size: 11px; color: var(--text-tertiary); margin-top: 6px; }
         .btn {
@@ -594,7 +597,7 @@
         .btn-primary { background: var(--text); color: var(--bg); border-color: var(--text); }
         .btn-primary:hover { background: rgba(255,255,255,0.85); }
         .btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
-        
+
         /* Tabs */
         .tabs {
             display: flex;
@@ -627,7 +630,7 @@
         .tab.active { background: var(--bg); color: var(--text); }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
-        
+
         /* Toast */
         .toast {
             position: fixed;
@@ -645,7 +648,7 @@
             z-index: 300;
         }
         .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
-        
+
         /* Ring Context Panel */
         .ring-panel {
             width: 240px;
@@ -747,12 +750,12 @@
             -webkit-box-orient: vertical;
             overflow: hidden;
         }
-        
+
         /* Mobile */
         @media (max-width: 900px) {
             .sidebar { display: none; }
             .ring-panel { display: none; }
-            .header { 
+            .header {
                 padding: 10px 16px;
                 padding-top: calc(10px + env(safe-area-inset-top));
                 flex-wrap: wrap;
@@ -776,8 +779,8 @@
             .current-agent-model {
                 font-size: 10px;
             }
-            .messages-container { 
-                padding: 12px; 
+            .messages-container {
+                padding: 12px;
             }
             .messages-inner {
                 max-width: 100%;
@@ -788,15 +791,15 @@
             .message-content {
                 font-size: 14px;
             }
-            .input-container { 
+            .input-container {
                 padding: 10px 12px;
                 padding-bottom: calc(10px + env(safe-area-inset-bottom));
             }
             .input-wrapper {
                 gap: 8px;
             }
-            .target-select { 
-                min-width: 70px; 
+            .target-select {
+                min-width: 70px;
                 font-size: 12px;
                 padding: 0 8px;
             }
@@ -836,7 +839,7 @@
                 grid-template-columns: 1fr;
             }
         }
-        
+
         /* Extra small mobile */
         @media (max-width: 480px) {
             .header-right {
@@ -850,7 +853,7 @@
                 /* Hide middle buttons on very small screens */
             }
         }
-        
+
         /* Mobile menu */
         .mobile-menu-btn {
             display: none;
@@ -905,6 +908,7 @@
                     agi.diy
                     <span class="brand-sub">multi-agent</span>
                 </div>
+                <div style="display:flex;align-items:center;gap:4px;margin-top:12px;flex-wrap:wrap" id="meshNavSlot"></div>
             </div>
             <div class="sidebar-content">
                 <div class="sidebar-section">
@@ -922,7 +926,7 @@
                 </div>
             </div>
         </aside>
-        
+
         <!-- Main -->
         <main class="main">
             <header class="header">
@@ -939,7 +943,7 @@
                     <button class="header-btn" onclick="openSettingsModal()">⚙️ Settings</button>
                 </div>
             </header>
-            
+
             <div class="messages-container" id="messagesContainer">
                 <div class="messages-inner" id="messagesInner">
                     <div class="message system">
@@ -956,7 +960,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="input-container">
                 <div class="input-wrapper">
                     <select class="target-select" id="targetAgent">
@@ -972,7 +976,7 @@
                 </div>
             </div>
         </main>
-        
+
         <!-- Ring Context Panel -->
         <aside class="ring-panel">
             <div class="ring-header">
@@ -989,7 +993,7 @@
             </div>
         </aside>
     </div>
-    
+
     <!-- Mobile Sidebar -->
     <div class="mobile-sidebar" id="mobileSidebar">
         <button class="mobile-sidebar-close" onclick="toggleMobileSidebar()">×</button>
@@ -1001,7 +1005,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Spawn Modal -->
     <div class="modal" id="spawnModal">
         <div class="modal-content" style="max-width:600px;">
@@ -1020,6 +1024,8 @@
                         <option value="bedrock">Amazon Bedrock</option>
                         <option value="anthropic">Anthropic (Claude)</option>
                         <option value="openai">OpenAI (GPT)</option>
+                        <option value="openai_compatible">OpenAI-Compatible (Ollama, Groq, etc.)</option>
+                        <option value="webllm">WebLLM (Local, Offline)</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -1051,7 +1057,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Settings Modal -->
     <div class="modal" id="settingsModal">
         <div class="modal-content">
@@ -1067,7 +1073,7 @@
                     <button class="tab" onclick="showTab(event,'sync')">Sync</button>
                     <button class="tab" onclick="showTab(event,'export')">Export</button>
                 </div>
-                
+
                 <div class="tab-content active" id="tab-credentials">
                     <div class="form-group">
                         <label class="form-label">Anthropic API Key</label>
@@ -1090,9 +1096,29 @@
                             <option value="eu-west-1">eu-west-1</option>
                         </select>
                     </div>
-                    <button class="btn btn-primary" onclick="saveCredentials()">Save Credentials</button>
+                    <button type="button" class="btn btn-primary" onclick="saveCredentials()">Save Credentials</button>
+                    <hr style="border-color:rgba(255,255,255,0.1);margin:16px 0">
+                    <div class="form-group">
+                        <label class="form-label">OpenAI-Compatible Endpoint (Ollama, LM Studio, Groq, etc.)</label>
+                        <input type="text" class="form-input" id="compatBaseUrl" placeholder="http://localhost:11434/v1">
+                        <input type="password" class="form-input" id="compatKey" placeholder="API key (optional)" style="margin-top:4px">
+                        <input type="text" class="form-input" id="compatModel" placeholder="Model name (e.g. llama3.2)" style="margin-top:4px">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">🧠 WebLLM (Local, Offline)</label>
+                        <select class="form-input" id="webllmModel">
+                            <option value="Qwen2.5-3B-Instruct-q4f16_1-MLC">Qwen 2.5 3B (recommended)</option>
+                            <option value="Qwen2.5-1.5B-Instruct-q4f16_1-MLC">Qwen 2.5 1.5B (faster)</option>
+                            <option value="Llama-3.2-3B-Instruct-q4f16_1-MLC">Llama 3.2 3B</option>
+                            <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">Llama 3.2 1B (smallest)</option>
+                            <option value="Hermes-2-Pro-Llama-3-8B-q4f16_1-MLC">Hermes Llama3 8B (best for tools)</option>
+                            <option value="Phi-3.5-mini-instruct-q4f16_1-MLC">Phi 3.5 Mini</option>
+                        </select>
+                        <div class="form-hint">Runs 100% locally via WebGPU. No API key needed. Chrome 113+.</div>
+                        <div id="webllmProgress" style="display:none;font-size:12px;color:var(--text-secondary);margin-top:8px;"></div>
+                    </div>
                 </div>
-                
+
                 <div class="tab-content" id="tab-network">
                     <div class="form-group">
                         <label class="form-label">🌐 P2P Network Mode</label>
@@ -1128,7 +1154,7 @@
                         <button class="btn" onclick="disconnectRelay()">Disconnect</button>
                     </div>
                 </div>
-                
+
                 <div class="tab-content" id="tab-tools">
                     <div class="form-group">
                         <label class="form-label">Built-in Tools</label>
@@ -1147,7 +1173,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="tab-content" id="tab-sync">
                     <div class="form-group">
                         <label class="form-label">🔗 Sync via URL</label>
@@ -1155,7 +1181,7 @@
                             Export your API keys as an encrypted URL for iPhone shortcuts or syncing to another device.
                         </div>
                     </div>
-                    
+
                     <div class="form-group">
                         <label class="form-label">📤 Export Settings</label>
                         <div style="display:flex;gap:8px;margin-bottom:12px;">
@@ -1167,7 +1193,7 @@
                             <button class="btn" onclick="navigator.clipboard.writeText(document.getElementById('syncExportedUrl').value);showToast('Copied!');" style="margin-top:8px;">📋 Copy URL</button>
                         </div>
                     </div>
-                    
+
                     <div class="form-group" style="margin-top:24px;padding-top:24px;border-top:1px solid var(--divider);">
                         <label class="form-label">📥 Import Settings</label>
                         <textarea class="form-input" id="syncImportUrl" rows="2" placeholder="Paste encrypted URL..." style="font-size:11px;margin-bottom:8px;"></textarea>
@@ -1176,7 +1202,7 @@
                             <button class="btn btn-primary" onclick="importSyncUrl()">Import</button>
                         </div>
                     </div>
-                    
+
                     <div class="form-group" style="margin-top:24px;">
                         <label class="form-label">📱 iPhone Shortcut</label>
                         <div style="font-size:12px;color:var(--text-tertiary);line-height:1.6;">
@@ -1185,7 +1211,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="tab-content" id="tab-export">
                     <div class="form-group">
                         <label class="form-label">Export All Agents</label>
@@ -1204,7 +1230,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Edit Agent Modal -->
     <div class="modal" id="editAgentModal">
         <div class="modal-content" style="max-width:600px;">
@@ -1220,6 +1246,8 @@
                         <option value="bedrock">Amazon Bedrock</option>
                         <option value="anthropic">Anthropic (Claude)</option>
                         <option value="openai">OpenAI (GPT)</option>
+                        <option value="openai_compatible">OpenAI-Compatible (Ollama, Groq, etc.)</option>
+                        <option value="webllm">WebLLM (Local, Offline)</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -1251,7 +1279,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Schedule Modal -->
     <div class="modal" id="scheduleModal">
         <div class="modal-content">
@@ -1295,7 +1323,7 @@
             </div>
         </div>
     </div>
-    
+
     <div class="toast" id="toast"></div>
 
     <!-- Polyfills -->
@@ -1305,12 +1333,13 @@
     </script>
 
     <script type="module">
-    import { Agent, tool, Model, z } from './strands.js';
-    
+    import { Agent, tool, Model, z, AnthropicModel, OpenAIModel, BedrockModel } from './strands.js';
+    import { WebLLMBrowserModel } from './webllm.js';
+
     // ═══════════════════════════════════════════════════════════════════════════
     // STATE
     // ═══════════════════════════════════════════════════════════════════════════
-    
+
     const state = {
         agents: new Map(),          // agentId -> { agent, model, config, messages, status }
         activeAgentId: null,
@@ -1319,309 +1348,20 @@
         credentials: {
             anthropic: { apiKey: '', model: 'claude-opus-4-6' },
             openai: { apiKey: '', model: 'gpt-5.2-2025-12-11' },
-            bedrock: { apiKey: '', region: 'us-east-1', model: 'global.anthropic.claude-opus-4-6-v1' }
+            bedrock: { apiKey: '', region: 'us-east-1', model: 'global.anthropic.claude-opus-4-6-v1' },
+            openai_compatible: { apiKey: '', baseUrl: '', model: '' },
+            webllm: { model: 'Qwen2.5-3B-Instruct-q4f16_1-MLC' }
         },
         agentColors: ['#00ff88', '#00aaff', '#ff88ff', '#ffaa00', '#ff6666', '#88ffff'],
         colorIndex: 0
     };
-    
+
     // ═══════════════════════════════════════════════════════════════════════════
-    // MODEL PROVIDERS
+    // MODEL PROVIDERS — AnthropicModel, OpenAIModel, BedrockModel imported from strands.js SDK
     // ═══════════════════════════════════════════════════════════════════════════
-    
-    class AnthropicModel extends Model {
-        constructor(config) {
-            super();
-            this.config = config;
-        }
-        async *stream(messages, options) {
-            const { apiKey, modelId, maxTokens, additionalRequestFields } = this.config;
-            if (!apiKey) throw new Error('Anthropic API key not set');
-            
-            const anthropicMessages = messages.map(msg => {
-                const content = msg.content.map(b => {
-                    if (b.type === 'textBlock') {
-                        // Skip empty text blocks
-                        if (!b.text || b.text.trim() === '') return null;
-                        return { type: 'text', text: b.text };
-                    }
-                    if (b.type === 'toolUseBlock') return { type: 'tool_use', id: b.toolUseId, name: b.name, input: b.input };
-                    if (b.type === 'toolResultBlock') {
-                        const resultContent = b.content.map(c => {
-                            if (c.type === 'textBlock') {
-                                if (!c.text || c.text.trim() === '') return null;
-                                return { type: 'text', text: c.text };
-                            }
-                            return { type: 'text', text: JSON.stringify(c.json || c) };
-                        }).filter(Boolean);
-                        if (resultContent.length === 0) resultContent.push({ type: 'text', text: '(empty result)' });
-                        return { type: 'tool_result', tool_use_id: b.toolUseId, content: resultContent };
-                    }
-                    const str = String(b);
-                    if (!str || str.trim() === '') return null;
-                    return { type: 'text', text: str };
-                }).filter(Boolean);
-                // Ensure message has at least some content
-                if (content.length === 0) {
-                    content.push({ type: 'text', text: '(continue)' });
-                }
-                return { role: msg.role, content };
-            });
-            
-            const body = { model: modelId, max_tokens: maxTokens, messages: anthropicMessages, stream: true };
-            if (options?.systemPrompt) body.system = typeof options.systemPrompt === 'string' ? options.systemPrompt : options.systemPrompt.filter(b => b.type === 'textBlock').map(b => b.text).join('\n');
-            if (options?.toolSpecs?.length) body.tools = options.toolSpecs.map(s => ({ name: s.name, description: s.description, input_schema: s.inputSchema }));
-            
-            // Add additional request fields (thinking, betas, etc.)
-            if (additionalRequestFields) {
-                Object.assign(body, additionalRequestFields);
-            }
-            
-            const headers = { 
-                'Content-Type': 'application/json', 
-                'x-api-key': apiKey, 
-                'anthropic-version': '2023-06-01', 
-                'anthropic-dangerous-direct-browser-access': 'true' 
-            };
-            
-            // Add beta header if specified
-            if (additionalRequestFields?.anthropic_beta) {
-                headers['anthropic-beta'] = Array.isArray(additionalRequestFields.anthropic_beta) 
-                    ? additionalRequestFields.anthropic_beta.join(',') 
-                    : additionalRequestFields.anthropic_beta;
-            }
-            
-            const response = await fetch('https://api.anthropic.com/v1/messages', {
-                method: 'POST',
-                headers,
-                body: JSON.stringify(body)
-            });
-            if (!response.ok) throw new Error(`Anthropic error: ${await response.text()}`);
-            
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            let buffer = '';
-            
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                buffer += decoder.decode(value, { stream: true });
-                const lines = buffer.split('\n');
-                buffer = lines.pop() || '';
-                
-                for (const line of lines) {
-                    if (!line.startsWith('data: ')) continue;
-                    try {
-                        const event = JSON.parse(line.slice(6));
-                        if (event.type === 'message_start') yield { type: 'modelMessageStartEvent', role: 'assistant' };
-                        else if (event.type === 'content_block_start') {
-                            if (event.content_block?.type === 'tool_use') yield { type: 'modelContentBlockStartEvent', start: { type: 'toolUseStart', name: event.content_block.name, toolUseId: event.content_block.id } };
-                            else yield { type: 'modelContentBlockStartEvent' };
-                        }
-                        else if (event.type === 'content_block_delta') {
-                            if (event.delta?.type === 'text_delta') yield { type: 'modelContentBlockDeltaEvent', delta: { type: 'textDelta', text: event.delta.text } };
-                            else if (event.delta?.type === 'input_json_delta') yield { type: 'modelContentBlockDeltaEvent', delta: { type: 'toolUseInputDelta', input: event.delta.partial_json } };
-                        }
-                        else if (event.type === 'content_block_stop') yield { type: 'modelContentBlockStopEvent' };
-                        else if (event.type === 'message_delta') {
-                            if (event.delta?.stop_reason) {
-                                const map = { 'tool_use': 'toolUse', 'max_tokens': 'maxTokens', 'stop_sequence': 'stopSequence' };
-                                yield { type: 'modelMessageStopEvent', stopReason: map[event.delta.stop_reason] || 'endTurn' };
-                            }
-                        }
-                    } catch {}
-                }
-            }
-        }
-    }
-    
-    class OpenAIModel extends Model {
-        constructor(config) {
-            super();
-            this.config = config;
-        }
-        async *stream(messages, options) {
-            const { apiKey, modelId, maxTokens } = this.config;
-            if (!apiKey) throw new Error('OpenAI API key not set');
-            
-            const openaiMessages = [];
-            if (options?.systemPrompt) {
-                const text = typeof options.systemPrompt === 'string' ? options.systemPrompt : options.systemPrompt.filter(b => b.type === 'textBlock').map(b => b.text).join('\n');
-                if (text) openaiMessages.push({ role: 'system', content: text });
-            }
-            
-            for (const msg of messages) {
-                if (msg.role === 'user') {
-                    const toolResults = msg.content.filter(b => b.type === 'toolResultBlock');
-                    const other = msg.content.filter(b => b.type !== 'toolResultBlock');
-                    if (other.length) openaiMessages.push({ role: 'user', content: other.map(b => b.type === 'textBlock' ? { type: 'text', text: b.text } : { type: 'text', text: String(b) }) });
-                    for (const tr of toolResults) openaiMessages.push({ role: 'tool', tool_call_id: tr.toolUseId, content: tr.content.map(c => c.type === 'textBlock' ? c.text : JSON.stringify(c.json || c)).join('') });
-                } else {
-                    const toolCalls = [];
-                    const texts = [];
-                    for (const b of msg.content) {
-                        if (b.type === 'textBlock') texts.push(b.text);
-                        else if (b.type === 'toolUseBlock') toolCalls.push({ id: b.toolUseId, type: 'function', function: { name: b.name, arguments: JSON.stringify(b.input) } });
-                    }
-                    const m = { role: 'assistant', content: texts.join('') };
-                    if (toolCalls.length) m.tool_calls = toolCalls;
-                    openaiMessages.push(m);
-                }
-            }
-            
-            const body = { model: modelId, max_completion_tokens: maxTokens, messages: openaiMessages, stream: true, stream_options: { include_usage: true } };
-            if (options?.toolSpecs?.length) body.tools = options.toolSpecs.map(s => ({ type: 'function', function: { name: s.name, description: s.description, parameters: s.inputSchema } }));
-            
-            const response = await fetch('https://api.openai.com/v1/chat/completions', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-                body: JSON.stringify(body)
-            });
-            if (!response.ok) throw new Error(`OpenAI error: ${await response.text()}`);
-            
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            let buffer = '';
-            let started = false;
-            
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                buffer += decoder.decode(value, { stream: true });
-                const lines = buffer.split('\n');
-                buffer = lines.pop() || '';
-                
-                for (const line of lines) {
-                    if (!line.startsWith('data: ') || line === 'data: [DONE]') continue;
-                    try {
-                        const chunk = JSON.parse(line.slice(6));
-                        if (!chunk.choices?.length) continue;
-                        const choice = chunk.choices[0];
-                        const delta = choice.delta;
-                        
-                        if (delta?.role && !started) { started = true; yield { type: 'modelMessageStartEvent', role: delta.role }; }
-                        if (delta?.content) yield { type: 'modelContentBlockDeltaEvent', delta: { type: 'textDelta', text: delta.content } };
-                        if (delta?.tool_calls) {
-                            for (const tc of delta.tool_calls) {
-                                if (tc.id && tc.function?.name) yield { type: 'modelContentBlockStartEvent', start: { type: 'toolUseStart', name: tc.function.name, toolUseId: tc.id } };
-                                if (tc.function?.arguments) yield { type: 'modelContentBlockDeltaEvent', delta: { type: 'toolUseInputDelta', input: tc.function.arguments } };
-                            }
-                        }
-                        if (choice.finish_reason) {
-                            yield { type: 'modelContentBlockStopEvent' };
-                            const map = { 'stop': 'endTurn', 'tool_calls': 'toolUse', 'length': 'maxTokens' };
-                            yield { type: 'modelMessageStopEvent', stopReason: map[choice.finish_reason] || 'endTurn' };
-                        }
-                    } catch {}
-                }
-            }
-        }
-    }
-    
-    class BedrockModel extends Model {
-        constructor(config) {
-            super();
-            this.config = config;
-        }
-        async *stream(messages, options) {
-            const { apiKey, region, modelId, maxTokens, additionalRequestFields } = this.config;
-            if (!apiKey) throw new Error('Bedrock API key not set');
-            
-            const formatBlock = b => {
-                if (b.type === 'textBlock') {
-                    // Skip empty text blocks - Bedrock rejects blank text fields
-                    if (!b.text || b.text.trim() === '') return null;
-                    return { text: b.text };
-                }
-                if (b.type === 'toolUseBlock') return { toolUse: { toolUseId: b.toolUseId, name: b.name, input: b.input } };
-                if (b.type === 'toolResultBlock') {
-                    const content = b.content.map(c => {
-                        if (c.type === 'textBlock') {
-                            // Skip empty text in tool results too
-                            if (!c.text || c.text.trim() === '') return null;
-                            return { text: c.text };
-                        }
-                        return { json: c.json || c };
-                    }).filter(Boolean);
-                    // Ensure tool result has at least some content
-                    if (content.length === 0) content.push({ text: '(empty result)' });
-                    return { toolResult: { toolUseId: b.toolUseId, content } };
-                }
-                const str = String(b);
-                if (!str || str.trim() === '') return null;
-                return { text: str };
-            };
-            
-            // Format messages, filtering out null blocks and ensuring each message has content
-            const formattedMessages = messages.map(m => {
-                const content = m.content.map(formatBlock).filter(Boolean);
-                // If message has no content after filtering, add placeholder
-                if (content.length === 0) {
-                    content.push({ text: '(continue)' });
-                }
-                return { role: m.role, content };
-            });
-            
-            const body = {
-                messages: formattedMessages,
-                inferenceConfig: { maxTokens }
-            };
-            if (options?.systemPrompt) body.system = [{ text: typeof options.systemPrompt === 'string' ? options.systemPrompt : options.systemPrompt.map(b => b.text).join('\n') }];
-            if (options?.toolSpecs?.length) body.toolConfig = { tools: options.toolSpecs.map(s => ({ toolSpec: { name: s.name, description: s.description, inputSchema: { json: s.inputSchema } } })) };
-            
-            // Add additional request fields (thinking, etc.)
-            if (additionalRequestFields) {
-                body.additionalModelRequestFields = additionalRequestFields;
-            }
-            
-            const response = await fetch(`https://bedrock-runtime.${region}.amazonaws.com/model/${encodeURIComponent(modelId)}/converse-stream`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-                body: JSON.stringify(body)
-            });
-            if (!response.ok) throw new Error(`Bedrock error: ${await response.text()}`);
-            
-            const reader = response.body.getReader();
-            let buffer = new Uint8Array(0);
-            const decoder = new TextDecoder();
-            
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                const newBuffer = new Uint8Array(buffer.length + value.length);
-                newBuffer.set(buffer);
-                newBuffer.set(value, buffer.length);
-                buffer = newBuffer;
-                
-                while (buffer.length >= 12) {
-                    const totalLength = (buffer[0] << 24) | (buffer[1] << 16) | (buffer[2] << 8) | buffer[3];
-                    const headersLength = (buffer[4] << 24) | (buffer[5] << 16) | (buffer[6] << 8) | buffer[7];
-                    if (totalLength < 16 || totalLength > 1024 * 1024) { buffer = buffer.slice(1); continue; }
-                    if (buffer.length < totalLength) break;
-                    
-                    const payloadStart = 12 + headersLength;
-                    const payloadEnd = totalLength - 4;
-                    if (payloadEnd > payloadStart) {
-                        try {
-                            const event = JSON.parse(decoder.decode(buffer.slice(payloadStart, payloadEnd)));
-                            if (event.role) yield { type: 'modelMessageStartEvent', role: event.role };
-                            else if (event.start?.toolUse) yield { type: 'modelContentBlockStartEvent', start: { type: 'toolUseStart', name: event.start.toolUse.name, toolUseId: event.start.toolUse.toolUseId } };
-                            else if (event.start !== undefined) yield { type: 'modelContentBlockStartEvent' };
-                            else if (event.delta?.text !== undefined) yield { type: 'modelContentBlockDeltaEvent', delta: { type: 'textDelta', text: event.delta.text } };
-                            else if (event.delta?.toolUse?.input) yield { type: 'modelContentBlockDeltaEvent', delta: { type: 'toolUseInputDelta', input: event.delta.toolUse.input } };
-                            else if (event.contentBlockIndex !== undefined && !event.delta && !event.stopReason) yield { type: 'modelContentBlockStopEvent' };
-                            else if (event.stopReason) {
-                                const map = { 'end_turn': 'endTurn', 'tool_use': 'toolUse', 'max_tokens': 'maxTokens' };
-                                yield { type: 'modelMessageStopEvent', stopReason: map[event.stopReason] || 'endTurn' };
-                            }
-                        } catch {}
-                    }
-                    buffer = buffer.slice(totalLength);
-                }
-            }
-        }
-    }
-    
+
+    let webllmModelInstance = null;
+
     function createModel(provider, customConfig = {}) {
         const creds = state.credentials[provider];
         if (provider === 'anthropic') {
@@ -1637,6 +1377,14 @@
                 modelId: customConfig.modelId || creds.model || 'gpt-5.2-2025-12-11',
                 maxTokens: customConfig.maxTokens || DEFAULT_MAX_TOKENS
             });
+        } else if (provider === 'openai_compatible') {
+            if (!creds.baseUrl) throw new Error('OpenAI-compatible endpoint URL not set');
+            return new OpenAIModel({
+                apiKey: creds.apiKey || 'not-needed',
+                modelId: customConfig.modelId || creds.model || '',
+                maxTokens: customConfig.maxTokens || DEFAULT_MAX_TOKENS,
+                clientConfig: { baseURL: creds.baseUrl }
+            });
         } else if (provider === 'bedrock') {
             return new BedrockModel({
                 apiKey: creds.apiKey,
@@ -1645,29 +1393,38 @@
                 maxTokens: customConfig.maxTokens || DEFAULT_MAX_TOKENS,
                 additionalRequestFields: customConfig.additionalRequestFields || DEFAULT_BEDROCK_ADDITIONAL_FIELDS
             });
+        } else if (provider === 'webllm') {
+            const modelId = customConfig.modelId || creds?.model || 'Qwen2.5-3B-Instruct-q4f16_1-MLC';
+            if (webllmModelInstance?.getConfig().modelId === modelId && webllmModelInstance._loaded) return webllmModelInstance;
+            const progressEl = document.getElementById('webllmProgress');
+            const m = new WebLLMBrowserModel({ modelId, maxTokens: customConfig.maxTokens || 4096, onProgress: (pct, txt) => { if (progressEl) { progressEl.style.display = 'block'; progressEl.textContent = `${txt || 'Loading'} ${pct}%`; } } });
+            webllmModelInstance = m;
+            return m;
         }
         throw new Error(`Unknown provider: ${provider}`);
     }
-    
+
     // Default models per provider
     const DEFAULT_MODELS = {
         bedrock: 'global.anthropic.claude-opus-4-6-v1',
         anthropic: 'claude-opus-4-6',
-        openai: 'gpt-5.2-2025-12-11'
+        openai: 'gpt-5.2-2025-12-11',
+        openai_compatible: '',
+        webllm: 'Qwen2.5-3B-Instruct-q4f16_1-MLC'
     };
-    
+
     // Default additional request fields for bedrock (extended thinking)
     const DEFAULT_BEDROCK_ADDITIONAL_FIELDS = {
         "anthropic_beta": ["interleaved-thinking-2025-05-14", "context-1m-2025-08-07"],
         "thinking": {"type": "enabled", "budget_tokens": 2048}
     };
-    
+
     const DEFAULT_MAX_TOKENS = 60000;
-    
+
     // ═══════════════════════════════════════════════════════════════════════════
     // TOOLS
     // ═══════════════════════════════════════════════════════════════════════════
-    
+
     const renderUiTool = tool({
         name: 'render_ui',
         description: 'Render HTML/CSS/JS in the chat',
@@ -1684,28 +1441,28 @@
             return { rendered: true };
         }
     });
-    
+
     const javascriptEvalTool = tool({
         name: 'javascript_eval',
         description: 'Execute JavaScript',
         inputSchema: z.object({ code: z.string() }),
         callback: async (input) => { try { return { result: String(eval(input.code)) }; } catch (e) { return { error: e.message }; } }
     });
-    
+
     const storageGetTool = tool({
         name: 'storage_get',
         description: 'Get localStorage value',
         inputSchema: z.object({ key: z.string() }),
         callback: async (input) => ({ key: input.key, value: localStorage.getItem(input.key) })
     });
-    
+
     const storageSetTool = tool({
         name: 'storage_set',
         description: 'Set localStorage value',
         inputSchema: z.object({ key: z.string(), value: z.string() }),
         callback: async (input) => { localStorage.setItem(input.key, input.value); return { success: true }; }
     });
-    
+
     const fetchUrlTool = tool({
         name: 'fetch_url',
         description: 'HTTP request',
@@ -1719,7 +1476,7 @@
             } catch (e) { return { error: e.message }; }
         }
     });
-    
+
     const notifyTool = tool({
         name: 'notify',
         description: 'Send browser notification',
@@ -1732,7 +1489,7 @@
             return { error: 'Notifications not permitted' };
         }
     });
-    
+
     // use_agent - spawn sub-agent
     const useAgentTool = tool({
         name: 'use_agent',
@@ -1750,32 +1507,32 @@
                 if (state.agents.has(input.agentId)) {
                     return { error: `Agent ${input.agentId} already exists` };
                 }
-                
+
                 // Create sub-agent with default bedrock settings if using bedrock
-                const modelConfig = { 
-                    maxTokens: input.maxTokens || DEFAULT_MAX_TOKENS 
+                const modelConfig = {
+                    maxTokens: input.maxTokens || DEFAULT_MAX_TOKENS
                 };
                 if (input.provider === 'bedrock') {
                     modelConfig.additionalRequestFields = DEFAULT_BEDROCK_ADDITIONAL_FIELDS;
                 }
                 const model = createModel(input.provider, modelConfig);
-                
+
                 const subAgent = new Agent({
                     model,
                     tools: [renderUiTool, javascriptEvalTool, storageGetTool, storageSetTool, fetchUrlTool, notifyTool],
                     systemPrompt: input.systemPrompt,
                     printer: false
                 });
-                
+
                 const color = state.agentColors[state.colorIndex % state.agentColors.length];
                 state.colorIndex++;
-                
+
                 state.agents.set(input.agentId, {
                     agent: subAgent,
                     model,
-                    config: { 
-                        provider: input.provider, 
-                        systemPrompt: input.systemPrompt, 
+                    config: {
+                        provider: input.provider,
+                        systemPrompt: input.systemPrompt,
                         maxTokens: input.maxTokens || DEFAULT_MAX_TOKENS,
                         additionalRequestFields: input.provider === 'bedrock' ? DEFAULT_BEDROCK_ADDITIONAL_FIELDS : null
                     },
@@ -1783,19 +1540,19 @@
                     status: 'ready',
                     color
                 });
-                
+
                 updateAgentUI();
-                
+
                 // Run prompt asynchronously
                 setTimeout(() => runAgentMessage(input.agentId, input.prompt), 0);
-                
+
                 return { success: true, agentId: input.agentId, message: 'Sub-agent spawned and processing prompt' };
             } catch (e) {
                 return { error: e.message };
             }
         }
     });
-    
+
     // scheduler - schedule tasks
     const schedulerTool = tool({
         name: 'scheduler',
@@ -1817,7 +1574,7 @@
                 }
                 return { schedules };
             }
-            
+
             if (input.action === 'delete') {
                 if (!input.name) return { error: 'Name required for delete' };
                 for (const [id, s] of state.schedules) {
@@ -1831,7 +1588,7 @@
                 }
                 return { error: 'Schedule not found' };
             }
-            
+
             if (input.action === 'create') {
                 if (!input.name || !input.agentId || !input.prompt || !input.type) {
                     return { error: 'name, agentId, prompt, and type required' };
@@ -1839,7 +1596,7 @@
                 if (!state.agents.has(input.agentId)) {
                     return { error: `Agent ${input.agentId} not found` };
                 }
-                
+
                 const id = `schedule-${Date.now()}`;
                 const schedule = {
                     name: input.name,
@@ -1849,7 +1606,7 @@
                     delay: input.delay,
                     cron: input.cron
                 };
-                
+
                 if (input.type === 'once') {
                     const delayMs = (input.delay || 60) * 1000;
                     schedule.timer = setTimeout(() => {
@@ -1862,210 +1619,96 @@
                     // Simple cron parser for common patterns
                     const cronParts = (input.cron || '* * * * *').split(' ');
                     const minute = cronParts[0];
-                    
+
                     // Parse interval from cron (simplified)
                     let intervalMs = 60000; // default 1 minute
                     if (minute.startsWith('*/')) {
                         intervalMs = parseInt(minute.slice(2)) * 60000;
                     }
-                    
+
                     schedule.interval = setInterval(() => {
                         runAgentMessage(input.agentId, input.prompt);
                     }, intervalMs);
                     schedule.nextRun = new Date(Date.now() + intervalMs).toISOString();
                 }
-                
+
                 state.schedules.set(id, schedule);
                 updateScheduleUI();
                 saveState();
-                
+
                 return { success: true, scheduleId: id, name: input.name, type: input.type };
             }
-            
+
             return { error: 'Invalid action' };
         }
     });
-    
+
     // ═══════════════════════════════════════════════════════════════════════════
     // AGENT MESH - Hybrid P2P: BroadcastChannel (local) + WebSocket (remote)
     // ═══════════════════════════════════════════════════════════════════════════
-    
+
     const agentMesh = {
         // Local mesh (same-origin tabs)
         bus: new BroadcastChannel('agi-mesh'),
-        
-        // Remote mesh (WebSocket relay)
-        ws: null,
-        wsConnected: false,
-        instanceId: localStorage.getItem('mesh_instance_id') || `agi-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,6)}`,
-        remotePeers: new Map(), // instanceId -> { agents: [], lastSeen, hostname }
-        heartbeatInterval: null,
-        
+
+        // Remote mesh (delegated to AgentMesh relay)
+        get wsConnected() { return window.AgentMesh?.relayConnected || false; },
+        get remotePeers() { return new Map(); }, // AgentMesh manages these now
+
         // Shared state
         pendingRequests: new Map(),
         messageLog: [],
-        
+
         init() {
-            // Save instance ID
-            localStorage.setItem('mesh_instance_id', this.instanceId);
-            
             // Local mesh
             this.bus.onmessage = (e) => this.handleMessage(e.data, 'local');
-            
-            // Auto-connect if relay URL saved
-            const savedRelay = localStorage.getItem('mesh_relay_url');
-            if (savedRelay) {
-                setTimeout(() => this.connectRelay(savedRelay), 1000);
+
+            // Subscribe to relay status for UI updates
+            if (window.AgentMesh) {
+                window.AgentMesh.subscribe('relay-status', (s) => this.updateWsStatus(s.connected));
+                window.AgentMesh.subscribe('relay-peers', () => this.updateRemotePeersUI());
             }
-            
-            console.log(`🔗 Agent mesh initialized (instance: ${this.instanceId})`);
+
+            console.log(`🔗 Agent mesh initialized (instance: ${window.AgentMesh?.relayInstanceId || 'unknown'})`);
         },
-        
-        // ─────────────────────────────────────────────────────────────────────────
-        // WebSocket Relay Connection
-        // ─────────────────────────────────────────────────────────────────────────
-        
-        connectRelay(url) {
-            if (this.ws) this.disconnectRelay();
-            
-            try {
-                this.ws = new WebSocket(url);
-                
-                this.ws.onopen = () => {
-                    this.wsConnected = true;
-                    console.log('🌐 WebSocket relay connected');
-                    this.updateWsStatus(true);
-                    
-                    // Send presence announcement
-                    this.sendRemote({
-                        type: 'presence',
-                        from: this.instanceId,
-                        data: {
-                            agents: [...state.agents.keys()],
-                            hostname: location.hostname,
-                            timestamp: Date.now()
-                        }
-                    });
-                    
-                    // Start heartbeat
-                    this.heartbeatInterval = setInterval(() => {
-                        if (this.wsConnected) {
-                            this.sendRemote({
-                                type: 'heartbeat',
-                                from: this.instanceId,
-                                data: { agents: [...state.agents.keys()], timestamp: Date.now() }
-                            });
-                            // Clean stale peers (no heartbeat in 30s)
-                            const now = Date.now();
-                            for (const [id, peer] of this.remotePeers) {
-                                if (now - peer.lastSeen > 30000) {
-                                    this.remotePeers.delete(id);
-                                }
-                            }
-                            this.updateRemotePeersUI();
-                        }
-                    }, 10000);
-                    
-                    localStorage.setItem('mesh_relay_url', url);
-                    showToast('Relay connected');
-                };
-                
-                this.ws.onmessage = (e) => {
-                    try {
-                        const msg = JSON.parse(e.data);
-                        if (msg.from !== this.instanceId) {
-                            this.handleMessage(msg, 'remote');
-                        }
-                    } catch (err) {
-                        console.warn('Invalid relay message:', err);
-                    }
-                };
-                
-                this.ws.onclose = () => {
-                    this.wsConnected = false;
-                    this.updateWsStatus(false);
-                    if (this.heartbeatInterval) {
-                        clearInterval(this.heartbeatInterval);
-                        this.heartbeatInterval = null;
-                    }
-                    console.log('🌐 WebSocket relay disconnected');
-                };
-                
-                this.ws.onerror = (err) => {
-                    console.error('WebSocket error:', err);
-                    showToast('Relay connection failed');
-                };
-                
-            } catch (err) {
-                console.error('Failed to connect relay:', err);
-                showToast('Invalid relay URL');
-            }
-        },
-        
-        disconnectRelay() {
-            if (this.ws) {
-                this.ws.close();
-                this.ws = null;
-            }
-            this.wsConnected = false;
-            this.remotePeers.clear();
-            if (this.heartbeatInterval) {
-                clearInterval(this.heartbeatInterval);
-                this.heartbeatInterval = null;
-            }
-            this.updateWsStatus(false);
-            this.updateRemotePeersUI();
-            showToast('Relay disconnected');
-        },
-        
-        sendRemote(msg) {
-            if (this.ws && this.wsConnected) {
-                this.ws.send(JSON.stringify(msg));
-            }
-        },
-        
+
+        connectRelay(url) { window.AgentMesh?.connectRelay(url); },
+        disconnectRelay() { window.AgentMesh?.disconnectRelay(); },
+        sendRemote(msg) { window.AgentMesh?.sendRelay(msg); },
+
         updateWsStatus(connected) {
             const el = document.getElementById('wsStatus');
             if (el) {
-                el.innerHTML = connected 
+                el.innerHTML = connected
                     ? '<span style="color:#0f0">● Connected</span>'
                     : '<span style="color:#f66">● Disconnected</span>';
             }
         },
-        
+
         updateRemotePeersUI() {
             const el = document.getElementById('remotePeersList');
             if (!el) return;
-            
-            if (this.remotePeers.size === 0) {
-                el.innerHTML = 'No remote peers connected';
-                return;
-            }
-            
-            const peerHtml = [...this.remotePeers.entries()].map(([id, peer]) => {
+            const peers = window.AgentMesh?.getRelayPeers() || [];
+            if (peers.length === 0) { el.innerHTML = 'No remote peers connected'; return; }
+            el.innerHTML = peers.map(peer => {
                 const agentCount = peer.agents?.length || 0;
                 const age = Math.round((Date.now() - peer.lastSeen) / 1000);
-                return `<div style="margin-bottom:4px;">
-                    <span style="color:#0f0">●</span> ${id.slice(0,12)}... 
-                    <span style="color:var(--text-tertiary)">(${agentCount} agents, ${age}s ago)</span>
-                </div>`;
+                return `<div style="margin-bottom:4px;"><span style="color:#0f0">●</span> ${peer.hostname || '?'} <span style="color:var(--text-tertiary)">(${agentCount} agents, ${age}s ago)</span></div>`;
             }).join('');
-            
-            el.innerHTML = peerHtml;
         },
-        
+
         // ─────────────────────────────────────────────────────────────────────────
         // Message Handling (both local and remote)
         // ─────────────────────────────────────────────────────────────────────────
-        
+
         handleMessage(msg, source) {
             const { type, from, to, turnId, data, timestamp } = msg;
-            
+
             // Log for watching
             this.messageLog.push({ type, from, to, turnId, source, data: typeof data === 'string' ? data.slice(0, 100) : data, timestamp });
             if (this.messageLog.length > 200) this.messageLog.shift();
             updateMeshLog();
-            
+
             // Handle presence/heartbeat from remote peers
             if ((type === 'presence' || type === 'heartbeat') && source === 'remote') {
                 this.remotePeers.set(from, {
@@ -2076,29 +1719,29 @@
                 this.updateRemotePeersUI();
                 return;
             }
-            
+
             // Handle broadcast command
             if (type === 'broadcast' || type === 'direct') {
                 // Skip if from ourselves (same instance) - only for remote messages
                 if (source === 'remote' && from === this.instanceId) return;
-                
+
                 // Process with local agents
                 for (const [agentId, agentData] of state.agents) {
                     // For direct messages, only process the target agent
                     if (type === 'direct' && agentId !== to) continue;
                     // Never let an agent process its own message
                     if (from === agentId) continue;
-                    
+
                     this.processIncomingCommand(agentId, from, turnId, data.command, source);
                 }
                 return;
             }
-            
+
             // Handle response streams
             if (type === 'stream' || type === 'ack' || type === 'turn_end' || type === 'error') {
                 const pending = this.pendingRequests.get(turnId);
                 if (!pending) return;
-                
+
                 if (type === 'stream') {
                     if (!pending.streamed[from]) pending.streamed[from] = '';
                     pending.streamed[from] += data.chunk;
@@ -2120,23 +1763,23 @@
                 }
             }
         },
-        
+
         async processIncomingCommand(agentId, fromId, turnId, command, source) {
             const agentData = state.agents.get(agentId);
             if (!agentData) return;
-            
+
             // Send ACK
             this.publish({ type: 'ack', from: agentId, to: fromId, turnId, timestamp: Date.now() });
-            
+
             agentData.status = 'processing';
             updateAgentUI();
-            
+
             try {
                 let fullText = '';
                 let chunkCount = 0;
-                
+
                 const sourceLabel = source === 'remote' ? `[Remote: ${fromId}]` : `[From agent ${fromId}]`;
-                
+
                 for await (const event of agentData.agent.stream(`${sourceLabel}: ${command}`)) {
                     if (event?.type === 'modelContentBlockDeltaEvent' && event.delta?.type === 'textDelta') {
                         fullText += event.delta.text;
@@ -2151,7 +1794,7 @@
                         });
                     }
                 }
-                
+
                 this.publish({
                     type: 'turn_end',
                     from: agentId,
@@ -2160,17 +1803,17 @@
                     data: { result: fullText, chunks: chunkCount },
                     timestamp: Date.now()
                 });
-                
+
                 agentData.messages.push({ role: 'user', content: `${sourceLabel}: ${command}`, timestamp: Date.now() });
                 agentData.messages.push({ role: 'assistant', content: fullText, timestamp: Date.now() });
-                
+
                 state.ringBuffer.push({ agentId, role: 'assistant', content: fullText, timestamp: Date.now() });
                 // 🌐 Sync to AgentMesh shared ring
                 if (window.AgentMesh?.addToRingContext) {
                     window.AgentMesh.addToRingContext(agentId, 'multi', fullText.slice(0, 500));
                 }
                 updateRingUI();
-                
+
             } catch (e) {
                 this.publish({
                     type: 'error',
@@ -2181,45 +1824,45 @@
                     timestamp: Date.now()
                 });
             }
-            
+
             agentData.status = 'ready';
             updateAgentUI();
         },
-        
+
         // ─────────────────────────────────────────────────────────────────────────
         // Publishing (bridges local and remote)
         // ─────────────────────────────────────────────────────────────────────────
-        
+
         publish(msg) {
             // Always publish to local BroadcastChannel
             this.bus.postMessage(msg);
-            
+
             // Also publish to WebSocket relay if connected
             if (this.wsConnected) {
                 this.sendRemote({ ...msg, instanceId: this.instanceId });
             }
-            
+
             // Handle locally for same-tab agents
             setTimeout(() => this.handleMessage(msg, 'local'), 0);
         },
-        
+
         // ─────────────────────────────────────────────────────────────────────────
         // High-level API
         // ─────────────────────────────────────────────────────────────────────────
-        
+
         async broadcast(fromAgentId, command, waitTime = 30) {
             const turnId = crypto.randomUUID().slice(0, 8);
-            
+
             // Count local + remote agents
             let peerCount = state.agents.size - 1;
             for (const [, peer] of this.remotePeers) {
                 peerCount += peer.agents?.length || 0;
             }
-            
+
             if (peerCount === 0) {
                 return { error: 'No other agents to broadcast to' };
             }
-            
+
             return new Promise((resolve) => {
                 const pending = {
                     resolve,
@@ -2230,7 +1873,7 @@
                     timeout: false
                 };
                 this.pendingRequests.set(turnId, pending);
-                
+
                 // Publish broadcast
                 this.publish({
                     type: 'broadcast',
@@ -2239,7 +1882,7 @@
                     data: { command },
                     timestamp: Date.now()
                 });
-                
+
                 // Timeout
                 setTimeout(() => {
                     pending.timeout = true;
@@ -2248,14 +1891,14 @@
                 }, waitTime * 1000);
             });
         },
-        
+
         async sendTo(fromAgentId, toAgentId, command, waitTime = 60) {
             const turnId = crypto.randomUUID().slice(0, 8);
-            
+
             if (!state.agents.has(toAgentId)) {
                 return { error: `Agent ${toAgentId} not found` };
             }
-            
+
             return new Promise((resolve) => {
                 const pending = {
                     resolve,
@@ -2266,7 +1909,7 @@
                     timeout: false
                 };
                 this.pendingRequests.set(turnId, pending);
-                
+
                 // Publish direct message
                 this.publish({
                     type: 'direct',
@@ -2276,7 +1919,7 @@
                     data: { command },
                     timestamp: Date.now()
                 });
-                
+
                 // Timeout
                 setTimeout(() => {
                     pending.timeout = true;
@@ -2285,10 +1928,10 @@
                 }, waitTime * 1000);
             });
         },
-        
+
         listAgents(includeRemote = true) {
             const agents = [];
-            
+
             // Local agents
             for (const [id, data] of state.agents) {
                 agents.push({
@@ -2301,7 +1944,7 @@
                     messageCount: data.messages.length
                 });
             }
-            
+
             // Remote agents
             if (includeRemote) {
                 for (const [instanceId, peer] of this.remotePeers) {
@@ -2316,23 +1959,23 @@
                     }
                 }
             }
-            
+
             return agents;
         },
-        
+
         // Send to remote instance
         async sendToRemoteAgent(fromAgentId, targetInstanceId, targetAgentId, command, waitTime = 60) {
             if (!this.wsConnected) {
                 return { error: 'Not connected to relay' };
             }
-            
+
             const peer = this.remotePeers.get(targetInstanceId);
             if (!peer || !peer.agents.includes(targetAgentId)) {
                 return { error: `Remote agent ${targetAgentId}@${targetInstanceId} not found` };
             }
-            
+
             const turnId = crypto.randomUUID().slice(0, 8);
-            
+
             return new Promise((resolve) => {
                 const pending = {
                     resolve,
@@ -2343,7 +1986,7 @@
                     timeout: false
                 };
                 this.pendingRequests.set(turnId, pending);
-                
+
                 // Send direct to remote
                 this.sendRemote({
                     type: 'direct',
@@ -2355,7 +1998,7 @@
                     data: { command },
                     timestamp: Date.now()
                 });
-                
+
                 setTimeout(() => {
                     pending.timeout = true;
                     resolve(pending);
@@ -2364,10 +2007,10 @@
             });
         }
     };
-    
+
     // Initialize mesh
     agentMesh.init();
-    
+
     // Mesh UI helpers
     function updateMeshLog() {
         // Update ring panel with recent mesh activity
@@ -2376,11 +2019,11 @@
             const icon = m.type === 'broadcast' ? '📢' : m.type === 'direct' ? '📨' : m.type === 'stream' ? '📡' : m.type === 'turn_end' ? '✅' : '•';
             return `<div style="font-size:10px;color:var(--text-tertiary);margin-bottom:4px;">${icon} ${m.from}${m.to ? '→' + m.to : ''}: ${m.type}</div>`;
         }).join('');
-        
+
         const meshSection = document.getElementById('meshActivity');
         if (meshSection) meshSection.innerHTML = meshHtml || '<div style="font-size:10px;color:var(--text-tertiary);">No mesh activity</div>';
     }
-    
+
     function updateStreamingResponse(turnId, from, text) {
         // Show streaming in a special area or update existing message
         const el = document.getElementById(`mesh-stream-${turnId}-${from}`);
@@ -2388,16 +2031,16 @@
             el.querySelector('.markdown-content').innerHTML = marked.parse(text);
         }
     }
-    
+
     function addMeshEvent(agentId, message, type) {
         const color = state.agents.get(agentId)?.color || '#888';
         showToast(`🔗 ${agentId}: ${message}`);
     }
-    
+
     // ═══════════════════════════════════════════════════════════════════════════
     // MESH TOOLS - Agent-to-Agent Communication
     // ═══════════════════════════════════════════════════════════════════════════
-    
+
     // invoke_agent - Call another agent and get response
     const invokeAgentTool = tool({
         name: 'invoke_agent',
@@ -2416,22 +2059,22 @@
                     break;
                 }
             }
-            
+
             if (!state.agents.has(input.targetAgentId)) {
                 return { error: `Agent '${input.targetAgentId}' not found`, available: [...state.agents.keys()] };
             }
-            
+
             if (input.targetAgentId === callerAgentId) {
                 return { error: 'Cannot invoke yourself' };
             }
-            
+
             const result = await agentMesh.sendTo(callerAgentId, input.targetAgentId, input.message, input.waitTime || 60);
-            
+
             if (result.error) return { error: result.error };
-            
+
             const response = result.responses[0];
             if (response?.error) return { error: response.error };
-            
+
             return {
                 success: true,
                 from: input.targetAgentId,
@@ -2440,7 +2083,7 @@
             };
         }
     });
-    
+
     // broadcast_to_agents - Send to all agents
     const broadcastToAgentsTool = tool({
         name: 'broadcast_to_agents',
@@ -2457,11 +2100,11 @@
                     break;
                 }
             }
-            
+
             const result = await agentMesh.broadcast(callerAgentId, input.message, input.waitTime || 30);
-            
+
             if (result.error) return { error: result.error };
-            
+
             const responses = [];
             for (const [agentId, text] of Object.entries(result.streamed)) {
                 responses.push({ agentId, response: text });
@@ -2471,7 +2114,7 @@
                     responses.push({ agentId: r.from, response: r.result });
                 }
             }
-            
+
             return {
                 success: true,
                 broadcastedTo: state.agents.size - 1,
@@ -2479,7 +2122,7 @@
             };
         }
     });
-    
+
     // list_agents - See available agents (local + remote)
     const listAgentsTool = tool({
         name: 'list_agents',
@@ -2492,7 +2135,7 @@
             const agents = agentMesh.listAgents(includeRemote);
             const localCount = agents.filter(a => a.location === 'local').length;
             const remoteCount = agents.filter(a => a.location === 'remote').length;
-            return { 
+            return {
                 agents,
                 summary: {
                     local: localCount,
@@ -2503,7 +2146,7 @@
             };
         }
     });
-    
+
     // invoke_remote_agent - Call an agent on a remote instance
     const invokeRemoteAgentTool = tool({
         name: 'invoke_remote_agent',
@@ -2523,7 +2166,7 @@
                     break;
                 }
             }
-            
+
             const result = await agentMesh.sendToRemoteAgent(
                 callerAgentId,
                 input.instanceId,
@@ -2531,12 +2174,12 @@
                 input.message,
                 input.waitTime || 60
             );
-            
+
             if (result.error) return { error: result.error };
-            
+
             const response = result.responses[0];
             if (response?.error) return { error: response.error };
-            
+
             return {
                 success: true,
                 from: `${input.agentId}@${input.instanceId}`,
@@ -2544,7 +2187,7 @@
             };
         }
     });
-    
+
     // subscribe_topic - Watch for messages on a topic
     const subscribeTopicTool = tool({
         name: 'subscribe_topic',
@@ -2556,17 +2199,17 @@
         callback: async (input) => {
             // Store subscription
             if (!state.subscriptions) state.subscriptions = new Map();
-            
+
             const subId = `sub-${Date.now()}`;
             state.subscriptions.set(subId, {
                 topic: input.topic,
                 handler: new Function('msg', input.handler)
             });
-            
+
             return { success: true, subscriptionId: subId, topic: input.topic };
         }
     });
-    
+
     // publish_topic - Publish to a topic
     const publishTopicTool = tool({
         name: 'publish_topic',
@@ -2582,7 +2225,7 @@
                 data: input.message,
                 timestamp: Date.now()
             });
-            
+
             // Notify local subscribers
             if (state.subscriptions) {
                 for (const [id, sub] of state.subscriptions) {
@@ -2595,15 +2238,15 @@
                     }
                 }
             }
-            
+
             return { success: true, topic: input.topic };
         }
     });
-    
+
     // ═══════════════════════════════════════════════════════════════════════════
     // SELF-MODIFICATION TOOLS - Agent can create its own tools!
     // ═══════════════════════════════════════════════════════════════════════════
-    
+
     // Storage key for custom tools
     const CUSTOM_TOOLS_KEY = 'agi_multi_custom_tools';
 
@@ -2684,7 +2327,7 @@
         }),
         callback: async (input, { agent }) => {
             const action = input.action || 'replace';
-            
+
             // Find which agent is calling this
             let callerAgentId = state.activeAgentId;
             for (const [id, data] of state.agents) {
@@ -2693,12 +2336,12 @@
                     break;
                 }
             }
-            
+
             const agentData = state.agents.get(callerAgentId);
             if (!agentData) {
                 return { error: 'Agent not found' };
             }
-            
+
             if (input.section === 'system_prompt') {
                 const current = agentData.config.systemPrompt || '';
                 let newPrompt;
@@ -2713,7 +2356,7 @@
                 saveState();
                 return { success: true, message: `System prompt updated for agent ${callerAgentId}.` };
             }
-            
+
             return { error: `Unknown section: ${input.section}` };
         }
     });
@@ -2722,7 +2365,7 @@
     const createToolTool = tool({
         name: 'create_tool',
         description: `Create a new tool that will be available to all agents. The tool persists across sessions.
-        
+
 IMPORTANT: The 'code' parameter should be the BODY of an async function that receives 'input' as parameter.
 Return a result object. You have access to: fetch, localStorage, document, console, etc.
 
@@ -2760,7 +2403,7 @@ Example - create a tool that gets weather:
                 }
 
                 // Check for reserved names
-                const reserved = ['create_tool', 'list_tools', 'delete_tool', 'update_self', 'render_ui', 'javascript_eval', 
+                const reserved = ['create_tool', 'list_tools', 'delete_tool', 'update_self', 'render_ui', 'javascript_eval',
                                   'storage_get', 'storage_set', 'fetch_url', 'notify', 'use_agent', 'scheduler',
                                   'invoke_agent', 'broadcast_to_agents', 'list_agents', 'invoke_remote_agent',
                                   'subscribe_topic', 'publish_topic'];
@@ -2796,8 +2439,8 @@ Example - create a tool that gets weather:
                     }
                 }
 
-                return { 
-                    success: true, 
+                return {
+                    success: true,
                     message: `Tool '${input.name}' created and ready to use immediately!`,
                     tool: input.name
                 };
@@ -2833,7 +2476,7 @@ Example - create a tool that gets weather:
                 result.builtIn = [
                     'render_ui', 'javascript_eval', 'storage_get', 'storage_set',
                     'fetch_url', 'notify', 'update_self', 'create_tool', 'list_tools', 'delete_tool',
-                    'use_agent', 'scheduler', 'invoke_agent', 'broadcast_to_agents', 
+                    'use_agent', 'scheduler', 'invoke_agent', 'broadcast_to_agents',
                     'list_agents', 'invoke_remote_agent', 'subscribe_topic', 'publish_topic'
                 ];
             }
@@ -2851,7 +2494,7 @@ Example - create a tool that gets weather:
         }),
         callback: async (input) => {
             const customTools = loadCustomTools();
-            
+
             if (!customTools[input.name]) {
                 return { error: `Tool '${input.name}' not found in custom tools` };
             }
@@ -2859,17 +2502,17 @@ Example - create a tool that gets weather:
             delete customTools[input.name];
             saveCustomTools(customTools);
 
-            return { 
-                success: true, 
+            return {
+                success: true,
                 message: `Tool '${input.name}' deleted. Restart agents to remove from tool list.`
             };
         }
     });
-    
+
     // ═══════════════════════════════════════════════════════════════════════════
     // 🌐 AGENTMESH TOOLS - Cross-tab communication with other agi.diy pages
     // ═══════════════════════════════════════════════════════════════════════════
-    
+
     const invokeMeshAgentTool = tool({
         name: 'invoke_mesh_agent',
         description: 'Send a prompt to an agent running in ANOTHER browser tab (index.html single agent, mesh.html, etc). Use list_mesh_peers to see available targets.',
@@ -2887,7 +2530,7 @@ Example - create a tool that gets weather:
             }
         }
     });
-    
+
     const listMeshPeersTool = tool({
         name: 'list_mesh_peers',
         description: 'List all connected agi.diy browser tabs',
@@ -2903,7 +2546,7 @@ Example - create a tool that gets weather:
             };
         }
     });
-    
+
     const broadcastMeshTool = tool({
         name: 'broadcast_mesh',
         description: 'Send message to ALL connected agi.diy tabs',
@@ -2920,7 +2563,7 @@ Example - create a tool that gets weather:
             }
         }
     });
-    
+
     const addToMeshRingTool = tool({
         name: 'add_to_mesh_ring',
         description: 'Share context visible to ALL agents in ALL tabs',
@@ -2934,7 +2577,7 @@ Example - create a tool that gets weather:
             return { success: true, added: input.text.slice(0, 100) };
         }
     });
-    
+
     const getMeshRingTool = tool({
         name: 'get_mesh_ring',
         description: 'See what agents in other tabs are working on',
@@ -2950,9 +2593,9 @@ Example - create a tool that gets weather:
             };
         }
     });
-    
+
     const MESH_TOOLS = [invokeMeshAgentTool, listMeshPeersTool, broadcastMeshTool, addToMeshRingTool, getMeshRingTool];
-    
+
     const TOOLS = [
         // Core
         renderUiTool, javascriptEvalTool, storageGetTool, storageSetTool, fetchUrlTool, notifyTool,
@@ -2965,11 +2608,11 @@ Example - create a tool that gets weather:
         // Cross-tab mesh
         ...MESH_TOOLS
     ];
-    
+
     // ═══════════════════════════════════════════════════════════════════════════
     // AGENT MANAGEMENT
     // ═══════════════════════════════════════════════════════════════════════════
-    
+
     window.spawnAgent = async function() {
         const id = document.getElementById('spawnId').value.trim();
         const provider = document.getElementById('spawnProvider').value;
@@ -2977,10 +2620,10 @@ Example - create a tool that gets weather:
         const systemPrompt = document.getElementById('spawnPrompt').value.trim() || 'You are a helpful AI assistant.';
         const maxTokens = parseInt(document.getElementById('spawnMaxTokens').value) || DEFAULT_MAX_TOKENS;
         const additionalFieldsStr = document.getElementById('spawnAdditionalFields').value.trim();
-        
+
         if (!id) { showToast('Enter agent ID'); return; }
         if (state.agents.has(id)) { showToast('Agent ID exists'); return; }
-        
+
         // Parse additional request fields
         let additionalRequestFields = null;
         if (additionalFieldsStr) {
@@ -2991,41 +2634,41 @@ Example - create a tool that gets weather:
                 return;
             }
         }
-        
+
         // Get enabled tools
         const toolCheckboxes = document.querySelectorAll('#spawnToolsList input[name="spawn-tool"]:checked');
         const enabledTools = Array.from(toolCheckboxes).map(cb => cb.value);
         const allToolsEnabled = enabledTools.length === TOOLS.length;
-        
+
         try {
-            const model = createModel(provider, { 
-                modelId: modelId || undefined, 
+            const model = createModel(provider, {
+                modelId: modelId || undefined,
                 maxTokens,
                 additionalRequestFields
             });
-            
+
             // Get the tools based on selection + custom tools
             const selectedTools = allToolsEnabled ? TOOLS : TOOLS.filter(t => enabledTools.includes(t.name));
             const customTools = buildCustomTools();
             const allTools = [...selectedTools, ...customTools];
-            
+
             const agent = new Agent({
                 model,
                 tools: allTools,
                 systemPrompt: buildSystemPrompt(id, systemPrompt),
                 printer: false
             });
-            
+
             const color = state.agentColors[state.colorIndex % state.agentColors.length];
             state.colorIndex++;
-            
+
             state.agents.set(id, {
                 agent,
                 model,
-                config: { 
-                    provider, 
-                    modelId: modelId || undefined, 
-                    systemPrompt, 
+                config: {
+                    provider,
+                    modelId: modelId || undefined,
+                    systemPrompt,
                     maxTokens,
                     additionalRequestFields,
                     enabledTools: allToolsEnabled ? null : enabledTools
@@ -3034,9 +2677,9 @@ Example - create a tool that gets weather:
                 status: 'ready',
                 color
             });
-            
+
             closeModal('spawnModal');
-            
+
             updateAgentUI();
             selectAgent(id);
             showToast(`Agent ${id} spawned`);
@@ -3045,7 +2688,7 @@ Example - create a tool that gets weather:
             showToast('Error: ' + e.message);
         }
     };
-    
+
     function buildSystemPrompt(agentId, basePrompt) {
         // 🌐 Inject AgentMesh peer context
         let meshContext = '';
@@ -3056,7 +2699,7 @@ Example - create a tool that gets weather:
             const ringCtx = window.AgentMesh.getRingContextForAgent(agentId, 5);
             if (ringCtx) meshContext += ringCtx;
         }
-        
+
         return `${basePrompt}
 
 ## Multi-Agent Context
@@ -3080,18 +2723,18 @@ Ring Attention: Other agents' recent messages are shared with you for context.
 ${meshContext}
 ${getRingContext()}`;
     }
-    
+
     function getRingContext() {
         // Combine local ring buffer with AgentMesh shared ring
         let allEntries = [...state.ringBuffer];
-        
+
         // Add AgentMesh ring entries (from other tabs)
         if (window.AgentMesh?.getRingContext) {
             const meshEntries = window.AgentMesh.getRingContext();
             for (const entry of meshEntries) {
                 // Skip entries that are already in local buffer (avoid duplicates)
-                const isDuplicate = allEntries.some(e => 
-                    e.agentId === entry.agentId && 
+                const isDuplicate = allEntries.some(e =>
+                    e.agentId === entry.agentId &&
                     Math.abs(e.timestamp - entry.timestamp) < 5000 &&
                     e.content?.slice(0, 50) === entry.text?.slice(0, 50)
                 );
@@ -3107,35 +2750,35 @@ ${getRingContext()}`;
                 }
             }
         }
-        
+
         // Sort by timestamp and take recent
         allEntries.sort((a, b) => a.timestamp - b.timestamp);
         const recent = allEntries.slice(-15);
-        
+
         if (recent.length === 0) return '';
-        
+
         return '## Recent Messages from Agents:\n' + recent.map(e => {
             const source = e.isMesh ? ` (${e.agentType || 'mesh'})` : '';
             return `[${e.agentId}${source}]: ${(e.content || '').slice(0, 200)}...`;
         }).join('\n');
     }
-    
+
     window.selectAgent = function(agentId) {
         state.activeAgentId = agentId;
         updateAgentUI();
         renderMessages();
-        
+
         const agentData = state.agents.get(agentId);
         if (agentData) {
             document.getElementById('currentAgentName').textContent = agentId;
             document.getElementById('currentAgentModel').textContent = `${agentData.config.provider} • ${agentData.config.modelId || 'default'}`;
         }
     };
-    
+
     window.killAgent = function(agentId, event) {
         event.stopPropagation();
         if (!confirm(`Kill agent ${agentId}?`)) return;
-        
+
         state.agents.delete(agentId);
         if (state.activeAgentId === agentId) {
             state.activeAgentId = state.agents.keys().next().value || null;
@@ -3145,11 +2788,11 @@ ${getRingContext()}`;
         showToast(`Agent ${agentId} killed`);
         saveState();
     };
-    
+
     function updateAgentUI() {
         const agentListHtml = [];
         const targetOptions = ['<option value="all">All Agents</option>'];
-        
+
         for (const [id, data] of state.agents) {
             const isActive = id === state.activeAgentId;
             agentListHtml.push(`
@@ -3170,25 +2813,25 @@ ${getRingContext()}`;
             `);
             targetOptions.push(`<option value="${id}">${id}</option>`);
         }
-        
+
         document.getElementById('agentList').innerHTML = agentListHtml.join('') || '<div style="font-size:11px;color:var(--text-tertiary);">No agents yet</div>';
         document.getElementById('mobileAgentList').innerHTML = agentListHtml.join('') || '<div style="font-size:11px;color:var(--text-tertiary);">No agents yet</div>';
         document.getElementById('targetAgent').innerHTML = targetOptions.join('');
-        
+
         // Update schedule agent dropdown
         const scheduleAgentSelect = document.getElementById('scheduleAgent');
         if (scheduleAgentSelect) {
             scheduleAgentSelect.innerHTML = [...state.agents.keys()].map(id => `<option value="${id}">${id}</option>`).join('');
         }
     }
-    
+
     function updateScheduleUI() {
         const container = document.getElementById('scheduleList');
         if (state.schedules.size === 0) {
             container.innerHTML = '<div style="font-size:11px;color:var(--text-tertiary);">No tasks scheduled</div>';
             return;
         }
-        
+
         let html = '';
         for (const [id, s] of state.schedules) {
             html += `
@@ -3204,7 +2847,7 @@ ${getRingContext()}`;
         }
         container.innerHTML = html;
     }
-    
+
     window.deleteSchedule = function(id) {
         const s = state.schedules.get(id);
         if (s) {
@@ -3216,27 +2859,25 @@ ${getRingContext()}`;
             showToast('Schedule deleted');
         }
     };
-    
+
     // Auto-create default agent if none exist and credentials are available
     async function autoCreateDefaultAgent() {
         if (state.agents.size > 0) return; // Already have agents
-        
+
         // Check for any configured credentials
         const hasAnthropic = state.credentials.anthropic.apiKey;
         const hasOpenAI = state.credentials.openai.apiKey;
         const hasBedrock = state.credentials.bedrock.apiKey;
-        
-        if (!hasAnthropic && !hasOpenAI && !hasBedrock) {
-            console.log('No API keys configured - please add credentials in settings');
-            return;
-        }
-        
-        // Determine which provider to use (priority: bedrock > anthropic > openai)
-        let provider = 'bedrock';
+        const hasCompat = state.credentials.openai_compatible?.baseUrl;
+
+        // Determine which provider to use (priority: bedrock > anthropic > openai > compat > webllm)
+        let provider;
         if (hasBedrock) provider = 'bedrock';
         else if (hasAnthropic) provider = 'anthropic';
         else if (hasOpenAI) provider = 'openai';
-        
+        else if (hasCompat) provider = 'openai_compatible';
+        else provider = 'webllm';
+
         try {
             // Use bedrock defaults with extended thinking
             const modelConfig = {
@@ -3244,27 +2885,27 @@ ${getRingContext()}`;
                 additionalRequestFields: provider === 'bedrock' ? DEFAULT_BEDROCK_ADDITIONAL_FIELDS : null
             };
             const model = createModel(provider, modelConfig);
-            
+
             // Include custom tools
             const customTools = buildCustomTools();
             const allTools = [...TOOLS, ...customTools];
-            
+
             const agent = new Agent({
                 model,
                 tools: allTools,
                 systemPrompt: buildSystemPrompt('assistant', 'You are AGI, a helpful AI assistant. You can spawn sub-agents, schedule tasks, create custom tools, and coordinate with other agents.'),
                 printer: false
             });
-            
+
             const color = state.agentColors[state.colorIndex % state.agentColors.length];
             state.colorIndex++;
-            
+
             state.agents.set('assistant', {
                 agent,
                 model,
-                config: { 
-                    provider, 
-                    systemPrompt: 'You are AGI, a helpful AI assistant. You can spawn sub-agents, schedule tasks, create custom tools, and coordinate with other agents.', 
+                config: {
+                    provider,
+                    systemPrompt: 'You are AGI, a helpful AI assistant. You can spawn sub-agents, schedule tasks, create custom tools, and coordinate with other agents.',
                     maxTokens: DEFAULT_MAX_TOKENS,
                     additionalRequestFields: provider === 'bedrock' ? DEFAULT_BEDROCK_ADDITIONAL_FIELDS : null
                 },
@@ -3272,30 +2913,30 @@ ${getRingContext()}`;
                 status: 'ready',
                 color
             });
-            
+
             state.activeAgentId = 'assistant';
             updateAgentUI();
             renderMessages();
             saveState();
-            
+
             console.log('✅ Default agent "assistant" created automatically');
             showToast('Default agent ready');
         } catch (e) {
             console.warn('Could not auto-create default agent:', e);
         }
     }
-    
+
     // ═══════════════════════════════════════════════════════════════════════════
     // MESSAGING
     // ═══════════════════════════════════════════════════════════════════════════
-    
+
     let streamingEls = new Map(); // agentId -> streaming element
     let broadcastMode = false; // true when sending to all agents
-    
+
     async function runAgentMessage(agentId, message) {
         const agentData = state.agents.get(agentId);
         if (!agentData) return;
-        
+
         // Add to ring buffer FIRST so it's included in system prompt
         state.ringBuffer.push({ agentId, role: 'user', content: message, timestamp: Date.now() });
         if (state.ringBuffer.length > 100) state.ringBuffer.shift();
@@ -3304,30 +2945,30 @@ ${getRingContext()}`;
             window.AgentMesh.addToRingContext(agentId, 'multi', `[User→${agentId}] ${message.slice(0, 300)}`);
         }
         updateRingUI();
-        
+
         // Create a FRESH agent instance for each message (allows parallelism)
         // The stored agentData.agent is just a reference/template
         let activeAgent;
         try {
-            const model = createModel(agentData.config.provider, { 
+            const model = createModel(agentData.config.provider, {
                 modelId: agentData.config.modelId,
                 maxTokens: agentData.config.maxTokens || DEFAULT_MAX_TOKENS,
                 additionalRequestFields: agentData.config.additionalRequestFields || null
             });
-            
+
             // Get the tools based on agent's enabled tools config + custom tools
             const enabledTools = agentData.config.enabledTools;
             const selectedTools = (!enabledTools || enabledTools === null) ? TOOLS : TOOLS.filter(t => enabledTools.includes(t.name));
             const customTools = buildCustomTools();  // Include dynamically created tools!
             const allTools = [...selectedTools, ...customTools];
-            
+
             activeAgent = new Agent({
                 model,
                 tools: allTools,
                 systemPrompt: buildSystemPrompt(agentId, agentData.config.systemPrompt),
                 printer: false
             });
-            
+
             // Inject conversation history from this agent's messages
             if (agentData.messages.length > 0) {
                 // Load recent conversation history (last 20 messages)
@@ -3345,25 +2986,25 @@ ${getRingContext()}`;
             addMessageToUI('error', `Failed to create agent: ${e.message}`, agentId, agentData.color);
             return;
         }
-        
+
         agentData.status = 'processing';
         updateAgentUI();
-        
+
         // Add user message to stored history
         agentData.messages.push({ role: 'user', content: message, timestamp: Date.now() });
         const shouldShow = broadcastMode || agentId === state.activeAgentId;
-        
+
         if (shouldShow) {
             addMessageToUI('user', message, agentId, agentData.color);
             addThinking();
         }
-        
+
         try {
             let currentText = '';
-            
+
             for await (const event of activeAgent.stream(message)) {
                 if (!event?.type) continue;
-                
+
                 if (event.type === 'modelContentBlockDeltaEvent' && event.delta?.type === 'textDelta') {
                     currentText += event.delta.text;
                     if (shouldShow) updateStreaming(currentText, agentId, agentData.color);
@@ -3375,15 +3016,15 @@ ${getRingContext()}`;
                     updateToolStatus(event.toolUse?.name, event.result?.status || 'success');
                 }
             }
-            
-            
+
+
             if (shouldShow) {
                 removeThinking();
                 if (currentText) finalizeStreaming(currentText, agentId, agentData.color);
             }
-            
+
             agentData.messages.push({ role: 'assistant', content: currentText, timestamp: Date.now() });
-            
+
             // Add to ring buffer
             state.ringBuffer.push({ agentId, role: 'assistant', content: currentText, timestamp: Date.now() });
             if (state.ringBuffer.length > 100) state.ringBuffer.shift();
@@ -3392,53 +3033,53 @@ ${getRingContext()}`;
                 window.AgentMesh.addToRingContext(agentId, 'multi', currentText.slice(0, 500));
             }
             updateRingUI();
-            
+
             agentData.status = 'ready';
         } catch (e) {
             console.error(`Agent ${agentId} error:`, e);
             agentData.status = 'error';
-            
+
             if (shouldShow) {
                 removeThinking();
                 addMessageToUI('error', e.message, agentId, agentData.color);
             }
         }
-        
+
         updateAgentUI();
         saveState();
     }
-    
+
     window.sendMessage = async function() {
         const input = document.getElementById('inputField');
         const text = input.value.trim();
         if (!text) return;
-        
+
         const target = document.getElementById('targetAgent').value;
-        
+
         // If no agents exist, try to create default agent first
         if (state.agents.size === 0) {
-            const hasAnyKey = state.credentials.anthropic.apiKey || 
-                              state.credentials.openai.apiKey || 
+            const hasAnyKey = state.credentials.anthropic.apiKey ||
+                              state.credentials.openai.apiKey ||
                               state.credentials.bedrock.apiKey;
-            
+
             if (!hasAnyKey) {
                 showToast('Add API key in Settings first');
                 openSettingsModal();
                 return;
             }
-            
+
             // Create default agent on the fly
             showToast('Creating agent...');
             await autoCreateDefaultAgent();
-            
+
             if (state.agents.size === 0) {
                 showToast('Failed to create agent');
                 return;
             }
         }
-        
+
         input.value = '';
-        
+
         broadcastMode = (target === 'all');
         if (target === 'all') {
             for (const agentId of state.agents.keys()) {
@@ -3448,7 +3089,7 @@ ${getRingContext()}`;
             runAgentMessage(target, text);
         }
     };
-    
+
     window.broadcastMessage = function() {
         broadcastMode = true;
         const text = prompt('Broadcast message to all agents:');
@@ -3458,13 +3099,13 @@ ${getRingContext()}`;
             }
         }
     };
-    
+
     window.clearChat = function() {
         if (!state.activeAgentId) {
             showToast('No active agent to clear');
             return;
         }
-        
+
         const agentData = state.agents.get(state.activeAgentId);
         if (agentData) {
             agentData.messages = [];
@@ -3473,26 +3114,26 @@ ${getRingContext()}`;
             saveState();
         }
     };
-    
+
     window.handleKeyDown = function(e) {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             sendMessage();
         }
     };
-    
+
     // ═══════════════════════════════════════════════════════════════════════════
     // UI HELPERS
     // ═══════════════════════════════════════════════════════════════════════════
-    
+
     function renderMessages() {
         const inner = document.getElementById('messagesInner');
         inner.innerHTML = '';
-        
+
         if (!state.activeAgentId) {
             inner.innerHTML = `<div class="message system"><div class="message-content">
                 <strong>Getting Started</strong><br><br>
-                ${Object.values(state.credentials).some(c => c.apiKey) 
+                ${Object.values(state.credentials).some(c => c.apiKey)
                     ? 'Creating default agent... If this takes too long, try clicking "+ New Agent".'
                     : 'Add your API key in ⚙️ Settings to start chatting, or click "+ New Agent" to configure a new agent.'}
             </div></div>`;
@@ -3500,23 +3141,23 @@ ${getRingContext()}`;
             document.getElementById('currentAgentModel').textContent = '—';
             return;
         }
-        
+
         const agentData = state.agents.get(state.activeAgentId);
         if (!agentData) return;
-        
+
         for (const msg of agentData.messages) {
             addMessageToUI(msg.role, msg.content, state.activeAgentId, agentData.color, false);
         }
         scrollToBottom();
     }
-    
+
     function addMessageToUI(role, content, agentId, color, scroll = true) {
         const inner = document.getElementById('messagesInner');
         const msg = document.createElement('div');
         msg.className = `message ${role}`;
-        
+
         const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        
+
         msg.innerHTML = `
             <div class="message-header">
                 <span class="message-role">${role === 'user' ? 'you' : role === 'assistant' ? 'agi' : role}</span>
@@ -3525,15 +3166,15 @@ ${getRingContext()}`;
             </div>
             <div class="message-content">${role === 'user' ? escapeHtml(content) : `<div class="markdown-content">${marked.parse(content)}</div>`}</div>
         `;
-        
+
         inner.appendChild(msg);
         if (scroll) scrollToBottom();
     }
-    
+
     function updateStreaming(text, agentId, color) {
         const inner = document.getElementById('messagesInner');
         removeThinking();
-        
+
         let streamingEl = streamingEls.get(agentId);
         if (!streamingEl) {
             streamingEl = document.createElement('div');
@@ -3550,11 +3191,11 @@ ${getRingContext()}`;
             inner.appendChild(streamingEl);
             streamingEls.set(agentId, streamingEl);
         }
-        
+
         streamingEl.querySelector('.markdown-content').innerHTML = marked.parse(text);
         scrollToBottom();
     }
-    
+
     function finalizeStreaming(text, agentId, color) {
         const streamingEl = streamingEls.get(agentId);
         if (streamingEl) {
@@ -3562,7 +3203,7 @@ ${getRingContext()}`;
             streamingEls.delete(agentId);
         }
     }
-    
+
     function addToolCall(name, input, status) {
         const inner = document.getElementById('messagesInner');
         const tool = document.createElement('div');
@@ -3579,7 +3220,7 @@ ${getRingContext()}`;
         inner.appendChild(tool);
         scrollToBottom();
     }
-    
+
     function updateToolStatus(name, status) {
         const blocks = document.querySelectorAll('.tool-block');
         for (let i = blocks.length - 1; i >= 0; i--) {
@@ -3589,7 +3230,7 @@ ${getRingContext()}`;
             }
         }
     }
-    
+
     function addThinking() {
         const inner = document.getElementById('messagesInner');
         if (inner.querySelector('.thinking-indicator')) return;
@@ -3599,24 +3240,24 @@ ${getRingContext()}`;
         inner.appendChild(el);
         scrollToBottom();
     }
-    
+
     function removeThinking() {
         document.querySelector('.thinking-indicator')?.remove();
     }
-    
+
     function updateRingUI() {
         const container = document.getElementById('ringContent');
-        
+
         // Combine local ring with AgentMesh shared ring
         let allEntries = state.ringBuffer.map((e, idx) => ({ ...e, localIndex: idx }));
-        
+
         // Add AgentMesh ring entries (from other tabs)
         if (window.AgentMesh?.getRingContext) {
             const meshEntries = window.AgentMesh.getRingContext();
             for (const entry of meshEntries) {
                 // Skip entries that look like duplicates
-                const isDuplicate = allEntries.some(e => 
-                    e.agentId === entry.agentId && 
+                const isDuplicate = allEntries.some(e =>
+                    e.agentId === entry.agentId &&
                     Math.abs(e.timestamp - entry.timestamp) < 5000 &&
                     e.content?.slice(0, 50) === entry.text?.slice(0, 50)
                 );
@@ -3632,16 +3273,16 @@ ${getRingContext()}`;
                 }
             }
         }
-        
+
         // Sort by timestamp descending (most recent first)
         allEntries.sort((a, b) => b.timestamp - a.timestamp);
         const recent = allEntries.slice(0, 20);
-        
+
         if (recent.length === 0) {
             container.innerHTML = '<div style="font-size:11px;color:var(--text-tertiary);text-align:center;padding:20px;">Shared context will appear here</div>';
             return;
         }
-        
+
         container.innerHTML = recent.map((e) => {
             const agentData = state.agents.get(e.agentId);
             const color = agentData?.color || (e.isMesh ? '#007aff' : '#888');
@@ -3649,7 +3290,7 @@ ${getRingContext()}`;
             const meshBadge = e.isMesh ? `<span style="font-size:9px;color:#007aff;margin-left:4px;">🌐 ${e.agentType || 'mesh'}</span>` : '';
             const deleteBtn = e.isMesh ? '' : `<span class="ring-entry-delete" onclick="deleteRingEntry(${e.localIndex})" title="Delete this entry">✕</span>`;
             const borderStyle = e.isMesh ? 'border-left:2px solid #007aff;' : '';
-            
+
             return `
                 <div class="ring-entry" style="${borderStyle}">
                     <div class="ring-entry-header">
@@ -3664,7 +3305,7 @@ ${getRingContext()}`;
             `;
         }).join('');
     }
-    
+
     window.clearRingContext = function() {
         if (state.ringBuffer.length === 0) {
             showToast('Ring context is already empty');
@@ -3676,7 +3317,7 @@ ${getRingContext()}`;
         saveState();
         showToast('Ring context cleared');
     };
-    
+
     window.deleteRingEntry = function(index) {
         if (index >= 0 && index < state.ringBuffer.length) {
             state.ringBuffer.splice(index, 1);
@@ -3685,29 +3326,29 @@ ${getRingContext()}`;
             showToast('Entry deleted');
         }
     };
-    
+
     function scrollToBottom() {
         const container = document.getElementById('messagesContainer');
         container.scrollTop = container.scrollHeight;
     }
-    
+
     function escapeHtml(text) {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
     }
-    
+
     function showToast(msg) {
         const toast = document.getElementById('toast');
         toast.textContent = msg;
         toast.classList.add('show');
         setTimeout(() => toast.classList.remove('show'), 3000);
     }
-    
+
     // ═══════════════════════════════════════════════════════════════════════════
     // MODALS
     // ═══════════════════════════════════════════════════════════════════════════
-    
+
     window.openSpawnModal = () => {
         // Reset form with bedrock defaults
         document.getElementById('spawnId').value = '';
@@ -3716,25 +3357,25 @@ ${getRingContext()}`;
         document.getElementById('spawnPrompt').value = '';
         document.getElementById('spawnMaxTokens').value = String(DEFAULT_MAX_TOKENS);
         document.getElementById('spawnAdditionalFields').value = JSON.stringify(DEFAULT_BEDROCK_ADDITIONAL_FIELDS, null, 2);
-        
+
         // Update model hint
         updateSpawnModelDefaults();
-        
+
         // Render tools list (all enabled by default)
         renderSpawnToolsList();
-        
+
         document.getElementById('spawnModal').classList.add('active');
     };
-    
+
     window.updateSpawnModelDefaults = function() {
         const provider = document.getElementById('spawnProvider').value;
         const hintEl = document.getElementById('spawnModelHint');
         hintEl.textContent = `Default: ${DEFAULT_MODELS[provider] || 'unknown'}`;
-        
+
         // Show/hide additional fields based on provider
         const additionalFieldsGroup = document.getElementById('spawnAdditionalFieldsGroup');
         const additionalFieldsInput = document.getElementById('spawnAdditionalFields');
-        
+
         if (provider === 'bedrock') {
             additionalFieldsGroup.style.display = 'block';
             // Pre-populate with default bedrock fields if empty
@@ -3747,7 +3388,7 @@ ${getRingContext()}`;
             additionalFieldsGroup.style.display = 'none';
         }
     };
-    
+
     function renderSpawnToolsList() {
         const container = document.getElementById('spawnToolsList');
         const allTools = [
@@ -3770,7 +3411,7 @@ ${getRingContext()}`;
             { name: 'subscribe_topic', desc: 'Subscribe to topic' },
             { name: 'publish_topic', desc: 'Publish to topic' }
         ];
-        
+
         container.innerHTML = allTools.map(t => `
             <label class="tool-item enabled" onclick="toggleToolItem(this)">
                 <input type="checkbox" name="spawn-tool" value="${t.name}" checked>
@@ -3781,46 +3422,46 @@ ${getRingContext()}`;
             </label>
         `).join('');
     }
-    
+
     window.openEditAgentModal = function(agentId, event) {
         event.stopPropagation();
         const agentData = state.agents.get(agentId);
         if (!agentData) return;
-        
+
         document.getElementById('editAgentId').value = agentId;
         document.getElementById('editAgentTitle').textContent = agentId;
         document.getElementById('editProvider').value = agentData.config.provider;
         document.getElementById('editModelId').value = agentData.config.modelId || '';
         document.getElementById('editPrompt').value = agentData.config.systemPrompt || '';
         document.getElementById('editMaxTokens').value = agentData.config.maxTokens || 16000;
-        document.getElementById('editAdditionalFields').value = agentData.config.additionalRequestFields 
-            ? JSON.stringify(agentData.config.additionalRequestFields, null, 2) 
+        document.getElementById('editAdditionalFields').value = agentData.config.additionalRequestFields
+            ? JSON.stringify(agentData.config.additionalRequestFields, null, 2)
             : '';
-        
+
         // Update model hint
         updateEditModelDefaults();
-        
+
         // Show/hide additional fields based on provider
         const provider = agentData.config.provider;
-        document.getElementById('editAdditionalFieldsGroup').style.display = 
+        document.getElementById('editAdditionalFieldsGroup').style.display =
             (provider === 'anthropic' || provider === 'bedrock') ? 'block' : 'none';
-        
+
         // Render tools list
         renderEditToolsList(agentData.config.enabledTools || null);
-        
+
         document.getElementById('editAgentModal').classList.add('active');
     };
-    
+
     window.updateEditModelDefaults = function() {
         const provider = document.getElementById('editProvider').value;
         const hintEl = document.getElementById('editModelHint');
         hintEl.textContent = `Default: ${DEFAULT_MODELS[provider] || 'unknown'}`;
-        
+
         // Show/hide additional fields based on provider
-        document.getElementById('editAdditionalFieldsGroup').style.display = 
+        document.getElementById('editAdditionalFieldsGroup').style.display =
             (provider === 'anthropic' || provider === 'bedrock') ? 'block' : 'none';
     };
-    
+
     function renderEditToolsList(enabledTools) {
         const container = document.getElementById('editToolsList');
         // All available tools with descriptions
@@ -3844,10 +3485,10 @@ ${getRingContext()}`;
             { name: 'subscribe_topic', desc: 'Subscribe to topic' },
             { name: 'publish_topic', desc: 'Publish to topic' }
         ];
-        
+
         // If enabledTools is null, all tools are enabled
         const isAllEnabled = enabledTools === null;
-        
+
         container.innerHTML = allTools.map(t => {
             const enabled = isAllEnabled || (enabledTools && enabledTools.includes(t.name));
             return `
@@ -3861,22 +3502,22 @@ ${getRingContext()}`;
             `;
         }).join('');
     }
-    
+
     window.toggleToolItem = function(el) {
         el.classList.toggle('enabled');
     };
-    
+
     window.saveAgentEdit = async function() {
         const agentId = document.getElementById('editAgentId').value;
         const agentData = state.agents.get(agentId);
         if (!agentData) return;
-        
+
         const provider = document.getElementById('editProvider').value;
         const modelId = document.getElementById('editModelId').value.trim();
         const systemPrompt = document.getElementById('editPrompt').value.trim() || 'You are a helpful AI assistant.';
         const maxTokens = parseInt(document.getElementById('editMaxTokens').value) || DEFAULT_MAX_TOKENS;
         const additionalFieldsStr = document.getElementById('editAdditionalFields').value.trim();
-        
+
         // Parse additional request fields
         let additionalRequestFields = null;
         if (additionalFieldsStr) {
@@ -3887,27 +3528,27 @@ ${getRingContext()}`;
                 return;
             }
         }
-        
+
         // Get enabled tools
         const toolCheckboxes = document.querySelectorAll('#editToolsList input[name="tool"]:checked');
         const enabledTools = Array.from(toolCheckboxes).map(cb => cb.value);
-        
+
         // Check if all tools are enabled
         const allToolsEnabled = enabledTools.length === TOOLS.length;
-        
+
         try {
             // Create new model with updated config
-            const model = createModel(provider, { 
-                modelId: modelId || undefined, 
+            const model = createModel(provider, {
+                modelId: modelId || undefined,
                 maxTokens,
                 additionalRequestFields
             });
-            
+
             // Get the tools based on selection + custom tools
             const selectedTools = allToolsEnabled ? TOOLS : TOOLS.filter(t => enabledTools.includes(t.name));
             const customTools = buildCustomTools();
             const allTools = [...selectedTools, ...customTools];
-            
+
             // Create new agent instance
             const agent = new Agent({
                 model,
@@ -3915,7 +3556,7 @@ ${getRingContext()}`;
                 systemPrompt: buildSystemPrompt(agentId, systemPrompt),
                 printer: false
             });
-            
+
             // Update agent data
             agentData.agent = agent;
             agentData.model = model;
@@ -3927,14 +3568,14 @@ ${getRingContext()}`;
                 additionalRequestFields,
                 enabledTools: allToolsEnabled ? null : enabledTools
             };
-            
+
             closeModal('editAgentModal');
             updateAgentUI();
             saveState();
             showToast(`Agent ${agentId} updated`);
-            
+
             // Update header if this is the active agent
-            
+
             if (agentId === state.activeAgentId) {
                 document.getElementById('currentAgentName').textContent = agentId;
                 document.getElementById('currentAgentModel').textContent = `${provider} • ${modelId || DEFAULT_MODELS[provider]}`;
@@ -3943,12 +3584,16 @@ ${getRingContext()}`;
             showToast('Error: ' + e.message);
         }
     };
-    
+
     window.openSettingsModal = () => {
         document.getElementById('anthropicKey').value = state.credentials.anthropic.apiKey;
         document.getElementById('openaiKey').value = state.credentials.openai.apiKey;
         document.getElementById('bedrockKey').value = state.credentials.bedrock.apiKey;
         document.getElementById('bedrockRegion').value = state.credentials.bedrock.region;
+        document.getElementById('compatBaseUrl').value = state.credentials.openai_compatible?.baseUrl || '';
+        document.getElementById('compatKey').value = state.credentials.openai_compatible?.apiKey || '';
+        document.getElementById('compatModel').value = state.credentials.openai_compatible?.model || '';
+        document.getElementById('webllmModel').value = state.credentials.webllm?.model || 'Qwen2.5-3B-Instruct-q4f16_1-MLC';
         // Load network settings
         document.getElementById('relayUrl').value = localStorage.getItem('mesh_relay_url') || '';
         document.getElementById('instanceId').value = agentMesh.instanceId || '';
@@ -3957,32 +3602,32 @@ ${getRingContext()}`;
         document.getElementById('settingsModal').classList.add('active');
     };
     window.closeModal = (id) => document.getElementById(id).classList.remove('active');
-    
+
     window.showTab = function(e, tabName) {
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
         e.target.classList.add('active');
         document.getElementById(`tab-${tabName}`).classList.add('active');
     };
-    
+
     window.toggleScheduleFields = function() {
         const type = document.getElementById('scheduleType').value;
         document.getElementById('delayField').style.display = type === 'once' ? 'block' : 'none';
         document.getElementById('cronField').style.display = type === 'cron' ? 'block' : 'none';
     };
-    
+
     window.toggleMobileSidebar = () => document.getElementById('mobileSidebar').classList.toggle('active');
-    
+
     // ═══════════════════════════════════════════════════════════════════════════
     // ENCRYPTED SYNC - Export/Import API keys via encrypted URL
     // ═══════════════════════════════════════════════════════════════════════════
-    
+
     async function deriveKey(password, salt) {
         const enc = new TextEncoder();
         const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']);
         return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' }, keyMaterial, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
     }
-    
+
     async function encryptData(data, password) {
         const plaintext = JSON.stringify(data);
         const enc = new TextEncoder();
@@ -3996,7 +3641,7 @@ ${getRingContext()}`;
         combined.set(new Uint8Array(ciphertext), salt.length + iv.length);
         return btoa(String.fromCharCode(...combined));
     }
-    
+
     async function decryptData(encryptedBase64, password) {
         const combined = Uint8Array.from(atob(encryptedBase64), c => c.charCodeAt(0));
         const salt = combined.slice(0, 16);
@@ -4006,14 +3651,14 @@ ${getRingContext()}`;
         const plaintext = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
         return JSON.parse(new TextDecoder().decode(plaintext));
     }
-    
+
     window.exportSyncUrl = async function() {
         const password = document.getElementById('syncExportPassword')?.value;
         if (!password || password.length < 4) {
             showToast('Password must be 4+ chars');
             return;
         }
-        
+
         try {
             const data = {
                 anthropic: state.credentials.anthropic,
@@ -4022,7 +3667,7 @@ ${getRingContext()}`;
             };
             const encrypted = await encryptData(data, password);
             const url = `${window.location.origin}${window.location.pathname}?import=${encrypted}`;
-            
+
             document.getElementById('syncExportedUrl').value = url;
             document.getElementById('syncExportResult').style.display = 'block';
             showToast('Settings encrypted!');
@@ -4030,38 +3675,38 @@ ${getRingContext()}`;
             showToast('Export failed: ' + e.message);
         }
     };
-    
+
     window.importSyncUrl = async function() {
         const urlOrData = document.getElementById('syncImportUrl')?.value?.trim();
         const password = document.getElementById('syncImportPassword')?.value;
-        
+
         if (!urlOrData || !password) {
             showToast('Enter URL and password');
             return;
         }
-        
+
         try {
             let encryptedData = urlOrData;
             if (urlOrData.includes('?import=')) {
                 encryptedData = new URL(urlOrData).searchParams.get('import');
             }
-            
+
             const data = await decryptData(encryptedData, password);
-            
+
             // Apply credentials
             if (data.anthropic) state.credentials.anthropic = { ...state.credentials.anthropic, ...data.anthropic };
             if (data.openai) state.credentials.openai = { ...state.credentials.openai, ...data.openai };
             if (data.bedrock) state.credentials.bedrock = { ...state.credentials.bedrock, ...data.bedrock };
-            
+
             // Update UI
             document.getElementById('anthropicKey').value = state.credentials.anthropic.apiKey || '';
             document.getElementById('openaiKey').value = state.credentials.openai.apiKey || '';
             document.getElementById('bedrockKey').value = state.credentials.bedrock.apiKey || '';
             document.getElementById('bedrockRegion').value = state.credentials.bedrock.region || 'us-east-1';
-            
+
             saveState();
             showToast('Settings imported!');
-            
+
             // Clear fields
             document.getElementById('syncImportUrl').value = '';
             document.getElementById('syncImportPassword').value = '';
@@ -4069,7 +3714,7 @@ ${getRingContext()}`;
             showToast('Import failed - wrong password?');
         }
     };
-    
+
     // Check for ?import= URL param on load
     function checkForImportParam() {
         const url = new URL(window.location.href);
@@ -4084,17 +3729,23 @@ ${getRingContext()}`;
             }, 100);
         }
     }
-    
+
     // ═══════════════════════════════════════════════════════════════════════════
     // CREDENTIALS & PERSISTENCE
     // ═══════════════════════════════════════════════════════════════════════════
-    
+
     window.saveCredentials = function() {
         state.credentials.anthropic.apiKey = document.getElementById('anthropicKey').value.trim();
         state.credentials.openai.apiKey = document.getElementById('openaiKey').value.trim();
         state.credentials.bedrock.apiKey = document.getElementById('bedrockKey').value.trim();
         state.credentials.bedrock.region = document.getElementById('bedrockRegion').value;
-        
+        state.credentials.openai_compatible = state.credentials.openai_compatible || {};
+        state.credentials.openai_compatible.baseUrl = document.getElementById('compatBaseUrl').value.trim();
+        state.credentials.openai_compatible.apiKey = document.getElementById('compatKey').value.trim();
+        state.credentials.openai_compatible.model = document.getElementById('compatModel').value.trim();
+        state.credentials.webllm = state.credentials.webllm || {};
+        state.credentials.webllm.model = document.getElementById('webllmModel').value;
+
         // 🔑 Sync to AgentMesh unified credentials (cross-tab)
         if (window.AgentMesh?.setCredentials) {
             window.AgentMesh.setCredentials({
@@ -4103,42 +3754,42 @@ ${getRingContext()}`;
                 bedrock: { apiKey: state.credentials.bedrock.apiKey, region: state.credentials.bedrock.region, model: state.credentials.bedrock.model }
             });
         }
-        
+
         saveState();
         showToast('Credentials saved');
         closeModal('settingsModal');
     };
-    
+
     // Network relay functions
     window.connectRelay = function() {
         const url = document.getElementById('relayUrl').value.trim();
         const instanceId = document.getElementById('instanceId').value.trim();
-        
+
         if (!url) {
             showToast('Enter relay URL');
             return;
         }
-        
+
         if (instanceId) {
             agentMesh.instanceId = instanceId;
             localStorage.setItem('mesh_instance_id', instanceId);
         }
-        
+
         agentMesh.connectRelay(url);
     };
-    
+
     window.disconnectRelay = function() {
         agentMesh.disconnectRelay();
         localStorage.removeItem('mesh_relay_url');
     };
-    
+
     function saveState() {
         const data = {
             credentials: state.credentials,
             agents: [],
             ringBuffer: state.ringBuffer.slice(-50)
         };
-        
+
         for (const [id, agentData] of state.agents) {
             data.agents.push({
                 id,
@@ -4147,33 +3798,28 @@ ${getRingContext()}`;
                 color: agentData.color
             });
         }
-        
+
         localStorage.setItem('agi_multi_state', JSON.stringify(data));
     }
-    
+
     function loadState() {
         try {
             const stored = localStorage.getItem('agi_multi_state');
             if (!stored) return;
-            
+
             const data = JSON.parse(stored);
             state.credentials = data.credentials || state.credentials;
             state.ringBuffer = data.ringBuffer || [];
-            
-            // 🔑 Merge with AgentMesh unified credentials
+
+            // 🔑 AgentMesh is the credential authority — always prefer its values
             if (window.AgentMesh?.getCredentials) {
-                const meshCreds = window.AgentMesh.getCredentials();
-                if (meshCreds.anthropic?.apiKey && !state.credentials.anthropic.apiKey) {
-                    state.credentials.anthropic.apiKey = meshCreds.anthropic.apiKey;
-                }
-                if (meshCreds.openai?.apiKey && !state.credentials.openai.apiKey) {
-                    state.credentials.openai.apiKey = meshCreds.openai.apiKey;
-                }
-                if (meshCreds.bedrock?.apiKey && !state.credentials.bedrock.apiKey) {
-                    state.credentials.bedrock.apiKey = meshCreds.bedrock.apiKey;
-                }
+                const mc = window.AgentMesh.getCredentials();
+                if (mc.anthropic?.apiKey) state.credentials.anthropic.apiKey = mc.anthropic.apiKey;
+                if (mc.openai?.apiKey) state.credentials.openai.apiKey = mc.openai.apiKey;
+                if (mc.bedrock?.apiKey) state.credentials.bedrock.apiKey = mc.bedrock.apiKey;
+                if (mc.bedrock?.region) state.credentials.bedrock.region = mc.bedrock.region;
             }
-            
+
             for (const agentData of data.agents || []) {
                 try {
                     const model = createModel(agentData.config.provider, agentData.config);
@@ -4183,7 +3829,7 @@ ${getRingContext()}`;
                         systemPrompt: buildSystemPrompt(agentData.id, agentData.config.systemPrompt),
                         printer: false
                     });
-                    
+
                     state.agents.set(agentData.id, {
                         agent,
                         model,
@@ -4196,7 +3842,7 @@ ${getRingContext()}`;
                     console.warn(`Failed to restore agent ${agentData.id}:`, e);
                 }
             }
-            
+
             if (state.agents.size > 0) {
                 state.activeAgentId = state.agents.keys().next().value;
             }
@@ -4204,7 +3850,7 @@ ${getRingContext()}`;
             console.warn('Failed to load state:', e);
         }
     }
-    
+
     window.exportAllAgents = function() {
         const data = {
             version: 1,
@@ -4213,11 +3859,11 @@ ${getRingContext()}`;
             agents: [],
             ringBuffer: state.ringBuffer
         };
-        
+
         for (const [id, agentData] of state.agents) {
             data.agents.push({ id, config: agentData.config, messages: agentData.messages, color: agentData.color });
         }
-        
+
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -4227,21 +3873,21 @@ ${getRingContext()}`;
         URL.revokeObjectURL(url);
         showToast('State exported');
     };
-    
+
     window.importAgents = async function(event) {
         const file = event.target.files[0];
         if (!file) return;
-        
+
         try {
             const text = await file.text();
             const data = JSON.parse(text);
-            
+
             state.credentials = data.credentials || state.credentials;
             state.ringBuffer = data.ringBuffer || [];
-            
+
             for (const agentData of data.agents || []) {
                 if (state.agents.has(agentData.id)) continue;
-                
+
                 const model = createModel(agentData.config.provider, agentData.config);
                 const agent = new Agent({
                     model,
@@ -4249,7 +3895,7 @@ ${getRingContext()}`;
                     systemPrompt: buildSystemPrompt(agentData.id, agentData.config.systemPrompt),
                     printer: false
                 });
-                
+
                 state.agents.set(agentData.id, {
                     agent,
                     model,
@@ -4259,7 +3905,7 @@ ${getRingContext()}`;
                     color: agentData.color || state.agentColors[state.colorIndex++ % state.agentColors.length]
                 });
             }
-            
+
             updateAgentUI();
             updateRingUI();
             saveState();
@@ -4267,27 +3913,27 @@ ${getRingContext()}`;
         } catch (e) {
             showToast('Import failed: ' + e.message);
         }
-        
+
         event.target.value = '';
     };
-    
+
     window.clearAllData = function() {
         if (!confirm('Clear all agents and data?')) return;
         localStorage.removeItem('agi_multi_state');
         location.reload();
     };
-    
+
     // ═══════════════════════════════════════════════════════════════════════════
     // CUSTOM TOOLS UI
     // ═══════════════════════════════════════════════════════════════════════════
-    
+
     function updateCustomToolsUI() {
         const container = document.getElementById('customToolsList');
         if (!container) return;
-        
+
         const customTools = loadCustomTools();
         const toolNames = Object.keys(customTools);
-        
+
         if (toolNames.length === 0) {
             container.innerHTML = `
                 <div style="color:var(--text-tertiary);">
@@ -4317,7 +3963,7 @@ ${getRingContext()}`;
             `;
         }
     }
-    
+
     window.deleteCustomTool = function(name) {
         if (!confirm(`Delete custom tool "${name}"?`)) return;
         const customTools = loadCustomTools();
@@ -4326,13 +3972,13 @@ ${getRingContext()}`;
         updateCustomToolsUI();
         showToast(`Tool "${name}" deleted`);
     };
-    
+
     // ═══════════════════════════════════════════════════════════════════════════
     // INIT
     // ═══════════════════════════════════════════════════════════════════════════
-    
+
     loadState();
-    
+
     // 🔑 Listen for credential changes from other tabs
     window.addEventListener('agimesh:credentials', (e) => {
         const creds = e.detail;
@@ -4349,7 +3995,7 @@ ${getRingContext()}`;
         console.log('[agi.html] Credentials synced from another tab');
         showToast('Credentials synced from another tab');
     });
-    
+
     // 🔗 Listen for ring context changes from other tabs (via localStorage)
     window.addEventListener('storage', (e) => {
         if (e.key === 'agi-mesh-ring-context') {
@@ -4357,7 +4003,7 @@ ${getRingContext()}`;
             updateRingUI();
         }
     });
-    
+
     // 🔗 Listen for ring context updates via AgentMesh BroadcastChannel
     // Delayed to ensure agent-mesh.js has loaded
     setTimeout(() => {
@@ -4377,23 +4023,23 @@ ${getRingContext()}`;
     updateRingUI();
     updateScheduleUI();
     renderMessages();
-    
+
     // Check for ?q= query parameter (iPhone shortcut support)
     function checkForQueryParam() {
         const url = new URL(window.location.href);
         const query = url.searchParams.get('q');
-        
+
         if (query) {
             // Clear URL params without reload
             window.history.replaceState({}, '', window.location.pathname);
-            
+
             // Wait for agents to initialize, then send query
             setTimeout(async () => {
                 if (state.agents.size === 0) {
                     // Try to create default agent first
                     await autoCreateDefaultAgent();
                 }
-                
+
                 if (state.agents.size > 0) {
                     console.log('📱 Running query from URL param:', query);
                     const targetAgent = state.activeAgentId || state.agents.keys().next().value;
@@ -4407,10 +4053,10 @@ ${getRingContext()}`;
         }
     }
     checkForQueryParam();
-    
+
     // Check for ?import= param (encrypted settings sync)
     checkForImportParam();
-    
+
     // Update custom tools UI when tools tab is shown
     document.querySelectorAll('.tab').forEach(tab => {
         tab.addEventListener('click', (e) => {
@@ -4419,10 +4065,10 @@ ${getRingContext()}`;
             }
         });
     });
-    
+
     // Run auto-create after a short delay to ensure UI is ready
     setTimeout(autoCreateDefaultAgent, 100);
-    
+
     // 🔑 Delayed credential sync after AgentMesh initializes
     setTimeout(() => {
         if (window.AgentMesh?.getCredentials) {
@@ -4450,21 +4096,26 @@ ${getRingContext()}`;
             }
         }
     }, 600);
-    
+
     // Request notification permission
     if ('Notification' in window && Notification.permission === 'default') {
         Notification.requestPermission();
     }
-    
+
     // ═══════════════════════════════════════════════════════════════════════════
     // EXPOSE FOR AGENT MESH (cross-page communication)
     // ═══════════════════════════════════════════════════════════════════════════
     window.state = state;
     window.runAgentMessage = runAgentMessage;
-    
+
     console.log('%c🦆 agi.diy Multi-Agent v1.0', 'font-size:16px;font-weight:bold;');
     console.log('%cSpawn agents, schedule tasks, let them coordinate via ring attention.', 'color:#888');
     </script>
+<script src="mesh-nav.js"></script>
 <script src="agent-mesh.js"></script>
+<script>
+// Populate mesh navigation after AgentMesh loads
+setTimeout(() => window.MeshNav?.populate('meshNavSlot'), 500);
+</script>
 </body>
 </html>

@@ -1,12 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>mesh</title>
     <meta name="theme-color" content="#0a0a0a">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕸️</text></svg>">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script type="module" src="model-utils.js"></script>
+    <script src="agent-mesh.js?v=2"></script>
     <style>
         *{box-sizing:border-box;margin:0;padding:0}
         :root{
@@ -209,7 +214,13 @@
         <div class="st"><div class="st-v" id="cntCloud" style="color:var(--c-agentcore)">0</div><div class="st-l">cloud</div></div>
         <div class="st"><div class="st-v" id="cntZenoh" style="color:var(--c-zenoh)">0</div><div class="st-l">zenoh</div></div>
     </div>
+
+    <div class="sec-hdr" style="margin-top:10px"><span class="sec-icon">🏃</span><span class="sec-title">Running</span></div>
     <div class="sb-scroll" id="agentsList"></div>
+
+    <div class="sec-hdr"><span class="sec-icon">📦</span><span class="sec-title">Available</span><span class="sec-cnt" id="cntAvailable">0</span></div>
+    <div class="sb-scroll" id="availableAgentsList" style="max-height:200px"></div>
+
     <div class="sb-spawn">
         <button class="spawn-btn" onclick="openSpawn('virtual')">+ virtual</button>
         <button class="spawn-btn" onclick="openSpawn('browser')">+ browser</button>
@@ -281,6 +292,8 @@
         <div class="fg"><label class="fl">Bedrock Bearer Token (for browser agents)</label><input type="password" class="fi" id="sBedrockKey" placeholder="Bearer token"><div class="fhint">From Bedrock API Keys console</div></div>
         <div class="fg"><label class="fl">Bedrock Region</label><input class="fi" id="sBedrockRegion" value="us-east-1" placeholder="us-east-1"><div class="fhint">For Bedrock browser agents</div></div>
         <div class="fg"><label class="fl">Gemini API Key (for voice)</label><input type="password" class="fi" id="sGeminiKey" placeholder="AIza..."><div class="fhint">For Gemini Live voice provider</div></div>
+        <div class="fg"><label class="fl">OpenAI-Compatible Endpoint</label><input class="fi" id="sCompatBaseUrl" placeholder="http://localhost:11434/v1"><input class="fi" id="sCompatKey" placeholder="API key (optional)" style="margin-top:4px"><input class="fi" id="sCompatModel" placeholder="Model name" style="margin-top:4px"><div class="fhint">Ollama, LM Studio, Groq, etc.</div></div>
+        <div class="fg"><label class="fl">WebLLM Model</label><select class="fi" id="sWebllmModel"><option value="Qwen2.5-3B-Instruct-q4f16_1-MLC">Qwen 2.5 3B</option><option value="Qwen2.5-1.5B-Instruct-q4f16_1-MLC">Qwen 2.5 1.5B</option><option value="Llama-3.2-3B-Instruct-q4f16_1-MLC">Llama 3.2 3B</option><option value="Hermes-2-Pro-Llama-3-8B-q4f16_1-MLC">Hermes 8B (tools)</option></select><div class="fhint">Local via WebGPU, no API key</div></div>
         <div class="btn-row"><button class="mbtn" onclick="closeModal('settingsModal')">Cancel</button><button class="mbtn pri" onclick="saveSettings()">Save & Reconnect</button></div>
     </div>
 </div>
@@ -306,7 +319,7 @@
         </div>
         <!-- Browser agent options -->
         <div id="browserOpts" style="display:none">
-            <div class="fg"><label class="fl">Provider</label><select class="fi" id="spawnProvider"><option value="anthropic">Anthropic</option><option value="openai">OpenAI</option><option value="bedrock">Amazon Bedrock</option></select></div>
+            <div class="fg"><label class="fl">Provider</label><select class="fi" id="spawnProvider"><option value="anthropic">Anthropic</option><option value="openai">OpenAI</option><option value="bedrock">Amazon Bedrock</option><option value="openai_compatible">OpenAI-Compatible</option><option value="webllm">WebLLM (Local)</option></select></div>
             <div class="fg"><label class="fl">Model ID (optional)</label><input class="fi" id="spawnModelId" placeholder="Leave empty for default"><div class="fhint" id="spawnModelHint">Default: claude-sonnet-4-20250514</div></div>
             <div class="fg"><label class="fl">System Prompt</label><textarea class="fi" id="spawnBrowserPrompt" rows="3" placeholder="You are a helpful assistant..."></textarea></div>
         </div>
@@ -332,7 +345,7 @@
         </div>
         <div class="fg" id="editProviderWrap" style="display:none">
             <label class="fl">Provider</label>
-            <select class="fi" id="editProvider"><option value="anthropic">Anthropic</option><option value="openai">OpenAI</option><option value="bedrock">Amazon Bedrock</option></select>
+            <select class="fi" id="editProvider"><option value="anthropic">Anthropic</option><option value="openai">OpenAI</option><option value="bedrock">Amazon Bedrock</option><option value="openai_compatible">OpenAI-Compatible</option><option value="webllm">WebLLM (Local)</option></select>
         </div>
         <div class="fg" id="editModelIdWrap" style="display:none">
             <label class="fl">Model ID</label><input class="fi" id="editModelId" placeholder="Leave empty for default">
@@ -357,88 +370,24 @@ if(typeof Symbol.asyncDispose==='undefined')Symbol.asyncDispose=Symbol('Symbol.a
 
 <!-- Strands SDK for browser agents -->
 <script type="module">
-import { Agent, tool, Model, TextBlock, Message, z } from './strands.js';
+import { Agent, tool, Model, TextBlock, Message, z, AnthropicModel, OpenAIModel, BedrockModel } from './strands.js';
+import { WebLLMBrowserModel } from './webllm.js';
 window._StrandsAgent=Agent;window._StrandsTool=tool;window._StrandsModel=Model;
 window._StrandsTextBlock=TextBlock;window._StrandsMessage=Message;window._StrandsZ=z;
 
 // ═══════════════════════════════════════════════════════════════
-// BROWSER MODEL PROVIDERS (reused from index.html architecture)
+// BROWSER MODEL PROVIDERS — imported from strands.js SDK
 // ═══════════════════════════════════════════════════════════════
 
-class AnthropicBrowserModel extends Model {
-    constructor(cfg={}){super();this._c={apiKey:cfg.apiKey||'',modelId:cfg.modelId||'claude-sonnet-4-20250514',maxTokens:cfg.maxTokens||8096,temperature:cfg.temperature||1.0}}
-    getConfig(){return this._c}
-    async *stream(messages,options){
-        const{apiKey,modelId,maxTokens,temperature}=this._c;if(!apiKey)throw new Error('Anthropic API key not set. Configure in Settings.');
-        const fmt=b=>{if(b.type==='textBlock')return{type:'text',text:b.text};if(b.type==='toolUseBlock')return{type:'tool_use',id:b.toolUseId,name:b.name,input:b.input};if(b.type==='toolResultBlock'){return{type:'tool_result',tool_use_id:b.toolUseId,content:b.content.map(c=>c.type==='textBlock'?{type:'text',text:c.text}:c.type==='jsonBlock'?{type:'text',text:JSON.stringify(c.json)}:{type:'text',text:String(c)})}}return{type:'text',text:String(b)}};
-        const body={model:modelId,max_tokens:maxTokens,temperature,stream:true,messages:messages.map(m=>({role:m.role,content:m.content.map(fmt)}))};
-        if(options?.systemPrompt){body.system=typeof options.systemPrompt==='string'?options.systemPrompt:options.systemPrompt.filter(b=>b.type==='textBlock').map(b=>b.text).join('\n')}
-        if(options?.toolSpecs?.length){body.tools=options.toolSpecs.map(s=>({name:s.name,description:s.description,input_schema:s.inputSchema}))}
-        const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify(body)});
-        if(!res.ok)throw new Error(`Anthropic ${res.status}: ${await res.text()}`);
-        const reader=res.body.getReader();const dec=new TextDecoder();let buf='';
-        try{while(true){const{done,value}=await reader.read();if(done)break;buf+=dec.decode(value,{stream:true});const lines=buf.split('\n');buf=lines.pop()||'';
-        for(const ln of lines){if(!ln.startsWith('data: '))continue;const d=ln.slice(6);if(d==='[DONE]')continue;try{const ev=JSON.parse(d);
-            if(ev.type==='message_start')yield{type:'modelMessageStartEvent',role:'assistant'};
-            else if(ev.type==='content_block_start'){const s={type:'modelContentBlockStartEvent'};if(ev.content_block?.type==='tool_use')s.start={type:'toolUseStart',name:ev.content_block.name,toolUseId:ev.content_block.id};yield s}
-            else if(ev.type==='content_block_delta'){if(ev.delta?.type==='text_delta')yield{type:'modelContentBlockDeltaEvent',delta:{type:'textDelta',text:ev.delta.text}};else if(ev.delta?.type==='input_json_delta')yield{type:'modelContentBlockDeltaEvent',delta:{type:'toolUseInputDelta',input:ev.delta.partial_json}}}
-            else if(ev.type==='content_block_stop')yield{type:'modelContentBlockStopEvent'};
-            else if(ev.type==='message_delta'){if(ev.delta?.stop_reason){const m={'tool_use':'toolUse','max_tokens':'maxTokens','stop_sequence':'stopSequence'};yield{type:'modelMessageStopEvent',stopReason:m[ev.delta.stop_reason]||'endTurn'}}if(ev.usage)yield{type:'modelMetadataEvent',usage:{inputTokens:ev.usage.input_tokens||0,outputTokens:ev.usage.output_tokens||0}}}
-        }catch(e){}}}}finally{reader.releaseLock()}
-    }
-}
+window._BrowserModels={AnthropicBrowserModel:AnthropicModel,OpenAIBrowserModel:OpenAIModel,BedrockBrowserModel:BedrockModel,WebLLMBrowserModel};
 
-class OpenAIBrowserModel extends Model {
-    constructor(cfg={}){super();this._c={apiKey:cfg.apiKey||'',modelId:cfg.modelId||'gpt-4o',maxTokens:cfg.maxTokens||8096,temperature:cfg.temperature||1.0}}
-    getConfig(){return this._c}
-    async *stream(messages,options){
-        const{apiKey,modelId,maxTokens,temperature}=this._c;if(!apiKey)throw new Error('OpenAI API key not set. Configure in Settings.');
-        const oMsgs=[];
-        if(options?.systemPrompt){const st=typeof options.systemPrompt==='string'?options.systemPrompt:options.systemPrompt.filter(b=>b.type==='textBlock').map(b=>b.text).join('\n');if(st)oMsgs.push({role:'system',content:st})}
-        for(const msg of messages){if(msg.role==='user'){const trs=msg.content.filter(b=>b.type==='toolResultBlock');const other=msg.content.filter(b=>b.type!=='toolResultBlock');if(other.length)oMsgs.push({role:'user',content:other.map(b=>b.type==='textBlock'?{type:'text',text:b.text}:{type:'text',text:String(b)})});for(const tr of trs)oMsgs.push({role:'tool',tool_call_id:tr.toolUseId,content:tr.content.map(c=>c.type==='textBlock'?c.text:c.type==='jsonBlock'?JSON.stringify(c.json):String(c)).join('')})}else{const tcs=[];const txts=[];for(const b of msg.content){if(b.type==='textBlock')txts.push(b.text);else if(b.type==='toolUseBlock')tcs.push({id:b.toolUseId,type:'function',function:{name:b.name,arguments:JSON.stringify(b.input)}})}const am={role:'assistant',content:txts.join('')};if(tcs.length)am.tool_calls=tcs;oMsgs.push(am)}}
-        const body={model:modelId,max_completion_tokens:maxTokens,temperature,stream:true,stream_options:{include_usage:true},messages:oMsgs};
-        if(options?.toolSpecs?.length)body.tools=options.toolSpecs.map(s=>({type:'function',function:{name:s.name,description:s.description,parameters:s.inputSchema}}));
-        const res=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${apiKey}`},body:JSON.stringify(body)});
-        if(!res.ok)throw new Error(`OpenAI ${res.status}: ${await res.text()}`);
-        const reader=res.body.getReader();const dec=new TextDecoder();let buf='',started=false,txtStarted=false;const atc=new Map();
-        try{while(true){const{done,value}=await reader.read();if(done)break;buf+=dec.decode(value,{stream:true});const lines=buf.split('\n');buf=lines.pop()||'';
-        for(const ln of lines){if(!ln.startsWith('data: '))continue;const d=ln.slice(6);if(d==='[DONE]')continue;try{const ch=JSON.parse(d);if(!ch.choices?.length){if(ch.usage)yield{type:'modelMetadataEvent',usage:{inputTokens:ch.usage.prompt_tokens||0,outputTokens:ch.usage.completion_tokens||0}};continue}
-        const c=ch.choices[0],dl=c.delta;if(dl?.role&&!started){started=true;yield{type:'modelMessageStartEvent',role:dl.role}}
-        if(dl?.content?.length){if(!txtStarted){txtStarted=true;yield{type:'modelContentBlockStartEvent'}}yield{type:'modelContentBlockDeltaEvent',delta:{type:'textDelta',text:dl.content}}}
-        if(dl?.tool_calls){for(const tc of dl.tool_calls){if(tc.id&&tc.function?.name)yield{type:'modelContentBlockStartEvent',start:{type:'toolUseStart',name:tc.function.name,toolUseId:tc.id}};if(tc.function?.arguments)yield{type:'modelContentBlockDeltaEvent',delta:{type:'toolUseInputDelta',input:tc.function.arguments}}}}
-        if(c.finish_reason){if(txtStarted){yield{type:'modelContentBlockStopEvent'};txtStarted=false}for(const[i] of atc){yield{type:'modelContentBlockStopEvent'};atc.delete(i)}const sm={'stop':'endTurn','tool_calls':'toolUse','length':'maxTokens'};yield{type:'modelMessageStopEvent',stopReason:sm[c.finish_reason]||'endTurn'}}
-        }catch(e){}}}}finally{reader.releaseLock()}
-    }
-}
-
-class BedrockBrowserModel extends Model {
-    constructor(cfg={}){super();this._c={apiKey:cfg.apiKey||'',region:cfg.region||'us-east-1',modelId:cfg.modelId||'us.anthropic.claude-sonnet-4-20250514-v1:0',maxTokens:cfg.maxTokens||8096}}
-    getConfig(){return this._c}
-    async *stream(messages,options){
-        const{apiKey,region,modelId,maxTokens}=this._c;if(!apiKey)throw new Error('Bedrock API key not set. Configure in Settings.');
-        const fmt=b=>{if(b.type==='textBlock')return{text:b.text};if(b.type==='toolUseBlock')return{toolUse:{toolUseId:b.toolUseId,name:b.name,input:b.input}};if(b.type==='toolResultBlock')return{toolResult:{toolUseId:b.toolUseId,content:b.content.map(c=>c.type==='textBlock'?{text:c.text}:c.type==='jsonBlock'?{json:c.json}:{text:String(c)})}};return{text:String(b)}};
-        const body={messages:messages.map(m=>({role:m.role,content:m.content.map(fmt)})),inferenceConfig:{maxTokens}};
-        if(options?.systemPrompt)body.system=[{text:typeof options.systemPrompt==='string'?options.systemPrompt:options.systemPrompt.map(b=>b.text).join('\n')}];
-        if(options?.toolSpecs?.length)body.toolConfig={tools:options.toolSpecs.map(s=>({toolSpec:{name:s.name,description:s.description,inputSchema:{json:s.inputSchema}}}))};
-        const res=await fetch(`https://bedrock-runtime.${region}.amazonaws.com/model/${encodeURIComponent(modelId)}/converse-stream`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${apiKey}`},body:JSON.stringify(body)});
-        if(!res.ok)throw new Error(`Bedrock ${res.status}: ${await res.text()}`);
-        const reader=res.body.getReader();const dec=new TextDecoder();let buf=new Uint8Array(0),hasStart=false,hasStop=false,blkIdx=-1;
-        try{while(true){const{done,value}=await reader.read();if(done)break;const nb=new Uint8Array(buf.length+value.length);nb.set(buf);nb.set(value,buf.length);buf=nb;
-        while(buf.length>=12){const tl=(buf[0]<<24)|(buf[1]<<16)|(buf[2]<<8)|buf[3];const hl=(buf[4]<<24)|(buf[5]<<16)|(buf[6]<<8)|buf[7];if(tl<16||tl>1048576){buf=buf.slice(1);continue}if(buf.length<tl)break;const ps=12+hl,pe=tl-4;
-        if(pe>ps){try{const ev=JSON.parse(dec.decode(buf.slice(ps,pe)));for(const se of this._map(ev,blkIdx)){if(se.type==='modelMessageStartEvent')hasStart=true;if(se.type==='modelMessageStopEvent')hasStop=true;if(se.type==='modelContentBlockStartEvent')blkIdx++;yield se}}catch(e){}}buf=buf.slice(tl)}}}
-        finally{reader.releaseLock();if(!hasStart)yield{type:'modelMessageStartEvent',role:'assistant'};if(!hasStop)yield{type:'modelMessageStopEvent',stopReason:'endTurn'}}
-    }
-    *_map(ch,ci){
-        if(ch.role&&!ch.delta&&!ch.stopReason&&!ch.start){yield{type:'modelMessageStartEvent',role:ch.role};return}
-        if(ch.start!==undefined){const s={type:'modelContentBlockStartEvent'};if(ch.start.toolUse)s.start={type:'toolUseStart',name:ch.start.toolUse.name,toolUseId:ch.start.toolUse.toolUseId};yield s;return}
-        if(ch.delta!==undefined){const bi=ch.contentBlockIndex??0;if(bi>ci&&!ch.start)yield{type:'modelContentBlockStartEvent'};const d=ch.delta;if(d?.text!==undefined)yield{type:'modelContentBlockDeltaEvent',delta:{type:'textDelta',text:d.text}};else if(d?.toolUse?.input)yield{type:'modelContentBlockDeltaEvent',delta:{type:'toolUseInputDelta',input:d.toolUse.input}};return}
-        if(ch.contentBlockIndex!==undefined&&!ch.delta&&!ch.stopReason&&!ch.role&&!ch.start){yield{type:'modelContentBlockStopEvent'};return}
-        if(ch.stopReason!==undefined){const m={'end_turn':'endTurn','tool_use':'toolUse','max_tokens':'maxTokens'};yield{type:'modelMessageStopEvent',stopReason:m[ch.stopReason]||'endTurn'};return}
-        if(ch.usage!==undefined)yield{type:'modelMetadataEvent',usage:{inputTokens:ch.usage.inputTokens||0,outputTokens:ch.usage.outputTokens||0}}
-    }
-}
-
-window._BrowserModels={AnthropicBrowserModel,OpenAIBrowserModel,BedrockBrowserModel};
+// Model factory via shared model-utils
+window._createModelFromCreds = function(provider, apiKey, config) {
+    const creds = { [provider]: { apiKey, region: config.region, baseUrl: config.baseUrl, model: config.modelId } };
+    return window.ModelUtils.createModel(provider, creds, {
+        AnthropicModel, OpenAIModel, BedrockModel, WebLLMBrowserModel
+    }, config);
+};
 
 // ═══════════════════════════════════════════════════════════════
 // BROWSER TOOLS for browser agents
@@ -471,6 +420,7 @@ const S={
         localPort:10001, relayPort:10000,
         token:'', repos:['cagataycali/strands-coder'], region:'us-west-2',
         anthropicKey:'', openaiKey:'', bedrockKey:'', bedrockRegion:'us-east-1', geminiKey:'',
+        compatBaseUrl:'', compatKey:'', compatModel:'', webllmModel:'Qwen2.5-3B-Instruct-q4f16_1-MLC',
         voiceProvider:'novasonic', voiceVoice:'tiffany',
         virtualAgents:[], // {id,name,color,systemPrompt,tools,model}
         browserAgents:[], // {id,name,color,provider,modelId,systemPrompt}
@@ -501,6 +451,7 @@ window.openSettings=()=>{
     E('sRepos').value=(S.cfg.repos||[]).join(',');E('sRegion').value=S.cfg.region;
     E('sRelayPort').value=S.cfg.relayPort;
     E('sAnthropicKey').value=S.cfg.anthropicKey||'';E('sOpenaiKey').value=S.cfg.openaiKey||'';E('sBedrockKey').value=S.cfg.bedrockKey||'';E('sBedrockRegion').value=S.cfg.bedrockRegion||'us-east-1';E('sGeminiKey').value=S.cfg.geminiKey||'';
+    E('sCompatBaseUrl').value=S.cfg.compatBaseUrl||'';E('sCompatKey').value=S.cfg.compatKey||'';E('sCompatModel').value=S.cfg.compatModel||'';E('sWebllmModel').value=S.cfg.webllmModel||'Qwen2.5-3B-Instruct-q4f16_1-MLC';
     E('settingsModal').classList.add('active');
 };
 window.saveSettings=()=>{
@@ -514,6 +465,8 @@ window.saveSettings=()=>{
     S.cfg.bedrockKey=E('sBedrockKey').value.trim();
     S.cfg.bedrockRegion=E('sBedrockRegion').value.trim()||'us-east-1';
     S.cfg.geminiKey=E('sGeminiKey').value.trim();
+    S.cfg.compatBaseUrl=E('sCompatBaseUrl').value.trim();S.cfg.compatKey=E('sCompatKey').value.trim();S.cfg.compatModel=E('sCompatModel').value.trim();
+    S.cfg.webllmModel=E('sWebllmModel').value;
     saveCfg();
     // 🔑 Sync to AgentMesh unified credentials
     if(window.AgentMesh?.setCredentials){
@@ -674,6 +627,15 @@ function handleRelayMsg(msg){
         case'browser_invoke':
             // Incoming invoke from CLI/zenoh — run our mesh agent
             handleBrowserInvoke(msg);break;
+        default:
+            // Check if AgentMesh handled it (e.g. capabilities_response)
+            if(window.AgentMesh){
+                // Trigger available agents update on capabilities
+                if(msg.type==='capabilities_response'){
+                    setTimeout(updateAvailableAgents,100);
+                }
+            }
+            break;
         case'error':toast(`Error: ${msg.error}`,'err');break;
     }
     updateUI();
@@ -816,22 +778,21 @@ async function runBrowserAgent(a,txt){
     if(provider==='anthropic')apiKey=S.cfg.anthropicKey;
     else if(provider==='openai')apiKey=S.cfg.openaiKey;
     else if(provider==='bedrock')apiKey=S.cfg.bedrockKey;
-    if(!apiKey){a.messages.push({role:'assistant',content:`❌ No ${provider} API key configured. Open Settings to add it.`});updateUI();return}
+    else if(provider==='openai_compatible')apiKey=S.cfg.compatKey||'not-needed';
+    else if(provider==='webllm')apiKey='local';
+    if(!apiKey&&provider!=='webllm'){a.messages.push({role:'assistant',content:`❌ No ${provider} API key configured. Open Settings to add it.`});updateUI();return}
     // Create or reuse agent instance
     let inst=_browserAgentInstances.get(a.id);
     const modelId=cfg.modelId||null;
     if(!inst){
         let model;
-        const Models=window._BrowserModels;
-        if(provider==='anthropic')model=new Models.AnthropicBrowserModel({apiKey,modelId:modelId||'claude-sonnet-4-20250514'});
-        else if(provider==='openai')model=new Models.OpenAIBrowserModel({apiKey,modelId:modelId||'gpt-4o'});
-        else if(provider==='bedrock')model=new Models.BedrockBrowserModel({apiKey,region:S.cfg.bedrockRegion||'us-east-1',modelId:modelId||'us.anthropic.claude-sonnet-4-20250514-v1:0'});
-        else{a.messages.push({role:'assistant',content:`❌ Unknown provider: ${provider}`});updateUI();return}
+        try {
+            model=window._createModelFromCreds(provider,apiKey,{modelId:modelId,region:S.cfg.bedrockRegion||'us-east-1',baseUrl:S.cfg.compatBaseUrl,maxTokens:4096});
+        } catch(e){a.messages.push({role:'assistant',content:`❌ ${e.message}`});updateUI();return}
         const agent=new window._StrandsAgent({model,tools:window._BrowserTools||[],systemPrompt:cfg.systemPrompt||`You are ${a.name}, a helpful AI assistant running in the browser.`,printer:false});
         inst={agent,model};_browserAgentInstances.set(a.id,inst);
     } else {
-        // Update API key in case it changed
-        const mc=inst.model.getConfig();if(mc.apiKey!==apiKey)inst.model._c.apiKey=apiKey;
+        // Reuse existing instance (API key changes require page reload)
     }
     // Stream response
     a.streaming=true;a.streamText='';a.streamTools=[];a.status='streaming';updateUI();
@@ -1060,7 +1021,59 @@ function renderRing(){const el=E('ringBody');const entries=S.ring.slice(-30).rev
 // ═══════════════════════════════════════════════════════════════
 // UI RENDERING
 // ═══════════════════════════════════════════════════════════════
-function updateUI(){updateStatus();updateStats();updateAgentsList();updatePanels()}
+function updateUI(){updateStatus();updateStats();updateAgentsList();updateAvailableAgents();updatePanels()}
+
+function updateAvailableAgents(){
+    const el=E('availableAgentsList');
+    const available=[];
+
+    // Get AgentCards from relay
+    if(window.AgentMesh?.getAvailableAgentCards){
+        const cards=window.AgentMesh.getAvailableAgentCards();
+        for(const card of cards){
+            available.push({id:card.name,name:card.name,desc:card.description,source:'relay',card});
+        }
+    }
+
+    E('cntAvailable').textContent=available.length;
+
+    if(!available.length){
+        el.innerHTML='<div style="padding:12px;text-align:center;color:var(--t3);font-size:9px">Connect relay to see available agents</div>';
+        return;
+    }
+
+    let html='';
+    for(const a of available){
+        const skills=(a.card?.skills||[]).slice(0,2).map(s=>s.tags?.[0]||s.name).filter(Boolean);
+        html+=`<div class="ac" onclick="launchAvailableAgent('${a.id}','${a.source}')" style="cursor:pointer">
+            <div class="ac-hdr">
+                <span style="font-size:14px">🚀</span>
+                <div class="ac-info">
+                    <div class="ac-name">${esc(a.name)}</div>
+                    <div class="ac-meta">${esc(a.desc||'').slice(0,60)}${a.desc?.length>60?'...':''}</div>
+                    ${skills.length?`<div style="display:flex;gap:3px;margin-top:3px">${skills.map(s=>`<span style="font-size:7px;padding:1px 4px;background:rgba(0,122,255,.15);color:#007aff;border-radius:2px">${esc(s)}</span>`).join('')}</div>`:''}
+                </div>
+            </div>
+        </div>`;
+    }
+    el.innerHTML=html;
+}
+
+window.launchAvailableAgent=function(agentId,source){
+    if(source==='relay'){
+        const relays=window.AgentMesh?.getRelaysForAgent(agentId);
+        if(!relays||!relays.length){alert('No relay available');return}
+        const path=prompt('Working directory:','~/src');
+        if(!path)return;
+        window.AgentMesh.sendRelay({
+            type:'launch_agent',
+            agentType:agentId,
+            agentId:`${agentId}-${Date.now()}`,
+            config:{workingPath:path}
+        },relays[0].id);
+        toast(`Launching ${agentId}...`,'ok');
+    }
+};
 
 function updateStatus(){
     const d=E('statusDot'),t=E('statusTxt');
@@ -1147,8 +1160,7 @@ function getMeshAgent(){
 function ensureMeshAgent(){
     if(getMeshAgent())return;
     // Auto-create a mesh browser agent if we have any API key configured
-    const provider=S.cfg.bedrockKey?'bedrock':S.cfg.anthropicKey?'anthropic':S.cfg.openaiKey?'openai':null;
-    if(!provider)return; // No API key, can't create
+    const provider=S.cfg.bedrockKey?'bedrock':S.cfg.anthropicKey?'anthropic':S.cfg.openaiKey?'openai':S.cfg.compatBaseUrl?'openai_compatible':'webllm';
     const id='browser:mesh-chat';
     const cfg={id,name:'🕸️ mesh',color:'#00d4ff',type:'browser',provider,
         modelId:null, // use default
@@ -1176,9 +1188,9 @@ async function handleBrowserInvoke(msg){
     const turnId=msg.turn_id||'';
     const fromWsId=msg.from_ws_id||'';
     const zenohRequesterId=msg.zenoh_requester_id||'';
-    
+
     console.log('🧠 Browser invoke received:',prompt.slice(0,80),'from:',fromWsId||zenohRequesterId);
-    
+
     // Find or create mesh agent
     let meshAgent=getMeshAgent();
     if(!meshAgent){ensureMeshAgent();meshAgent=getMeshAgent()}
@@ -1189,15 +1201,15 @@ async function handleBrowserInvoke(msg){
         }
         return;
     }
-    
+
     // Add the query to mesh agent's messages for display
     meshAgent.messages.push({role:'user',content:`[from ${fromWsId||zenohRequesterId||'mesh'}] ${prompt}`});
     updateUI();
-    
+
     // Run the browser agent
     meshAgent.streaming=true;meshAgent.streamText='';meshAgent.streamTools=[];meshAgent.status='streaming';
     updateUI();
-    
+
     try{
         // Stream chunks back to the relay for zenoh forwarding
         const cfg=meshAgent.config||{};
@@ -1206,20 +1218,19 @@ async function handleBrowserInvoke(msg){
         if(provider==='anthropic')apiKey=S.cfg.anthropicKey;
         else if(provider==='openai')apiKey=S.cfg.openaiKey;
         else if(provider==='bedrock')apiKey=S.cfg.bedrockKey;
-        
+
         if(!apiKey){throw new Error(`No ${provider} API key configured`)}
-        
+
         let inst=_browserAgentInstances.get(meshAgent.id);
         if(!inst){
-            let model;const Models=window._BrowserModels;
-            if(provider==='anthropic')model=new Models.AnthropicBrowserModel({apiKey,modelId:cfg.modelId||'claude-sonnet-4-20250514'});
-            else if(provider==='openai')model=new Models.OpenAIBrowserModel({apiKey,modelId:cfg.modelId||'gpt-4o'});
-            else if(provider==='bedrock')model=new Models.BedrockBrowserModel({apiKey,region:S.cfg.bedrockRegion||'us-east-1',modelId:cfg.modelId||'us.anthropic.claude-sonnet-4-20250514-v1:0'});
-            else throw new Error(`Unknown provider: ${provider}`);
+            let model;
+            try {
+                model=window._createModelFromCreds(provider,apiKey,{modelId:cfg.modelId,region:S.cfg.bedrockRegion||'us-east-1'});
+            } catch(e){throw new Error(e.message)}
             const agent=new window._StrandsAgent({model,tools:window._BrowserTools||[],systemPrompt:cfg.systemPrompt||'You are a mesh browser agent.',printer:false});
             inst={agent,model};_browserAgentInstances.set(meshAgent.id,inst);
         }
-        
+
         let currentText='';
         for await(const event of inst.agent.stream(prompt)){
             if(!event||!event.type)continue;
@@ -1233,11 +1244,11 @@ async function handleBrowserInvoke(msg){
                 }
             }
         }
-        
+
         const ft=currentText.trim();
         if(ft)meshAgent.messages.push({role:'assistant',content:ft});
         meshAgent.streaming=false;meshAgent.streamText='';meshAgent.streamTools=[];meshAgent.status='ready';
-        
+
         // Send final response back to relay
         if(S.relay&&S.relayOk){
             S.relay.send(JSON.stringify({type:'browser_invoke_response',turn_id:turnId,response:ft,requester_ws_id:fromWsId,zenoh_requester_id:zenohRequesterId}));

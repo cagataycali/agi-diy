@@ -3,15 +3,21 @@
  * Enables PWA functionality, offline support, and background notifications
  */
 
-const CACHE_NAME = 'agi-diy-v2';
+const CACHE_NAME = 'agi-diy-v3';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/agi.html',
   '/mesh.html',
+  '/dashboard.html',
+  '/cognitoauth.html',
   '/strands.js',
   '/webllm.js',
   '/agent-mesh.js',
+  '/agent-mesh-settings.js',
+  '/agentcore-relay.js',
+  '/amplify-bundle.js',
+  '/erc8004-discovery.js',
   '/manifest.json',
   'https://cdn.jsdelivr.net/npm/marked/marked.min.js',
   'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap'
@@ -64,28 +70,13 @@ self.addEventListener('fetch', (event) => {
   }
 
   event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        if (response) {
-          return response;
-        }
-        return fetch(event.request).then((response) => {
-          // Don't cache non-successful responses or non-basic types
-          if (!response || response.status !== 200 || response.type !== 'basic') {
-            return response;
-          }
-          // Clone and cache
-          const responseToCache = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
-          return response;
-        });
-      })
-      .catch(() => {
-        // Return offline fallback if available
-        return caches.match('/');
-      })
+    fetch(event.request).then((response) => {
+      if (response && response.status === 200 && response.type === 'basic') {
+        const responseToCache = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
+      }
+      return response;
+    }).catch(() => caches.match(event.request).then(r => r || caches.match('/')))
   );
 });
 
@@ -176,6 +167,13 @@ self.addEventListener('message', (event) => {
   
   if (event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
+  }
+
+  if (event.data.type === 'RECACHE') {
+    caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS_TO_CACHE)).then(() => {
+      event.source?.postMessage({ type: 'RECACHE_DONE' });
+      console.log('[SW] Re-cached all assets');
+    });
   }
 });
 

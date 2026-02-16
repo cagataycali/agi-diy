@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>agi.diy — Mesh Dashboard</title>
+<link rel="stylesheet" href="widgets/agents-widgets.css">
+<style>
+#agent-mesh-nav { display: none !important; }
+:root {
+  --bg: #0a0a0f; --bg-panel: #12121a; --bg-card: #1a1a26; --bg-hover: #22222e;
+  --border: #2a2a3a; --text: #e0e0e8; --text-dim: #888898; --text-muted: #555568;
+  --accent: #7c5cff; --green: #00ff88; --blue: #00aaff; --pink: #ff88ff;
+  --orange: #ffaa00; --red: #ff6666; --cyan: #88ffff;
+  --radius: 8px; --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --block-header: 32px;
+  --sidebar-w: 48px; --statusbar-h: 36px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: var(--font); background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; }
+
+/* ── Block Layout Engine ── */
+.layout { display: flex; height: calc(100vh - var(--statusbar-h)); width: calc(100vw - var(--sidebar-w)); gap: 1px; background: var(--border); }
+.layout-col { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.block { background: var(--bg-panel); display: flex; flex-direction: column; min-height: 0; overflow: hidden; position: relative; }
+.block.maximized { position: fixed; top: 0; left: 0; width: calc(100vw - var(--sidebar-w)); height: calc(100vh - var(--statusbar-h)); z-index: 100; }
+.block-header { height: var(--block-header); min-height: var(--block-header); display: flex; align-items: center; padding: 0 10px; gap: 6px; background: var(--bg-card); border-bottom: 1px solid var(--border); cursor: default; user-select: none; }
+.block-icon { font-size: 12px; }
+.block-title { font-size: 11px; font-weight: 600; color: var(--text-dim); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.block-btn { background: none; border: none; color: var(--text-muted); font-size: 12px; cursor: pointer; padding: 2px 4px; border-radius: 3px; line-height: 1; }
+.block-btn:hover { color: var(--text); background: var(--bg-hover); }
+.block-body { flex: 1; overflow-y: auto; overflow-x: hidden; }
+.block-body::-webkit-scrollbar { width: 4px; }
+.block-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* ── Add Block Bar ── */
+.add-bar { position: fixed; bottom: 0; left: 0; right: var(--sidebar-w); height: var(--statusbar-h); background: var(--bg-card); border-top: 1px solid var(--border); display: flex; align-items: center; gap: 8px; z-index: 50; }
+.add-btn { background: var(--bg-hover); border: 1px solid var(--border); color: var(--text-dim); font-size: 11px; padding: 4px 12px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 4px; }
+.add-btn:hover { color: var(--text); border-color: var(--accent); }
+.settings-btn { background: none; border: none; color: var(--text-dim); font-size: 20px; cursor: pointer; padding: 2px 8px; }
+.settings-btn:hover { color: var(--accent); }
+.wall-clock { font-size: 11px; color: var(--accent); font-variant-numeric: tabular-nums; }
+
+/* ── Complications ── */
+.complication { display: inline-flex; align-items: center; }
+.complication-btn { background: none; border: none; color: var(--text-dim); font-size: 11px; cursor: pointer; padding: 4px 8px; border-radius: 4px; transition: background .12s, color .12s; }
+.complication-btn:hover { background: var(--bg-hover); color: var(--text); }
+
+/* ── Widget Sidebar ── */
+.widget-sidebar { position: fixed; right: 0; top: 0; bottom: var(--statusbar-h); width: var(--sidebar-w); background: var(--bg-card); border-left: 1px solid var(--border); display: flex; flex-direction: column; gap: 2px; padding: 8px 4px; z-index: 60; transition: width .2s; overflow: hidden; }
+.widget-sidebar:hover { width: 160px; }
+.widget-sidebar.docked { width: 160px; }
+.widget-btn { background: none; border: none; color: var(--text-dim); cursor: pointer; padding: 8px; border-radius: 6px; display: flex; align-items: center; gap: 8px; white-space: nowrap; transition: background .12s; }
+.widget-btn:hover { background: var(--bg-hover); color: var(--text); }
+.widget-btn.pinned { color: var(--accent); }
+.widget-icon { font-size: 16px; min-width: 20px; text-align: center; }
+.widget-label { font-size: 11px; opacity: 0; transition: opacity .2s; }
+.widget-sidebar:hover .widget-label, .widget-sidebar.docked .widget-label { opacity: 1; }
+.sidebar-divider { height: 1px; background: var(--border); margin: 4px 0; }
+.sidebar-toggle { margin-top: auto; padding: 8px; text-align: center; cursor: pointer; font-size: 14px; opacity: 0; transition: opacity .2s; }
+.widget-sidebar:hover .sidebar-toggle, .widget-sidebar.docked .sidebar-toggle { opacity: 0.5; }
+.sidebar-toggle:hover { opacity: 1 !important; }
+.widget-more { position: relative; }
+.widget-more-menu { position: absolute; right: 100%; top: 0; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 4px; min-width: 160px; display: none; box-shadow: 0 4px 12px rgba(0,0,0,.3); }
+.widget-more:hover .widget-more-menu { display: block; }
+
+/* ── Agent List ── */
+.agent-list { display: flex; flex-direction: column; gap: 2px; padding: 6px; }
+.agent-card { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 6px; cursor: pointer; transition: background .12s; }
+.agent-card:hover { background: var(--bg-hover); }
+.agent-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.agent-dot.pulse { animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
+.agent-info { flex: 1; min-width: 0; }
+.agent-name { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.agent-model { font-size: 10px; color: var(--text-muted); }
+.agent-badge { font-size: 9px; padding: 2px 6px; border-radius: 4px; background: var(--bg); }
+
+/* ── Task Tree ── */
+.task-tree { display: flex; flex-direction: column; gap: 1px; padding: 6px; }
+.task-item { display: flex; align-items: flex-start; gap: 6px; padding: 5px 8px; border-radius: 5px; cursor: pointer; transition: background .12s; border-left: 3px solid transparent; }
+.task-item:hover { background: var(--bg-hover); }
+.task-item.d1 { padding-left: 22px; } .task-item.d2 { padding-left: 38px; }
+.task-status { font-size: 11px; flex-shrink: 0; margin-top: 1px; }
+.task-info { flex: 1; min-width: 0; }
+.task-title { font-size: 11px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.task-meta { font-size: 9px; color: var(--text-muted); display: flex; gap: 6px; margin-top: 1px; }
+.task-item[data-status="complete"] .task-title { color: var(--text-muted); text-decoration: line-through; }
+.task-item[data-status="in-progress"] { background: rgba(59,130,246,.08); border-left-color: #3b82f6 !important; }
+.task-item[data-status="in-progress"] .task-status { animation: pulse 1.2s ease-in-out infinite; }
+.task-item[data-status="pending"] { opacity: .55; }
+.task-item[data-status="waiting"] { opacity: .7; }
+.task-item[data-status="failed"] { background: rgba(239,68,68,.08); border-left-color: #ef4444 !important; }
+
+/* ── Chat ── */
+.chat-wrap { display: flex; flex-direction: column; height: 100%; }
+.messages { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.messages::-webkit-scrollbar { width: 4px; }
+.messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.msg { max-width: 85%; padding: 8px 12px; border-radius: 10px; font-size: 12px; line-height: 1.5; }
+.msg.user { align-self: flex-end; background: var(--accent); color: #fff; border-bottom-right-radius: 3px; }
+.msg.assistant { align-self: flex-start; background: var(--bg-card); border-bottom-left-radius: 3px; }
+.msg .msg-agent { font-size: 10px; font-weight: 600; margin-bottom: 3px; }
+.msg .msg-time { font-size: 9px; color: var(--text-muted); margin-top: 3px; text-align: right; }
+.msg.assistant .stream-text p { margin: 0 0 6px; } .msg.assistant .stream-text p:last-child { margin: 0; }
+.msg.assistant .stream-text pre { background: rgba(0,0,0,.3); padding: 6px 8px; border-radius: 4px; overflow-x: auto; font-size: 11px; margin: 4px 0; }
+.msg.assistant .stream-text code { background: rgba(0,0,0,.2); padding: 1px 4px; border-radius: 3px; font-size: 11px; }
+.msg.assistant .stream-text pre code { background: none; padding: 0; }
+.msg.assistant .stream-text ul, .msg.assistant .stream-text ol { margin: 4px 0; padding-left: 18px; }
+.input-area { padding: 8px 12px; border-top: 1px solid var(--border); display: flex; gap: 6px; }
+.input-area textarea { flex: 1; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); padding: 8px 10px; font-family: var(--font); font-size: 12px; resize: none; outline: none; min-height: 36px; max-height: 100px; }
+.input-area textarea:focus { border-color: var(--accent); }
+.send-btn { background: var(--accent); border: none; color: #fff; border-radius: var(--radius); padding: 0 14px; cursor: pointer; font-size: 12px; font-weight: 500; }
+.send-btn:hover { opacity: .85; }
+
+/* ── Ring Buffer ── */
+.ring-entries { display: flex; flex-direction: column; gap: 4px; padding: 6px; }
+.ring-entry { padding: 6px 8px; background: var(--bg-card); border-radius: 5px; border-left: 3px solid var(--border); }
+.ring-entry .re-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; }
+.ring-entry .re-agent { font-size: 10px; font-weight: 600; }
+.ring-entry .re-time { font-size: 9px; color: var(--text-muted); }
+.ring-entry .re-text { font-size: 10px; color: var(--text-dim); line-height: 1.4; }
+
+/* ── Task Detail ── */
+.task-detail-view { padding: 12px; }
+.td-back { background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 16px; padding: 2px 6px; }
+.td-back:hover { color: var(--text); }
+.td-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.td-title { font-size: 14px; font-weight: 600; }
+.td-status { font-size: 10px; padding: 2px 8px; border-radius: 4px; }
+.worklog { display: flex; flex-direction: column; gap: 6px; }
+.wl-entry { padding: 8px 10px; background: var(--bg-card); border-radius: 6px; border-left: 3px solid var(--border); }
+.wl-entry .wl-head { display: flex; justify-content: space-between; font-size: 9px; color: var(--text-muted); margin-bottom: 3px; }
+.wl-entry .wl-msg { font-size: 11px; line-height: 1.5; }
+
+/* ── Mobile ── */
+@media (max-width: 768px) {
+  .layout { flex-direction: column; }
+  .add-bar { gap: 4px; flex-wrap: wrap; height: auto; padding: 6px; }
+  .add-btn { font-size: 10px; padding: 3px 8px; }
+}
+@media (max-width: 480px) {
+  .block-header { padding: 0 6px; }
+  .block-title { font-size: 10px; }
+}
+
+/* ── Animations ── */
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes completePop { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+.ring-entry { animation: fadeIn .2s ease-out; }
+.task-item { animation: slideIn .15s ease-out; }
+.task-item[data-status="complete"] { animation: completePop .3s ease-out; }
+.agent-card { animation: fadeIn .2s ease-out; }
+.msg { animation: fadeIn .2s ease-out; }
+
+/* ── Working Indicator ── */
+.typing-dots { display: inline-flex; gap: 3px; padding: 4px 0; }
+.typing-dots span { width: 5px; height: 5px; border-radius: 50%; background: var(--text-muted); animation: typingBounce .6s infinite; }
+.typing-dots span:nth-child(2) { animation-delay: .15s; }
+.typing-dots span:nth-child(3) { animation-delay: .3s; }
+@keyframes typingBounce { 0%,100% { opacity: .3; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-3px); } }
+
+/* ── Task Elapsed Time ── */
+.task-elapsed { font-size: 9px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+/* ── Drag and Drop ── */
+.block.dragging { opacity: 0.5; }
+.drop-zones { position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 10; }
+.drop-zone { position: absolute; background: var(--accent); opacity: 0; transition: opacity .15s; }
+.drop-zone.active { opacity: 0.3; }
+.drop-zone-top { top: 0; left: 0; right: 0; height: 50%; }
+.drop-zone-bottom { bottom: 0; left: 0; right: 0; height: 50%; }
+.drop-zone-left { top: 0; left: 0; bottom: 0; width: 50%; }
+.drop-zone-right { top: 0; right: 0; bottom: 0; width: 50%; }
+.drop-zone-center { top: 25%; left: 25%; right: 25%; bottom: 25%; }
+
+/* ── Resize Handles ── */
+.layout-row { display: flex; flex-direction: column; gap: 1px; min-height: 0; }
+.resize-handle { background: var(--border); flex-shrink: 0; position: relative; }
+.resize-handle-row { height: 4px; cursor: ns-resize; }
+.resize-handle-col { width: 4px; cursor: ew-resize; }
+.resize-handle:hover { background: var(--accent); }
+</style>
+</head>
+<body>
+<!-- Layout is built by JS -->
+<div id="root"></div>
+
+<!-- Widget Sidebar (populated by complications) -->
+<div class="widget-sidebar" id="widgetSidebar"></div>
+
+<div class="add-bar" id="statusBar" style="justify-content:flex-start;padding-left:12px;gap:8px">
+  <div id="statusBarComplications" style="display:flex;align-items:center;gap:4px;flex:1"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="mesh-nav.js"></script>
+<script src="agent-mesh.js?v=2"></script>
+<script>
+// Initialize StandardEventEmitter early (minimal inline version)
+window.standardEvents = {
+  listeners: new Map(),
+  validateEvents: true,
+  on(eventType, handler) {
+    if (!this.listeners.has(eventType)) {
+      this.listeners.set(eventType, []);
+    }
+    this.listeners.get(eventType).push(handler);
+  },
+  emit(eventType, payload) {
+    const handlers = this.listeners.get(eventType);
+    if (handlers) {
+      handlers.forEach(h => h(payload));
+    }
+  }
+};
+</script>
+<script src="agent-mesh-settings.js?v=2"></script>
+<script src="agentcore-relay.js?v=2"></script>
+<script>
+if (typeof Symbol.dispose === 'undefined') Symbol.dispose = Symbol('Symbol.dispose');
+if (typeof Symbol.asyncDispose === 'undefined') Symbol.asyncDispose = Symbol('Symbol.asyncDispose');
+</script>
+<script type="module">
+import widgetRegistry from './widgets/index.js';
+import { Agent, tool, z, AnthropicModel, OpenAIModel, BedrockModel, McpClient, StreamableHTTPClientTransport, SlidingWindowConversationManager, NullConversationManager, SummarizingConversationManager } from './strands.js';
+import { WebLLMBrowserModel } from './webllm.js';
+import { LayoutManager } from './layout-manager.js';
+import { ComplicationRegistry } from './complication-registry.js';
+import { registerDefaultComplications } from './default-complications.js';
+import { createBrowserTools } from './browser-tools.js';
+import { loadCredentials, detectProvider as detectProviderUtil, createModel as createModelUtil, createConversationManager as createCMUtil } from './model-utils.js';
+import { Orchestrator } from './orchestrator.js';
+import { WidgetSidebar } from './widget-sidebar.js';
+import { ChatHandler } from './chat-handler.js';
+import './erc8004-discovery.js?v=2';
+
+// ═══ STATE & HELPERS ═══
+
+// SECTION INDEX
+// STATE ............. Constants, mock data, layout config
+// BLOCKS ............ Block registry, renderers, layout engine
+// RENDERERS ......... Per-block-type content renderers
+// TASK DETAIL ....... Click-to-zoom task detail
+// LAYOUT ............ Build/rebuild layout from config
+// INIT .............. Startup
+// ═══════════════════════════════════════════════════════════════
+
+// ═══ STATE ═══
+const COLORS = ['#00ff88','#00aaff','#ff88ff','#ffaa00','#ff6666','#88ffff'];
+const STATUS_ICON = { pending:'⬜', 'in-progress':'🔵', waiting:'⏳', complete:'🟢', failed:'🔴' };
+const STATUS_LABEL = { pending:'Pending', 'in-progress':'In Progress', waiting:'Waiting', complete:'Complete', failed:'Failed' };
+
+const DEFAULT_LAYOUT = [
+  { id:'col-left', type:'col', flex:1, children:[
+    { id:'b-running-agents', type:'running-agents', flex:1 },
+    { id:'b-available-agents', type:'available-agents', flex:1 },
+    { id:'b-tasks', type:'tasks', flex:2 },
+  ]},
+  { id:'b-chat', type:'chat', flex:2 },
+  { id:'col-right', type:'col', flex:1, children:[
+    { id:'b-ring', type:'ring', flex:2 },
+    { id:'b-mesh', type:'mesh', flex:1 },
+    { id:'b-erc8004', type:'erc8004', flex:1 },
+  ]},
+];
+
+const state = {
+  agents: new Map(),
+  tasks: new Map(),
+  ringBuffer: [],
+  wallClockStart: null,
+  chatAgent: null,
+  chatMessages: [],
+  credentials: {},
+  colorIndex: 0,
+  layout: JSON.parse(JSON.stringify(DEFAULT_LAYOUT)),
+  blockCounter: 10,
+  maximizedBlock: null,
+};
+
+window.dashboardState = state;
+window.widgetRegistry = widgetRegistry;
+
+// Helper functions that depend on state
+function saveTasks() { try { localStorage.setItem('dashboard_tasks', JSON.stringify([...state.tasks.values()])); } catch(e) {} }
+function loadTasks() { try { const d = JSON.parse(localStorage.getItem('dashboard_tasks')); if (d?.length) { state.tasks.clear(); d.forEach(t => state.tasks.set(t.id, t)); return true; } } catch(e) {} return false; }
+
+const DEFAULT_MAX_TOKENS = 60000;
+
+// ── Complication Registry ──
+const complicationRegistry = new ComplicationRegistry();
+
+// ── Layout Manager ──
+const layoutManager = new LayoutManager({
+  rootEl: document.getElementById('root'),
+  widgetRegistry,
+  complicationRegistry,
+  state,
+  statusbarEl: document.getElementById('statusBarComplications'),
+  sidebarEl: document.getElementById('widgetSidebar'),
+  onLayoutChange: () => {}
+});
+
+// Register default complications
+registerDefaultComplications(complicationRegistry, { state, layoutManager, widgetRegistry });
+
+// Start wall clock updates
+setInterval(() => complicationRegistry.update('wall-clock', { state }), 1000);
+
+window.resetLayout = () => layoutManager.resetLayout(DEFAULT_LAYOUT);
+
+window.showLayoutMenu = () => {
+  const presets = layoutManager.getLayoutPresets();
+  const menu = `
+    <div style="padding:16px">
+      <h3>Layout Presets</h3>
+      <div style="margin:12px 0">
+        <input id="layout-name" placeholder="Layout name" style="padding:6px;width:200px">
+        <button onclick="saveCurrentLayout()" style="margin-left:8px">💾 Save Current</button>
+      </div>
+      <div style="margin-top:16px">
+        ${presets.length ? presets.map(name => `
+          <div style="display:flex;align-items:center;gap:8px;margin:8px 0">
+            <button onclick="loadLayoutPreset('${name}')" style="flex:1;text-align:left">${name}</button>
+            <button onclick="deleteLayoutPreset('${name}')" style="color:red">🗑️</button>
+          </div>
+        `).join('') : '<p style="color:var(--text-muted)">No saved layouts</p>'}
+      </div>
+    </div>
+  `;
+
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:10000';
+  modal.innerHTML = `<div style="background:var(--bg);border-radius:8px;max-width:400px;width:90%">${menu}</div>`;
+  modal.onclick = (e) => e.target === modal && modal.remove();
+  document.body.appendChild(modal);
+};
+
+window.saveCurrentLayout = () => {
+  const name = document.getElementById('layout-name').value.trim();
+  if (!name) return alert('Enter a layout name');
+  layoutManager.saveLayoutAs(name);
+  document.querySelector('[onclick="showLayoutMenu()"]').click();
+  showLayoutMenu();
+};
+
+window.loadLayoutPreset = (name) => {
+  layoutManager.loadLayout(name);
+  document.querySelector('div[style*="position:fixed"]')?.remove();
+};
+
+window.deleteLayoutPreset = (name) => {
+  if (confirm(`Delete layout "${name}"?`)) {
+    layoutManager.deleteLayoutPreset(name);
+    showLayoutMenu();
+  }
+};
+
+// ── Credentials & Model Factory ──
+state.credentials = loadCredentials();
+
+function createModel(provider, cfg = {}) {
+  return createModelUtil(provider, state.credentials, {
+    AnthropicModel, OpenAIModel, BedrockModel, WebLLMBrowserModel
+  }, cfg);
+}
+
+function detectProvider() {
+  return detectProviderUtil(state.credentials);
+}
+
+function createConversationManager(config) {
+  return createCMUtil(config, {
+    SlidingWindowConversationManager,
+    NullConversationManager,
+    SummarizingConversationManager
+  });
+}
+
+// ── Notify helpers (emit widget events) ──
+function notify(type) { widgetRegistry.emit(type, { type }); }
+function notifyAgentStatus(agentId) { widgetRegistry.emit('agent-status', { agentId }); }
+function notifyNewAgent(agent) { widgetRegistry.emit('new-agent', agent); }
+function notifyRingEntry(entry) {
+  widgetRegistry.emit('ring-entry', entry);
+  function findCfg(nodes) { for (const n of nodes) { if (n.type === 'agent-chat' && n.agentId === entry.agentId) { const el = document.querySelector(`#${n.id} .block-body`); if (el) widgetRegistry.render('agent-chat', el, n); } if (n.children) findCfg(n.children); } }
+  findCfg(state.layout);
+}
+
+// ── Task actions ──
+function stopAllTasks() { state.tasks.forEach(t => { if (t.status !== 'complete') t.status = 'complete'; }); notify('tasks'); saveTasks(); }
+function clearDoneTasks() { [...state.tasks.entries()].forEach(([id, t]) => { if (t.status === 'complete') state.tasks.delete(id); }); state.tasks.forEach(t => { t.children = t.children.filter(c => state.tasks.has(c)); }); notify('tasks'); saveTasks(); }
+window.stopAllTasks = stopAllTasks;
+window.clearDoneTasks = clearDoneTasks;
+
+// ═══ BROWSER TOOLS ═══
+const browserTools = createBrowserTools({ tool, z, state, notify, saveTasks });
+
+// ═══ ORCHESTRATION ═══
+const orchestrator = new Orchestrator({
+  state, createModel, detectProvider, createConversationManager,
+  browserTools, notify, saveTasks, notifyAgentStatus, notifyRingEntry
+});
+
+const ORCHESTRATOR_TOOLS = orchestrator.ORCHESTRATOR_TOOLS;
+const runDelegatedAgent = (agentId, taskId, instructions) => orchestrator.runDelegatedAgent(agentId, taskId, instructions);
+const buildOrchestratorPrompt = () => orchestrator.buildOrchestratorPrompt();
+const seedAgentList = (agent) => orchestrator.seedAgentList(agent);
+
+// ── One-time mesh sync at startup ──
+function initialMeshSync() {
+  if (!window.AgentMesh) return;
+  const meshAgents = window.AgentMesh.getAllMeshAgents?.() || [];
+  for (const ma of meshAgents) {
+    if (!state.agents.has(ma.agentId)) {
+      state.agents.set(ma.agentId, {
+        id: ma.agentId, model: ma.model || ma.agentType || '?',
+        status: ma.status || 'idle',
+        color: COLORS[state.colorIndex++ % COLORS.length],
+        remote: true,
+      });
+    }
+  }
+  if (window.AgentMesh.getRingContext) {
+    for (const entry of window.AgentMesh.getRingContext()) {
+      const isDup = state.ringBuffer.some(e => e.agentId === entry.agentId && Math.abs(e.ts - entry.timestamp) < 5000);
+      if (!isDup) state.ringBuffer.push({ agentId: entry.agentId, content: entry.text, ts: entry.timestamp, mesh: true });
+    }
+    if (state.ringBuffer.length > 100) state.ringBuffer.splice(0, state.ringBuffer.length - 100);
+  }
+}
+
+// ── Granular DOM Updates (no innerHTML replacement) ──
+
+function agentCardHTML(a) {
+  const instances = a.instances || 1;
+  const working = a.workingOn ? `<div style="font-size:9px;color:var(--text-muted);margin-top:2px">${a.workingOn.slice(0,40)}...</div>` : '';
+  return `<div class="agent-card" data-agent="${a.id}">
+    <div class="agent-dot ${a.status==='processing'?'pulse':''}" style="background:${a.color}"></div>
+    <div class="agent-info">
+      <div class="agent-name">${a.id}${instances>1?` (×${instances})`:''}</div>
+      <div class="agent-model">${a.model}</div>
+      ${working}
+    </div>
+    <div class="agent-badge" style="color:${a.status==='processing'?a.color:'var(--text-muted)'}">${a.status === 'processing' ? '<span class="typing-dots"><span></span><span></span><span></span></span>' : a.status}</div>
+  </div>`;
+}
+
+function findBlockCfg(id) {
+  for (const n of state.layout) {
+    if (n.id === id) return n;
+    if (n.children) { const c = n.children.find(x => x.id === id); if (c) return c; }
+  }
+  return null;
+}
+
+// ── Chat Agent ──
+
+// ═══ CHAT HANDLER ═══
+const chatHandler = new ChatHandler({
+  state,
+  createModel,
+  detectProvider,
+  createConversationManager,
+  buildOrchestratorPrompt,
+  seedAgentList,
+  ORCHESTRATOR_TOOLS,
+  notifyAgentStatus,
+  notifyRingEntry
+});
+
+// Expose for compatibility
+const ensureChatAgent = () => chatHandler.ensureChatAgent();
+const sendChatMessage = (text, blockId) => chatHandler.sendChatMessage(text, blockId);
+window.sendChatMessage = sendChatMessage;
+window.sendChatMessage = sendChatMessage;
+const startWallClock = () => chatHandler.startWallClock();
+const escapeHtml = (s) => chatHandler.escapeHtml(s);
+const formatElapsed = (start, end) => chatHandler.formatElapsed(start, end);
+
+// Agent management
+const loadDefaultAgents = () => orchestrator.loadDefaultAgents(state, COLORS, notifyAgentStatus);
+const startAgentInstance = (agentId) => orchestrator.startAgentInstance(agentId, state, notifyAgentStatus);
+
+window.addBlock = (type) => layoutManager.openWidget(type, {}, { reuse: false });
+
+// ═══ CHAT AGENT ═══
+
+// ═══ INIT ═══
+
+// Subscribe to relay events BEFORE mesh sync
+if (window.AgentMesh) {
+  window.AgentMesh.subscribe?.('relay-connected', (payload) => {
+    console.log('[Dashboard] Relay connected:', payload);
+    if (payload?.relayId) {
+      console.log('[Dashboard] Sending capabilities_request to', payload.relayId);
+      window.AgentMesh.sendRelay({ type: 'capabilities_request' }, payload.relayId);
+    }
+  });
+
+  window.AgentMesh.subscribe?.('relay-capabilities', (payload) => {
+    console.log('[Dashboard] Relay capabilities received:', payload);
+    widgetRegistry.emit('relay-capabilities', payload);
+  });
+}
+
+await loadDefaultAgents();
+loadTasks();
+layoutManager.loadLayout() || layoutManager.render();
+initialMeshSync();
+setTimeout(() => window.MeshNav?.populate(), 500); // after mesh-pages.json loads
+
+// Discover on-chain agents (non-blocking)
+if (window.AgentMesh?.erc8004) {
+  const erc = AgentMesh.erc8004;
+  erc.discoverAgents('sepolia').then(agents => {
+    for (const a of agents) {
+      const id = a.registration?.name || `erc8004-${a.agentId}`;
+      if (state.agents.has(id)) continue;
+      const agent = { id, model: `ERC-8004 #${a.agentId} · Sepolia`, status: 'on-chain',
+        color: COLORS[state.colorIndex++ % COLORS.length], chain: 'sepolia', onChain: true,
+        owner: a.owner, services: a.registration?.services };
+      state.agents.set(id, agent);
+      notifyNewAgent(agent);
+    }
+  }).catch(e => {
+    if (window.logERC8004) window.logERC8004('error', 'discovery', 'Discovery failed', e.message);
+  });
+}
+
+// Lightweight elapsed time updater (no DOM rebuild)
+setInterval(() => {
+  document.querySelectorAll('.task-elapsed[data-start]').forEach(el => {
+    const start = parseInt(el.dataset.start);
+    const end = parseInt(el.dataset.end) || Date.now();
+    el.textContent = formatElapsed(start, end);
+  });
+}, 1000);
+
+// Subscribe to mesh events — targeted updates, no polling
+if (window.AgentMesh) {
+  window.AgentMesh.subscribe?.('ring-update', (payload) => {
+    if (!payload) return;
+    const isDup = state.ringBuffer.some(e => e.agentId === payload.agentId && Math.abs(e.ts - payload.timestamp) < 5000);
+    if (!isDup) {
+      const entry = { agentId: payload.agentId, content: payload.text, ts: payload.timestamp, mesh: true };
+      state.ringBuffer.push(entry);
+      notifyRingEntry(entry);
+    }
+  });
+  window.AgentMesh.subscribe?.('ping', (payload, source) => {
+    if (!source?.agents) return;
+    const before = new Set(state.agents.keys());
+    for (const ma of source.agents) {
+      if (!state.agents.has(ma.agentId)) {
+        const agent = { id: ma.agentId, model: ma.model || ma.agentType || '?', status: ma.status || 'idle', color: COLORS[state.colorIndex++ % COLORS.length], remote: true };
+        state.agents.set(ma.agentId, agent);
+        notifyNewAgent(agent);
+        injectAgentRosterChange(`Agent "${ma.agentId}" joined the mesh.`);
+      } else {
+        const a = state.agents.get(ma.agentId);
+        if (ma.status && ma.status !== a.status) { a.status = ma.status; notifyAgentStatus(ma.agentId); }
+      }
+    }
+  });
+}
+
+// Inject agent roster changes into the chat agent's conversation so it stays aware
+function injectAgentRosterChange(msg) {
+  state.ringBuffer.push({ agentId: 'system', content: msg, ts: Date.now() });
+  notifyRingEntry(state.ringBuffer[state.ringBuffer.length - 1]);
+  // Push into chat history so the orchestrator sees it on next message
+  state.chatMessages.push({ role: 'user', content: `[System] ${msg}` });
+}
+
+// Register SW and re-cache assets on every page load
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').then(() => {
+    navigator.serviceWorker.ready.then(reg => reg.active?.postMessage({ type: 'RECACHE' }));
+  });
+}
+
+// ── Populate Widget Sidebar ──
+// Initialize widget sidebar
+const widgetSidebar = new WidgetSidebar({
+  container: document.getElementById('widgetSidebar'),
+  widgetRegistry,
+  onAddWidget: (type) => layoutManager.openWidget(type, {}, { reuse: false }),
+  actions: [
+    { icon: '⏹', label: 'Stop All', title: 'Stop all active tasks', fn: stopAllTasks },
+    { icon: '🗑️', label: 'Clear Done', title: 'Clear completed tasks', fn: clearDoneTasks },
+    { icon: '🔄', label: 'Reset', title: 'Reset layout', fn: window.resetLayout },
+    { icon: '💾', label: 'Layouts', title: 'Layouts', fn: showLayoutMenu },
+    { icon: '⚙', label: 'Settings', title: 'Settings', fn: () => AgentMesh.settings?.open() }
+  ]
+});
+widgetSidebar.render();
+</script>
+</body>
+</html>

@@ -250,7 +250,7 @@ Agent thinks while you're away.
 Paste in Settings → API → Additional Request Fields:
 ```json
 {
-  "thinking": { "type": "enabled", "budget_tokens": 10000 }
+  "thinking": { "type": "adaptive" }
 }
 ```
 
@@ -297,16 +297,57 @@ agiContext.scanBluetooth()   // Find nearby devices
 
 ```
 docs/
-├── index.html      # Single agent mode
-├── agi.html        # Multi-agent mode
-├── strands.js      # Strands SDK bundle
-├── vision.js       # Screen capture, ambient mode
-├── webllm.js       # Local model inference
-├── map.js          # Google Maps integration
-├── tools/google.js # Google API tools
-├── sw.js           # Service worker (PWA)
-└── manifest.json   # PWA config
+├── index.html        # Single agent mode
+├── agi.html          # Multi-agent mode (upstream stable)
+├── sauhsoj-ii.html   # Multi-agent mode (fork — structured transcript refactor)
+├── strands.js        # Strands SDK bundle
+├── vision.js         # Screen capture, ambient mode
+├── webllm.js         # Local model inference
+├── map.js            # Google Maps integration
+├── tools/google.js   # Google API tools
+├── sw.js             # Service worker (PWA)
+└── manifest.json     # PWA config
 ```
+
+### Fork Strategy
+
+`sauhsoj-ii.html` is a fork of `agi.html` for experimental refactoring (structured transcripts, improved agent messaging). Both files share the same codebase origin.
+
+- **`agi.html`** — tracks upstream (`cagataycali/agi-diy`), receives upstream changes directly
+- **`sauhsoj-ii.html`** — diverges from `agi.html` at a recorded baseline commit, evolves independently
+
+Baseline commits are recorded in a comment at the top of `sauhsoj-ii.html`. To incorporate upstream changes, diff `agi.html` from the recorded baseline to HEAD and apply to `sauhsoj-ii.html`.
+
+> **Note:** Mechanical patching/rebasing will rarely work cleanly due to structural divergence. Review each upstream change by its intention and re-implement it in the context of `sauhsoj-ii.html`'s architecture. Update the baseline comment after incorporating.
+
+### Navigating agi.html
+
+`agi.html` contains a **Section Index TOC** at the top of its `<script>` block. Search for `═══ SECTION_NAME` to jump to any section. Each heading lists the key functions it contains.
+
+```
+STATE ................ App state, constants, config
+PIPELINE MODEL ....... getPipelines, topoSort, renderPipelineFlow
+MODEL PROVIDERS ...... AnthropicModel, OpenAIModel, BedrockModel
+TOOLS ................ render_ui, javascript_eval, storage, fetch
+AGENT MESH ........... P2P messaging, processIncomingCommand
+MESH TOOLS ........... invoke_agent, broadcast, list_agents
+SELF-MODIFICATION .... create_tool, update_self, custom tools
+PIPELINE TOOLS ....... create_pipeline, add_task, update_task_status
+SANDBOX TOOLS ........ sandbox_create, sandbox_update, preview mode
+HOOKS ................ InterruptHook, SummarizingManager
+GITHUB ............... auth, search, read, create PR
+AGENT MANAGEMENT ..... createAgent, updateAgentUI, selectAgent
+MESSAGING ............ runAgentMessage, sendMessage, clearChat
+ACTIVITY FEED ........ appendActivityFeed, filterActivityFeed
+UI RENDERING ......... addMessageToUI, streaming, tool calls, ring
+MODALS ............... spawn, edit, settings
+SYNC ................. encrypted export/import via URL
+PERSISTENCE .......... saveState, loadState, credentials
+CUSTOM TOOLS UI ...... tool management panel
+INIT ................. DOMContentLoaded, query params, startup
+```
+
+> **For AI agents:** Use this TOC as a fast lookup — grep for the section heading to find the right code block. When adding new functions, update both the section heading's function list and the TOC at the top of the script to keep them in sync.
 
 ---
 

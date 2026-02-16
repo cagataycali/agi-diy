@@ -1,0 +1,11 @@
+{
+  "name": "agi-diy-amplify-bundle",
+  "type": "module",
+  "dependencies": {
+    "@aws-amplify/auth": "^6.0.0",
+    "@aws-amplify/core": "^6.0.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.20.0"
+  }
+}
